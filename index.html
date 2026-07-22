@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BNP Fulfillment — Your Abuja Operations Partner</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+
+:root{
+  --teal:#2E8B9A;
+  --teal2:#3AA0B2;
+  --teal-dark:#1A6475;
+  --teal-dim:rgba(46,139,154,0.1);
+  --gold:#E8A020;
+  --gold2:#F0B840;
+  --navy:#0F2A44;
+  --navy2:#163557;
+  --cream:#F8F5F0;
+  --stone:#EAE4D8;
+  --graphite:#455568;
+  --mist:#8A97A8;
+  --green:#22A05A;
+  --white:#FFFFFF;
+}
+
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:var(--navy);line-height:1.65;overflow-x:hidden;}
+
+/* ── NAV ── */
+nav{
+  position:sticky;top:0;z-index:200;
+  background:var(--navy);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 6vw;height:62px;
+  border-bottom:2px solid rgba(46,139,154,0.25);
+}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none;}
+.logo-mark{
+  width:38px;height:38px;border-radius:9px;background:var(--teal);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.logo-mark svg{width:26px;height:26px;}
+.logo-name{color:var(--white);font-weight:900;font-size:15px;line-height:1.1;}
+.logo-sub{color:var(--teal2);font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;display:block;}
+.nav-links{display:flex;align-items:center;gap:24px;}
+.nav-links a{color:var(--mist);text-decoration:none;font-size:13px;font-weight:600;transition:color .2s;}
+.nav-links a:hover{color:var(--teal2);}
+.nav-cta{background:var(--gold);color:var(--navy);padding:9px 20px;border-radius:6px;font-weight:800;font-size:13px;text-decoration:none;}
+.nav-cta:hover{background:var(--gold2);}
+@media(max-width:720px){.nav-links{display:none;}}
+
+/* ── HERO ── */
+.hero{
+  background:var(--navy);
+  padding:76px 6vw 0;
+  position:relative;overflow:hidden;
+}
+.hero::before{
+  content:'';position:absolute;top:-60px;right:-100px;
+  width:480px;height:480px;border-radius:50%;
+  background:radial-gradient(circle,rgba(46,139,154,0.13) 0%,transparent 68%);
+  pointer-events:none;
+}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:7px;
+  background:rgba(46,139,154,0.13);border:1px solid rgba(46,139,154,0.35);
+  color:var(--teal2);padding:5px 13px;border-radius:20px;
+  font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;
+  margin-bottom:20px;
+}
+.eyebrow .dot{width:6px;height:6px;background:var(--teal2);border-radius:50%;animation:blink 2s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+
+h1{
+  font-size:clamp(34px,5.2vw,64px);
+  font-weight:900;color:var(--white);
+  line-height:1.06;letter-spacing:-1.5px;
+  max-width:720px;margin-bottom:10px;
+}
+h1 em{color:var(--gold);font-style:normal;}
+.hero-sub{
+  font-size:clamp(15px,1.8vw,18px);
+  color:var(--mist);max-width:500px;margin-bottom:36px;line-height:1.75;
+}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:64px;}
+.btn{
+  padding:13px 28px;border-radius:7px;font-weight:800;font-size:14px;
+  text-decoration:none;display:inline-block;transition:all .2s;
+}
+.btn-gold{background:var(--gold);color:var(--navy);}
+.btn-gold:hover{background:var(--gold2);transform:translateY(-2px);}
+.btn-outline{background:transparent;color:var(--white);border:1.5px solid rgba(255,255,255,0.18);}
+.btn-outline:hover{border-color:var(--teal2);color:var(--teal2);}
+
+/* ── PROOF STRIP ── */
+.proof{
+  border-top:1px solid rgba(255,255,255,0.07);
+  display:grid;grid-template-columns:repeat(4,1fr);
+}
+.proof-item{
+  padding:26px 0 26px 26px;
+  border-right:1px solid rgba(255,255,255,0.07);
+  position:relative;
+}
+.proof-item:last-child{border-right:none;}
+.proof-item::before{
+  content:'';position:absolute;left:0;top:24%;height:52%;
+  width:3px;background:var(--gold);border-radius:2px;
+}
+.proof-num{
+  font-size:clamp(24px,3vw,38px);font-weight:900;
+  color:var(--gold);line-height:1;letter-spacing:-1px;
+  font-variant-numeric:tabular-nums;
+}
+.proof-lbl{font-size:11px;color:var(--mist);font-weight:600;margin-top:4px;text-transform:uppercase;letter-spacing:.7px;}
+@media(max-width:640px){.proof{grid-template-columns:1fr 1fr;}.proof-item{border-bottom:1px solid rgba(255,255,255,0.07);}}
+
+/* ── SECTION BASE ── */
+section{padding:78px 6vw;}
+.sec-label{font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--teal);margin-bottom:10px;}
+.sec-title{font-size:clamp(22px,3.4vw,36px);font-weight:900;color:var(--navy);line-height:1.12;letter-spacing:-.4px;margin-bottom:12px;}
+.sec-desc{font-size:15px;color:var(--graphite);max-width:560px;line-height:1.75;}
+.sec-hdr{margin-bottom:48px;}
+
+/* ── WHAT WE DO (themes) ── */
+.what{background:var(--white);}
+.theme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;}
+.theme-card{
+  background:var(--cream);border-radius:10px;padding:26px;
+  border-top:3px solid var(--teal);
+  transition:transform .2s,box-shadow .2s;
+}
+.theme-card:hover{transform:translateY(-3px);box-shadow:0 8px 28px rgba(46,139,154,0.1);}
+.theme-icon{
+  width:46px;height:46px;border-radius:10px;
+  background:var(--teal-dim);
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;margin-bottom:14px;
+}
+.theme-title{font-weight:800;font-size:15px;color:var(--navy);margin-bottom:7px;}
+.theme-body{font-size:13px;color:var(--graphite);line-height:1.65;}
+
+/* ── HOW IT WORKS ── */
+.how{background:var(--navy);}
+.how .sec-label{color:var(--teal2);}
+.how .sec-title{color:var(--white);}
+.how .sec-desc{color:var(--mist);}
+.steps{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:2px;margin-top:48px;}
+.step{
+  padding:28px 22px;
+  background:rgba(255,255,255,0.03);
+  border-left:1px solid rgba(255,255,255,0.06);
+  position:relative;
+}
+.step:first-child{border-left:none;}
+.step-num{
+  width:34px;height:34px;border-radius:50%;
+  background:var(--gold);color:var(--navy);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:900;font-size:14px;margin-bottom:14px;
+  flex-shrink:0;
+}
+.step-icon{font-size:24px;margin-bottom:10px;}
+.step-title{font-weight:800;font-size:14px;color:var(--white);margin-bottom:6px;}
+.step-body{font-size:12px;color:var(--mist);line-height:1.6;}
+@media(max-width:640px){.steps{grid-template-columns:1fr;gap:1px;}.step{border-left:none;border-top:1px solid rgba(255,255,255,0.06);}}
+
+/* ── WHO ── */
+.who{background:var(--cream);}
+.who-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start;}
+.who-block-title{font-size:13px;font-weight:800;color:var(--navy);margin-bottom:14px;text-transform:uppercase;letter-spacing:.5px;}
+.who-list{list-style:none;}
+.who-list li{
+  display:flex;gap:10px;align-items:flex-start;
+  padding:9px 0;border-bottom:1px solid var(--stone);
+  font-size:13px;color:var(--graphite);line-height:1.55;
+}
+.who-list li::before{content:'✓';color:var(--teal);font-weight:900;flex-shrink:0;margin-top:1px;}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;}
+.tag{
+  background:var(--teal-dim);color:var(--teal-dark);
+  padding:5px 13px;border-radius:20px;font-size:12px;font-weight:700;
+}
+@media(max-width:680px){.who-grid{grid-template-columns:1fr;gap:32px;}}
+
+/* ── HUB ── */
+.hub{background:var(--white);}
+.hub-grid{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center;}
+.hub-points{list-style:none;margin-top:24px;}
+.hub-point{
+  display:flex;gap:14px;align-items:flex-start;
+  padding:14px 0;border-bottom:1px solid var(--stone);
+}
+.hp-icon{
+  width:38px;height:38px;border-radius:8px;
+  background:var(--teal-dim);display:flex;align-items:center;
+  justify-content:center;font-size:18px;flex-shrink:0;
+}
+.hp-title{font-weight:800;font-size:13px;color:var(--navy);margin-bottom:2px;}
+.hp-body{font-size:12px;color:var(--graphite);line-height:1.6;}
+.hub-card{
+  background:var(--navy);border-radius:12px;padding:30px;
+}
+.hub-card-eyebrow{font-size:10px;color:var(--teal2);font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;}
+.hub-card-city{font-size:26px;font-weight:900;color:var(--white);}
+.hub-card-area{font-size:14px;color:var(--gold);font-weight:700;margin-bottom:20px;}
+.hub-card-items{list-style:none;}
+.hub-card-items li{
+  font-size:13px;color:var(--mist);padding:7px 0;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  display:flex;gap:9px;align-items:center;
+}
+.hub-card-items li::before{content:'●';color:var(--teal2);font-size:8px;}
+.hub-contact{margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.08);}
+.hub-contact a{display:block;color:var(--teal2);text-decoration:none;font-size:13px;font-weight:600;margin-bottom:4px;transition:color .2s;}
+.hub-contact a:hover{color:var(--gold);}
+@media(max-width:720px){.hub-grid{grid-template-columns:1fr;gap:32px;}}
+
+/* ── PRICING ── */
+.pricing{background:var(--navy);}
+.pricing .sec-label{color:var(--teal2);}
+.pricing .sec-title{color:var(--white);}
+.pricing .sec-desc{color:var(--mist);}
+.price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:48px;}
+.price-card{
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.09);
+  border-radius:10px;padding:28px;
+}
+.price-card.hl{border-color:var(--teal);background:rgba(46,139,154,0.08);}
+.price-card-label{font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal2);margin-bottom:8px;}
+.price-card-name{font-size:17px;font-weight:900;color:var(--white);margin-bottom:12px;}
+.price-amount{font-size:30px;font-weight:900;color:var(--gold);line-height:1;margin-bottom:4px;}
+.price-qualifier{font-size:12px;color:var(--mist);margin-bottom:18px;line-height:1.5;}
+.price-detail{font-size:13px;color:var(--mist);line-height:1.7;}
+.pricing-note{
+  margin-top:36px;padding:20px 24px;
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
+  border-radius:8px;font-size:13px;color:var(--mist);line-height:1.7;
+  max-width:680px;
+}
+.pricing-note strong{color:var(--teal2);}
+@media(max-width:680px){.price-grid{grid-template-columns:1fr;}}
+
+/* ── TESTIMONIALS ── */
+.testi{background:var(--cream);}
+.testi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px;}
+.testi-card{background:var(--white);border-radius:10px;padding:26px;border-left:3px solid var(--teal);}
+.testi-quote{font-size:14px;color:var(--navy);line-height:1.75;margin-bottom:18px;font-style:italic;}
+.testi-author{display:flex;align-items:center;gap:11px;}
+.testi-av{
+  width:38px;height:38px;border-radius:50%;background:var(--teal);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--white);font-weight:900;font-size:14px;flex-shrink:0;
+}
+.testi-name{font-weight:800;font-size:13px;color:var(--navy);}
+.testi-biz{font-size:11px;color:var(--mist);}
+.testi-stars{color:var(--gold);font-size:11px;margin-top:2px;}
+
+/* ── APPLY ── */
+.apply{background:var(--white);}
+.apply-wrap{display:grid;grid-template-columns:1fr 1.3fr;gap:64px;align-items:start;}
+.apply-intro .sec-title{margin-bottom:20px;}
+.apply-perks{list-style:none;margin-top:4px;}
+.apply-perks li{
+  display:flex;gap:12px;align-items:flex-start;
+  padding:13px 0;border-bottom:1px solid var(--stone);
+  font-size:13px;color:var(--graphite);line-height:1.55;
+}
+.apply-perks li strong{color:var(--navy);display:block;font-size:13px;}
+.perk-ic{font-size:18px;flex-shrink:0;margin-top:1px;}
+.form-box{
+  background:var(--navy);border-radius:12px;padding:32px;
+  box-shadow:0 8px 40px rgba(15,42,68,0.18);
+}
+.form-title{font-weight:900;font-size:17px;color:var(--white);margin-bottom:4px;}
+.form-sub{font-size:12px;color:var(--mist);margin-bottom:22px;}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.fg{margin-bottom:12px;}
+.fl{display:block;font-size:10px;font-weight:700;color:var(--mist);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px;}
+.fi{
+  width:100%;padding:10px 13px;
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.11);
+  border-radius:6px;color:var(--white);font-size:13px;font-family:inherit;outline:none;
+  transition:border-color .2s;
+}
+.fi:focus{border-color:var(--teal2);}
+.fi::placeholder{color:rgba(138,151,168,.5);}
+.fs{
+  width:100%;padding:10px 13px;
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.11);
+  border-radius:6px;color:var(--white);font-size:13px;font-family:inherit;outline:none;
+}
+.fs option{background:var(--navy2);}
+.fs:focus{border-color:var(--teal2);}
+.fsubmit{
+  width:100%;padding:13px;background:var(--teal);color:var(--white);
+  border:none;border-radius:7px;font-weight:900;font-size:14px;
+  cursor:pointer;font-family:inherit;margin-top:6px;transition:background .2s;
+}
+.fsubmit:hover{background:var(--teal2);}
+.fdisc{font-size:11px;color:var(--mist);text-align:center;margin-top:10px;}
+.success-msg{
+  display:none;background:rgba(34,160,90,0.14);border:1px solid var(--green);
+  border-radius:7px;padding:14px;text-align:center;
+  color:var(--green);font-weight:700;font-size:13px;margin-top:10px;
+}
+@media(max-width:720px){.apply-wrap{grid-template-columns:1fr;gap:36px;}.frow{grid-template-columns:1fr;}}
+
+/* ── FAQ ── */
+.faq{background:var(--cream);}
+.faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.faq-item{background:var(--white);border-radius:8px;padding:22px;border-left:3px solid var(--teal);}
+.faq-q{font-weight:800;font-size:14px;color:var(--navy);margin-bottom:7px;}
+.faq-a{font-size:13px;color:var(--graphite);line-height:1.65;}
+@media(max-width:680px){.faq-grid{grid-template-columns:1fr;}}
+
+/* ── FOOTER ── */
+footer{
+  background:var(--navy);padding:52px 6vw 26px;
+  border-top:2px solid rgba(46,139,154,0.18);
+}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;margin-bottom:36px;}
+.ft-name{font-weight:900;font-size:15px;color:var(--white);margin-bottom:6px;}
+.ft-tag{font-size:12px;color:var(--teal2);font-weight:700;margin-bottom:8px;}
+.ft-desc{font-size:12px;color:var(--mist);line-height:1.7;max-width:230px;}
+.ft-col-title{font-size:10px;font-weight:800;color:var(--teal2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;}
+.ft-links{list-style:none;}
+.ft-links li{margin-bottom:8px;}
+.ft-links a{color:var(--mist);text-decoration:none;font-size:13px;transition:color .2s;}
+.ft-links a:hover{color:var(--teal2);}
+.footer-bar{
+  border-top:1px solid rgba(255,255,255,0.07);padding-top:18px;
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;
+}
+.footer-copy{font-size:11px;color:var(--mist);}
+.footer-locs{display:flex;gap:16px;flex-wrap:wrap;}
+.footer-loc{font-size:11px;color:var(--mist);display:flex;align-items:center;gap:5px;}
+.footer-loc span{color:var(--teal2);}
+@media(max-width:720px){.footer-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:480px){.footer-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10 14a4 4 0 0 1 4-4h8l8 8-10 10-8-8V14z" fill="url(#lg)"/>
+        <circle cx="18" cy="14" r="2" fill="white" opacity=".85"/>
+        <line x1="13" y1="21" x2="16" y2="21" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity=".55"/>
+        <line x1="13" y1="24" x2="17" y2="24" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity=".55"/>
+        <defs><linearGradient id="lg" x1="10" y1="10" x2="30" y2="30"><stop stop-color="#E8A020"/><stop offset="1" stop-color="#F5C84A"/></linearGradient></defs>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-name">BNP Fulfillment</div>
+      <span class="logo-sub">Your Operations Partner</span>
+    </div>
+  </a>
+  <div class="nav-links">
+    <a href="#what">Services</a>
+    <a href="#how">How it works</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#hub">Our Hub</a>
+    <a href="#faq">FAQ</a>
+    <a href="#apply" class="nav-cta">Become a Partner</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="home">
+  <div class="eyebrow"><span class="dot"></span> Abuja · Lagos · USA</div>
+  <h1>No Branch.<br><em>No Staff.</em><br>No Operational Stress.</h1>
+  <p class="hero-sub">
+    BNP Fulfillment is your Abuja operations partner. We store your inventory, fulfil your orders, and deliver to your customers — so you stay focused on growing your business.
+  </p>
+  <div class="hero-actions">
+    <a href="#apply" class="btn btn-gold">Become a Partner →</a>
+    <a href="/dashboard.html" class="btn btn-outline">See what we do</a>
+  </div>
+  <div class="proof">
+    <div class="proof-item">
+      <div class="proof-num" data-target="2400" data-suffix="+">0</div>
+      <div class="proof-lbl">Orders Fulfilled</div>
+    </div>
+    <div class="proof-item">
+      <div class="proof-num" data-target="80" data-suffix="+">0</div>
+      <div class="proof-lbl">Active Partners</div>
+    </div>
+    <div class="proof-item">
+      <div class="proof-num" data-target="7" data-suffix=" Days">0</div>
+      <div class="proof-lbl">Avg. Launch Time</div>
+    </div>
+    <div class="proof-item">
+      <div class="proof-num" data-target="98" data-suffix="%">0</div>
+      <div class="proof-lbl">On-time Delivery</div>
+    </div>
+  </div>
+</section>
+
+<!-- WHAT WE DO -->
+<section class="what" id="what">
+  <div class="sec-hdr">
+    <div class="sec-label">What We Do</div>
+    <h2 class="sec-title">Everything after the sale — handled.</h2>
+    <p class="sec-desc">From the moment an order is placed to the moment it reaches your customer's door, BNP manages the entire fulfillment chain on your behalf.</p>
+  </div>
+  <div class="theme-grid">
+    <div class="theme-card">
+      <div class="theme-icon">🏭</div>
+      <div class="theme-title">Warehousing & Storage</div>
+      <div class="theme-body">Your products are received, labelled, photographed, and stored securely in our Abuja facility. Every unit is tracked by SKU and fully insured in our care.</div>
+    </div>
+    <div class="theme-card">
+      <div class="theme-icon">📦</div>
+      <div class="theme-title">Pick, Pack & Dispatch</div>
+      <div class="theme-body">When an order comes in, our team picks the exact item from your shelf, packs it professionally, and dispatches it to your customer — same day or next day.</div>
+    </div>
+    <div class="theme-card">
+      <div class="theme-icon">🚴</div>
+      <div class="theme-title">Last-Mile Delivery</div>
+      <div class="theme-body">BNP riders cover Abuja and surrounding areas. You can also add your own riders to the platform with custom delivery fees — full flexibility on dispatch.</div>
+    </div>
+    <div class="theme-card">
+      <div class="theme-icon">📊</div>
+      <div class="theme-title">Inventory Management</div>
+      <div class="theme-body">Upload products with photos, pricing, and SKUs through your partner dashboard. Receive automatic alerts when stock runs low — before it becomes a problem.</div>
+    </div>
+    <div class="theme-card">
+      <div class="theme-icon">💳</div>
+      <div class="theme-title">Payments & Settlement</div>
+      <div class="theme-body">We handle payment collection for walk-in and on-site transactions. Monthly sales reports and settlement summaries are available on your dashboard at any time.</div>
+    </div>
+    <div class="theme-card">
+      <div class="theme-icon">🏪</div>
+      <div class="theme-title">Walk-in & Brand Presence</div>
+      <div class="theme-body">Our Jabi hub acts as your Abuja address. Customers can walk in to collect orders, interact with your products, and experience your brand — without you opening a store.</div>
+    </div>
+    <div class="theme-card">
+      <div class="theme-icon">↩</div>
+      <div class="theme-title">Returns & Claims</div>
+      <div class="theme-body">Returns are processed through the partner portal with photo documentation. Claims are handled transparently with a full audit trail and written outcome for every case.</div>
+    </div>
+    <div class="theme-card">
+      <div class="theme-icon">📈</div>
+      <div class="theme-title">Reporting & Insights</div>
+      <div class="theme-body">Access monthly inventory and financial reports from your dashboard. Export to CSV or PDF at any time — your data is always yours, with no need to request it from us.</div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how" id="how">
+  <div class="sec-hdr">
+    <div class="sec-label">How It Works</div>
+    <h2 class="sec-title">From application to delivery — in seven steps.</h2>
+    <p class="sec-desc">A straightforward process designed for Nigerian businesses. No logistics expertise required. Most partners go live within 5 to 7 days of approval.</p>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-icon">🚚</div>
+      <div class="step-num">1</div>
+      <div class="step-title">Send Your Stock</div>
+      <div class="step-body">Ship or drop off your inventory at our Jabi hub. We receive and log every unit.</div>
+    </div>
+    <div class="step">
+      <div class="step-icon">📋</div>
+      <div class="step-num">2</div>
+      <div class="step-title">We Onboard It</div>
+      <div class="step-body">Your items are photographed, shelved, and uploaded to your partner dashboard.</div>
+    </div>
+    <div class="step">
+      <div class="step-icon">🛒</div>
+      <div class="step-num">3</div>
+      <div class="step-title">You Control Orders</div>
+      <div class="step-body">You create, approve, and manage every order from your dashboard — from anywhere in the world. Track all orders in real time as they move through fulfillment.</div>
+    </div>
+    <div class="step">
+      <div class="step-icon">📦</div>
+      <div class="step-num">4</div>
+      <div class="step-title">Pick, Pack & Deliver</div>
+      <div class="step-body">BNP picks, packs, and dispatches. Same day or next day within Abuja.</div>
+    </div>
+    <div class="step">
+      <div class="step-icon">💳</div>
+      <div class="step-num">5</div>
+      <div class="step-title">Payments Handled</div>
+      <div class="step-body">Walk-in and on-site payments are collected and logged against your account.</div>
+    </div>
+    <div class="step">
+      <div class="step-icon">📊</div>
+      <div class="step-num">6</div>
+      <div class="step-title">Reports & Settlement</div>
+      <div class="step-body">Monthly sales and inventory reports are ready in your dashboard — download anytime.</div>
+    </div>
+    <div class="step">
+      <div class="step-icon">📱</div>
+      <div class="step-num">7</div>
+      <div class="step-title">You Scale</div>
+      <div class="step-body">You focus on marketing and growth. We keep the operations running smoothly.</div>
+    </div>
+  </div>
+</section>
+
+<!-- WHO IT'S FOR -->
+<section class="who" id="who">
+  <div class="sec-hdr">
+    <div class="sec-label">Who It's For</div>
+    <h2 class="sec-title">Built for product businesses ready to grow.</h2>
+    <p class="sec-desc">BNP is the right fit for brands that are already selling and want to reach Abuja customers faster, more reliably, and without the overhead of a physical operation.</p>
+  </div>
+  <div class="who-grid">
+    <div>
+      <div class="who-block-title">Your business looks like this</div>
+      <ul class="who-list">
+        <li>You sell online, on social media, or via WhatsApp</li>
+        <li>You ship to Abuja and deal with delivery complaints</li>
+        <li>You want same-day or next-day delivery in FCT</li>
+        <li>You need a local Abuja presence without a store</li>
+        <li>You want to be seen as a multi-city brand</li>
+        <li>Your time is better spent on sales, not packing</li>
+        <li>You want to test and build Abuja demand with low risk</li>
+      </ul>
+    </div>
+    <div>
+      <div class="who-block-title">Industries that work well with BNP</div>
+      <div class="tags">
+        <span class="tag">Fashion & Accessories</span>
+        <span class="tag">Skincare & Beauty</span>
+        <span class="tag">Hair & Grooming</span>
+        <span class="tag">Gadgets & Electronics</span>
+        <span class="tag">Homeware</span>
+        <span class="tag">Non-perishable Foods</span>
+        <span class="tag">Health & Supplements</span>
+        <span class="tag">Gifts & Subscriptions</span>
+        <span class="tag">African Export Goods</span>
+        <span class="tag">Diaspora Brands</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HUB -->
+<section class="hub" id="hub">
+  <div class="sec-hdr">
+    <div class="sec-label">Our Hub</div>
+    <h2 class="sec-title">Your new Abuja address.</h2>
+    <p class="sec-desc">BNP's primary facility is in Jabi — one of Abuja's most accessible commercial areas. It's your brand's physical presence in the FCT, without the cost of a branch.</p>
+  </div>
+  <div class="hub-grid">
+    <div>
+      <ul class="hub-points">
+        <li>
+          <div class="hp-icon">⚡</div>
+          <div>
+            <div class="hp-title">Same-Day & Next-Day Delivery</div>
+            <div class="hp-body">With your stock already in Abuja, we dispatch fast. Orders placed before 12PM go out the same day to FCT customers.</div>
+          </div>
+        </li>
+        <li>
+          <div class="hp-icon">🚶</div>
+          <div>
+            <div class="hp-title">Customer Walk-Ins Welcome</div>
+            <div class="hp-body">Customers can visit our Jabi hub in person to collect orders or browse products — giving your brand a real-world touchpoint in the capital.</div>
+          </div>
+        </li>
+        <li>
+          <div class="hp-icon">🔒</div>
+          <div>
+            <div class="hp-title">Secure, Insured Storage</div>
+            <div class="hp-body">All products in our facility are CCTV-monitored and fully insured. Damage claims are handled with complete documentation and transparency.</div>
+          </div>
+        </li>
+        <li>
+          <div class="hp-icon">🌍</div>
+          <div>
+            <div class="hp-title">Expanding to Lagos & the USA</div>
+            <div class="hp-body">Partners can assign inventory to Lagos or our Texas, USA facility on the same account — one dashboard, multiple cities, no new contracts.</div>
+          </div>
+        </li>
+      </ul>
+    </div>
+    <div class="hub-card">
+      <div class="hub-card-eyebrow">Primary Hub</div>
+      <div class="hub-card-city">📍 Abuja, Nigeria</div>
+      <div class="hub-card-area">Jabi — Heart of the FCT</div>
+      <ul class="hub-card-items">
+        <li>Secure, organised warehouse facility</li>
+        <li>BNP riders on ground daily</li>
+        <li>Partner drop-off & walk-in enabled</li>
+        <li>Same-day dispatch cutoff: 12PM</li>
+        <li>CCTV-monitored storage bays</li>
+        <li>Lagos expansion — active</li>
+        <li>USA facility — Texas, operational</li>
+      </ul>
+      <div class="hub-contact">
+        <div style="font-size:10px;color:var(--mist);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Contact Us</div>
+        <a href="tel:+2348054666346">(+234) 805 466 6346</a>
+        <a href="mailto:bnpfulfillment@gmail.com">bnpfulfillment@gmail.com</a>
+        <a href="https://bnpfulfillment.com">www.bnpfulfillment.com</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="pricing">
+  <div class="sec-hdr">
+    <div class="sec-label">Pricing</div>
+    <h2 class="sec-title">Simple, transparent costs.</h2>
+    <p class="sec-desc">Three straightforward fees — no hidden charges, no long-term lock-in. If you don't sell, your fulfillment fee is zero.</p>
+  </div>
+  <div class="price-grid">
+    <div class="price-card">
+      <div class="price-card-label">Onboarding</div>
+      <div class="price-card-name">Annual Subscription</div>
+      <div class="price-amount">₦50,000</div>
+      <div class="price-qualifier">Paid once per year — not monthly</div>
+      <div class="price-detail">Covers your full account setup, inventory onboarding and photography, partner dashboard access, WhatsApp integration, and staff training.</div>
+    </div>
+    <div class="price-card hl">
+      <div class="price-card-label">Monthly</div>
+      <div class="price-card-name">Storage Fee</div>
+      <div class="price-amount">₦10,000</div>
+      <div class="price-qualifier">Per square metre of space used, per month</div>
+      <div class="price-detail">Covers secure shelved storage, real-time inventory tracking, low-stock alerts, and full insurance on all goods in our facility.</div>
+    </div>
+    <div class="price-card">
+      <div class="price-card-label">Performance</div>
+      <div class="price-card-name">Fulfillment Fee</div>
+      <div class="price-amount">7%</div>
+      <div class="price-qualifier">Of total sales value per month — no sale, no charge</div>
+      <div class="price-detail">Covers pick, pack, and dispatch per order. If your brand sells ₦500,000 in a month, the fulfillment fee is ₦35,000 — and you paid no rent, no salaries, no overhead.</div>
+    </div>
+  </div>
+  <div class="pricing-note">
+    All fees are deducted automatically from your partner wallet. You maintain full visibility of every charge through your dashboard — no surprise invoices, no manual follow-ups.
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="testi" id="testimonials">
+  <div class="sec-hdr">
+    <div class="sec-label">Partner Stories</div>
+    <h2 class="sec-title">What our partners say.</h2>
+  </div>
+  <div class="testi-grid">
+    <div class="testi-card">
+      <p class="testi-quote">"I used to dread Abuja orders. The interstate complaints were endless. Since moving my stock to BNP's Jabi hub, my FCT customers get next-day delivery and my reviews improved instantly."</p>
+      <div class="testi-author">
+        <div class="testi-av">A</div>
+        <div>
+          <div class="testi-name">Amara Chukwu</div>
+          <div class="testi-biz">Amara Skincare · Lagos-based, Abuja-active</div>
+          <div class="testi-stars">★★★★★</div>
+        </div>
+      </div>
+    </div>
+    <div class="testi-card">
+      <p class="testi-quote">"My customers kept asking if I had a branch in Abuja. Now I tell them yes — because I do. BNP's hub is my Abuja address. Conversions from FCT went up significantly within two months."</p>
+      <div class="testi-author">
+        <div class="testi-av">T</div>
+        <div>
+          <div class="testi-name">Tunde Akinwale</div>
+          <div class="testi-biz">TechWear Nigeria · Gadgets & Accessories</div>
+          <div class="testi-stars">★★★★★</div>
+        </div>
+      </div>
+    </div>
+    <div class="testi-card">
+      <p class="testi-quote">"Opening a physical store would have cost me over ₦8 million upfront. BNP let me test the Abuja market in 7 days at a fraction of the cost. There really is no comparison."</p>
+      <div class="testi-author">
+        <div class="testi-av">F</div>
+        <div>
+          <div class="testi-name">Fatima Musa</div>
+          <div class="testi-biz">Fatima's Organics · Health & Supplements</div>
+          <div class="testi-stars">★★★★★</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- APPLY -->
+<section class="apply" id="apply">
+  <div class="apply-wrap">
+    <div class="apply-intro">
+      <div class="sec-label">Partner Application</div>
+      <h2 class="sec-title">Ready to get started?</h2>
+      <p class="sec-desc" style="margin-bottom:28px;">Most partners go live within 5 to 7 days of approval. No payment is required at application stage — we confirm the fit first.</p>
+      <ul class="apply-perks">
+        <li><span class="perk-ic">⚡</span><div><strong>Live in 5–7 days</strong>Apply, get approved, send your stock, start selling in Abuja.</div></li>
+        <li><span class="perk-ic">📱</span><div><strong>Manage from your phone</strong>Your dashboard works fully on mobile. Create orders on WhatsApp.</div></li>
+        <li><span class="perk-ic">📦</span><div><strong>Full-service operations</strong>We handle storage, packing, dispatch, returns, and reporting.</div></li>
+        <li><span class="perk-ic">🌍</span><div><strong>Scale beyond Abuja when ready</strong>Add Lagos or USA on the same account — no new application needed.</div></li>
+      </ul>
+    </div>
+    <div class="form-box">
+      <div class="form-title">Apply to become a partner</div>
+      <div class="form-sub">Takes 3 minutes · We respond within 48 hours</div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Business Name *</label><input class="fi" id="f-biz" type="text" placeholder="Your business name"/></div>
+        <div class="fg"><label class="fl">Your Full Name *</label><input class="fi" id="f-name" type="text" placeholder="First & last name"/></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Email *</label><input class="fi" id="f-email" type="email" placeholder="you@business.com"/></div>
+        <div class="fg"><label class="fl">Phone *</label><input class="fi" id="f-phone" type="tel" placeholder="08012345678"/></div>
+      </div>
+      <div class="frow">
+        <div class="fg">
+          <label class="fl">Product Category</label>
+          <select class="fs" id="f-cat">
+            <option value="">— Select —</option>
+            <option>Fashion & Accessories</option>
+            <option>Skincare & Beauty</option>
+            <option>Hair & Grooming</option>
+            <option>Gadgets & Electronics</option>
+            <option>Homeware</option>
+            <option>Non-perishable Foods</option>
+            <option>Health & Supplements</option>
+            <option>Gifts & Subscriptions</option>
+            <option>African Export Goods</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="fl">Preferred Location *</label>
+          <select class="fs" id="f-loc">
+            <option value="">— Select —</option>
+            <option>Abuja (Jabi Hub)</option>
+            <option>Lagos</option>
+            <option>USA — Texas</option>
+            <option>Multiple Locations</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg">
+        <label class="fl">Monthly Order Volume</label>
+        <select class="fs" id="f-vol">
+          <option value="">— Select —</option>
+          <option>Under 50 orders/month</option>
+          <option>50–200 orders/month</option>
+          <option>200–500 orders/month</option>
+          <option>500+ orders/month</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="fl">Tell us about your business</label>
+        <textarea class="fi" id="f-note" rows="3" placeholder="What do you sell? Where are your customers? Any specific needs?" style="resize:vertical;"></textarea>
+      </div>
+      <button class="fsubmit" onclick="handleSubmit()">Submit Application →</button>
+      <div class="success-msg" id="success-msg">✓ Application received. Our team will be in touch within 48 hours.</div>
+      <p class="fdisc">No payment required at this stage. We confirm fit before any fees are discussed.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq" id="faq">
+  <div class="sec-hdr">
+    <div class="sec-label">FAQ</div>
+    <h2 class="sec-title">Common questions.</h2>
+  </div>
+  <div class="faq-grid">
+    <div class="faq-item">
+      <div class="faq-q">How do I get my products into your facility?</div>
+      <div class="faq-a">Once approved, ship your inventory to our Jabi hub or drop it off in person. We receive, count, photograph, and shelf your stock — you confirm it in your dashboard within 24 hours.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">How does the 7% fulfillment fee work exactly?</div>
+      <div class="faq-a">It applies to the total value of items sold in that month. If you sell ₦200,000 worth of goods, the fee is ₦14,000. If sales are zero, the fulfillment fee is zero — only storage applies.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Can my Abuja customers walk in to collect orders?</div>
+      <div class="faq-a">Yes. Our Jabi hub functions as a collection point. Customers walk in, reference their order, and collect directly — giving your brand a genuine physical touchpoint in Abuja.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">What happens if a product is damaged in your care?</div>
+      <div class="faq-a">All stocks are fully insured. File a claim through the partner portal with photos and a description. BNP processes and resolves every claim with full documentation and a written outcome.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Can I use my own delivery riders?</div>
+      <div class="faq-a">Yes. You can add your own riders to the platform, set their delivery fees independently, and assign orders to them. You can also switch between BNP riders and your own at any time.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Can I expand to Lagos or the USA later?</div>
+      <div class="faq-a">Yes. Assign new inventory to the Lagos or USA warehouse directly from your existing dashboard. No new application, no new contract — everything stays on one account.</div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-grid">
+    <div>
+      <div class="ft-name">BNP Fulfillment</div>
+      <div class="ft-tag">No Branch. No Staff. No Operational Stress.</div>
+      <div class="ft-desc">Nigeria's partner-first fulfillment network, storing and shipping your products across Abuja, Lagos, and the USA.</div>
+    </div>
+    <div>
+      <div class="ft-col-title">Services</div>
+      <ul class="ft-links">
+        <li><a href="#what">Warehousing</a></li>
+        <li><a href="#what">Pick & Pack</a></li>
+        <li><a href="#what">Last-Mile Delivery</a></li>
+        <li><a href="#what">Returns & Claims</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="ft-col-title">Company</div>
+      <ul class="ft-links">
+        <li><a href="#how">How it works</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#hub">Our Hub — Jabi</a></li>
+        <li><a href="#apply">Partner Application</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="ft-col-title">Contact</div>
+      <ul class="ft-links">
+        <li><a href="tel:+2348054666346">(+234) 805 466 6346</a></li>
+        <li><a href="mailto:bnpfulfillment@gmail.com">bnpfulfillment@gmail.com</a></li>
+        <li><a href="https://bnpfulfillment.com">bnpfulfillment.com</a></li>
+        <li><a href="https://wa.me/2348054666346">WhatsApp us</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bar">
+    <div class="footer-copy">© 2026 BNP Fulfillment · BoxNPick Global. All rights reserved.</div>
+    <div class="footer-locs">
+      <div class="footer-loc"><span>●</span> Abuja, Nigeria</div>
+      <div class="footer-loc"><span>●</span> Lagos, Nigeria</div>
+      <div class="footer-loc"><span>●</span> Texas, USA</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Counter animation
+function animateCounters(){
+  document.querySelectorAll('.proof-num[data-target]').forEach(el=>{
+    const target=parseInt(el.dataset.target),suffix=el.dataset.suffix||'';
+    const step=target/(1800/16);let cur=0;
+    const t=setInterval(()=>{
+      cur=Math.min(cur+step,target);
+      el.textContent=Math.floor(cur).toLocaleString()+suffix;
+      if(cur>=target)clearInterval(t);
+    },16);
+  });
+}
+const obs=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){animateCounters();obs.disconnect();}});},{threshold:.3});
+const ps=document.querySelector('.proof');if(ps)obs.observe(ps);
+
+// Form
+function handleSubmit(){
+  const v=id=>document.getElementById(id).value.trim();
+  if(!v('f-biz')||!v('f-name')||!v('f-email')||!v('f-phone')||!document.getElementById('f-loc').value){
+    alert('Please fill in all required fields before submitting.');return;
+  }
+  const btn=document.querySelector('.fsubmit');
+  btn.textContent='Submitting…';btn.disabled=true;
+  setTimeout(()=>{btn.style.display='none';document.getElementById('success-msg').style.display='block';},1200);
+}
+
+// Smooth scroll
+document.querySelectorAll('a[href^="#"]').forEach(a=>{
+  a.addEventListener('click',e=>{
+    const t=document.querySelector(a.getAttribute('href'));
+    if(t){e.preventDefault();t.scrollIntoView({behavior:'smooth',block:'start'});}
+  });
+});
+</script>
+</body>
+</html>
