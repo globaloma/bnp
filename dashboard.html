@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BoxNPick Partner Portal</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 0; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #C9A84C55; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useRef, useEffect } = React;
+
+// ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
+const LOCS = ["Abuja", "Lagos", "USA"];
+const BUFFER = 30000;
+const PENALTY = 20000;
+
+const NAV = [
+  { id: "dashboard", label: "Dashboard", icon: "▦" },
+  { id: "inventory", label: "Inventory", icon: "⬛" },
+  { id: "orders", label: "Orders", icon: "📋" },
+  { id: "wallet", label: "Wallet", icon: "◎" },
+  { id: "rewards", label: "Rewards", icon: "★" },
+  { id: "returns", label: "Returns & Claims", icon: "↩" },
+  { id: "reports", label: "Reports", icon: "⬇" },
+  { id: "whatsapp", label: "WhatsApp Bot", icon: "💬" },
+  { id: "alerts", label: "Alerts", icon: "🔔" },
+];
+
+// ─── SEED DATA ────────────────────────────────────────────────────────────────
+const SEED_INV = [
+  { id: 1, name: "Ankara Tote Bag", sku: "ATB-001", cost: 4500, price: 8500, vat: 7.5, stock: 3, location: "Abuja", category: "Bags", image: null, lastMoved: "2025-11-01", shipping: 1200, pickup: false },
+  { id: 2, name: "Leather Crossbody", sku: "LCB-002", cost: 12000, price: 22000, vat: 7.5, stock: 18, location: "Lagos", category: "Bags", image: null, lastMoved: "2026-06-10", shipping: 1500, pickup: true },
+  { id: 3, name: "Linen Joggers", sku: "LJ-003", cost: 3200, price: 6000, vat: 7.5, stock: 2, location: "Abuja", category: "Clothing", image: null, lastMoved: "2025-09-15", shipping: 900, pickup: false },
+  { id: 4, name: "Cotton Kaftan", sku: "CK-004", cost: 5500, price: 11000, vat: 7.5, stock: 9, location: "Lagos", category: "Clothing", image: null, lastMoved: "2026-05-20", shipping: 1200, pickup: true },
+];
+
+const SEED_ORDERS = [
+  { id: "ORD-0041", customer: "Amaka Obi", item: "Ankara Tote Bag", qty: 2, total: 17000, status: "Packaging", location: "Abuja", date: "2026-06-15", rider: "BNP Fleet" },
+  { id: "ORD-0042", customer: "Tunde Adeyemi", item: "Leather Crossbody", qty: 1, total: 22000, status: "Shipping", location: "Lagos", date: "2026-06-14", rider: "Own Rider" },
+  { id: "ORD-0043", customer: "Chidinma Eze", item: "Linen Joggers", qty: 3, total: 18000, status: "Delivered", location: "Abuja", date: "2026-06-13", rider: "BNP Fleet" },
+  { id: "ORD-0044", customer: "Ibrahim Sule", item: "Cotton Kaftan", qty: 2, total: 22000, status: "Returned", location: "Lagos", date: "2026-06-12", rider: "BNP Fleet" },
+  { id: "ORD-0045", customer: "Ngozi Okafor", item: "Ankara Tote Bag", qty: 1, total: 8500, status: "Damaged", location: "Abuja", date: "2026-06-11", rider: "Own Rider" },
+];
+
+const SEED_WALLET = {
+  balance: 85000,
+  buffer: BUFFER,
+  transactions: [
+    { id: 1, type: "Top-up", amount: 100000, date: "2026-06-01", note: "Manual deposit" },
+    { id: 2, type: "Deduction", amount: -12000, date: "2026-06-05", note: "Monthly subscription fee" },
+    { id: 3, type: "Deduction", amount: -3000, date: "2026-06-10", note: "Storage overage" },
+    { id: 4, type: "Reward", amount: 2000, date: "2026-06-12", note: "June sales milestone reward" },
+  ],
+};
+
+const BADGES = [
+  { id: "first_order", label: "First Shipment", icon: "🚀", earned: true, desc: "Fulfilled your first order" },
+  { id: "10_orders", label: "10 Orders", icon: "📦", earned: true, desc: "Completed 10 fulfillments" },
+  { id: "50_orders", label: "50 Orders", icon: "🏆", earned: false, desc: "Complete 50 fulfillments" },
+  { id: "zero_returns", label: "Clean Record", icon: "✅", earned: false, desc: "30 days with no returns" },
+  { id: "top_seller", label: "Top Seller", icon: "⭐", earned: false, desc: "Rank #1 on leaderboard" },
+];
+
+const MILESTONE_TARGET = 30;
+const SEED_REWARDS = {
+  ordersThisMonth: 19,
+  rewardsHistory: [
+    { id: 1, type: "Wallet Credit", amount: 2000, date: "2026-06-12", reason: "Hit 10 orders milestone" },
+    { id: 2, type: "Free Packaging", amount: 0, date: "2026-05-30", reason: "May sales champion" },
+  ],
+};
+
+const SEED_RETURNS = [
+  { id: "RET-001", orderId: "ORD-0044", item: "Cotton Kaftan", reason: "Wrong size delivered", status: "Under Review", date: "2026-06-13", image: null },
+];
+
+const LEADERBOARD = [
+  { rank: 1, name: "Zara Boutique Lagos", orders: 48 },
+  { rank: 2, name: "Kemi's Closet", orders: 41 },
+  { rank: 3, name: "Your Store", orders: 19, you: true },
+  { rank: 4, name: "Trendy Picks NG", orders: 14 },
+  { rank: 5, name: "Adire House", orders: 9 },
+];
+
+const STAGE_FLOW = ["Packaging", "Shipping", "Delivered", "Returned", "Damaged"];
+const STAGE_COLOR = { Packaging: "#C9A84C", Shipping: "#1A7A4A", Delivered: "#0D1B2A", Returned: "#D63B3B", Damaged: "#D63B3B" };
+
+// ─── UTILITY COMPONENTS ───────────────────────────────────────────────────────
+function cn(...args) { return args.filter(Boolean).join(" "); }
+
+const T = {
+  navy: "#0D1B2A", gold: "#C9A84C", red: "#D63B3B",
+  green: "#1A7A4A", fog: "#F2EFE9", graphite: "#4A5568",
+  mist: "#8A97A8", white: "#FFFFFF", surface: "#E8E4DC",
+};
+
+function Card({ children, style = {}, accent = T.gold }) {
+  return (
+    <div style={{ background: T.fog, borderLeft: `4px solid ${accent}`, borderRadius: "0 8px 8px 0", padding: "18px 22px", marginBottom: 14, boxShadow: "0 1px 6px rgba(13,27,42,0.08)", ...style }}>
+      {children}
+    </div>
+  );
+}
+
+function StatCard({ label, value, sub, accent = T.gold, dark }) {
+  return (
+    <div style={{ background: dark ? T.navy : T.fog, borderLeft: `4px solid ${accent}`, borderRadius: "0 8px 8px 0", padding: "16px 18px", flex: 1, minWidth: 130 }}>
+      <div style={{ fontSize: 10, color: dark ? T.mist : T.mist, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase" }}>{label}</div>
+      <div style={{ fontSize: 26, fontWeight: 900, color: dark ? "#fff" : T.navy, marginTop: 4 }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: dark ? T.mist : T.graphite, marginTop: 2 }}>{sub}</div>}
+    </div>
+  );
+}
+
+function Badge({ status }) {
+  const bg = STAGE_COLOR[status] || T.graphite;
+  return <span style={{ background: bg, color: "#fff", padding: "2px 10px", borderRadius: 20, fontSize: 10, fontWeight: 800, letterSpacing: 0.8 }}>{status.toUpperCase()}</span>;
+}
+
+function Modal({ title, onClose, children, wide }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(13,27,42,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div style={{ background: "#fff", borderRadius: 10, padding: 28, width: "100%", maxWidth: wide ? 640 : 460, maxHeight: "88vh", overflowY: "auto", boxShadow: "0 12px 48px rgba(0,0,0,0.22)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <span style={{ fontWeight: 900, fontSize: 16, color: T.navy }}>{title}</span>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: T.mist, lineHeight: 1 }}>✕</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      {label && <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: T.graphite, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</label>}
+      {children}
+    </div>
+  );
+}
+
+function Input({ label, ...props }) {
+  return (
+    <Field label={label}>
+      <input style={{ width: "100%", padding: "9px 12px", border: "1.5px solid #ddd", borderRadius: 6, fontSize: 13, boxSizing: "border-box", fontFamily: "inherit", outline: "none" }} {...props} />
+    </Field>
+  );
+}
+
+function Sel({ label, children, ...props }) {
+  return (
+    <Field label={label}>
+      <select style={{ width: "100%", padding: "9px 12px", border: "1.5px solid #ddd", borderRadius: 6, fontSize: 13, boxSizing: "border-box", fontFamily: "inherit" }} {...props}>{children}</select>
+    </Field>
+  );
+}
+
+function Btn({ children, variant = "primary", style = {}, ...props }) {
+  const map = {
+    primary: { background: T.gold, color: T.navy, border: "none" },
+    dark: { background: T.navy, color: "#fff", border: "none" },
+    danger: { background: T.red, color: "#fff", border: "none" },
+    ghost: { background: "transparent", color: T.navy, border: `1.5px solid #ccc` },
+    green: { background: T.green, color: "#fff", border: "none" },
+  };
+  return (
+    <button style={{ padding: "9px 18px", borderRadius: 6, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", ...map[variant], ...style }} {...props}>{children}</button>
+  );
+}
+
+function Toast({ msg }) {
+  return msg ? (
+    <div style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", background: T.navy, color: "#fff", padding: "12px 24px", borderRadius: 8, fontWeight: 700, fontSize: 13, zIndex: 2000, boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}>
+      {msg}
+    </div>
+  ) : null;
+}
+
+// ─── FULFILLMENT PIPELINE TRACKER (signature element) ─────────────────────────
+function Pipeline({ current }) {
+  const stages = ["Packaging", "Shipping", "Delivered"];
+  const idx = stages.indexOf(current);
+  return (
+    <div style={{ display: "flex", alignItems: "center", margin: "10px 0 4px" }}>
+      {stages.map((s, i) => (
+        <div key={s} style={{ display: "flex", alignItems: "center", flex: i < stages.length - 1 ? 1 : "none" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <div style={{ width: 22, height: 22, borderRadius: "50%", background: i <= idx ? T.gold : "#ddd", border: i === idx ? `3px solid ${T.navy}` : "none", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: i <= idx ? T.navy : T.mist, fontWeight: 900 }}>
+              {i < idx ? "✓" : i + 1}
+            </div>
+            <div style={{ fontSize: 9, color: i <= idx ? T.navy : T.mist, marginTop: 3, fontWeight: i === idx ? 800 : 400, whiteSpace: "nowrap" }}>{s}</div>
+          </div>
+          {i < stages.length - 1 && <div style={{ flex: 1, height: 2, background: i < idx ? T.gold : "#ddd", margin: "0 4px 12px" }} />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+function Dashboard({ inventory, orders, wallet, rewards }) {
+  const lowStock = inventory.filter(i => i.stock <= 3);
+  const stale = inventory.filter(i => (new Date() - new Date(i.lastMoved)) / 86400000 > 30);
+  const available = wallet.balance - wallet.buffer;
+  const restricted = available <= 0;
+
+  const monthly = [
+    { m: "Jan", v: 12 }, { m: "Feb", v: 18 }, { m: "Mar", v: 22 },
+    { m: "Apr", v: 16 }, { m: "May", v: 30 }, { m: "Jun", v: 19 },
+  ];
+  const max = Math.max(...monthly.map(d => d.v));
+
+  const byLocation = LOCS.map(l => ({ loc: l, count: inventory.filter(i => i.location === l).length }));
+
+  return (
+    <div>
+      {restricted && (
+        <div style={{ background: T.red, color: "#fff", borderRadius: 8, padding: "14px 18px", marginBottom: 16, fontWeight: 700, fontSize: 13 }}>
+          ⛔ Fulfillment access restricted — wallet balance has fallen below the ₦30,000 buffer. Top up your wallet to resume.
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
+        <StatCard label="Available Balance" value={`₦${available.toLocaleString()}`} sub="after ₦30k buffer" dark accent={T.gold} />
+        <StatCard label="Total SKUs" value={inventory.length} sub="across all warehouses" />
+        <StatCard label="Orders this month" value={orders.length} />
+        <StatCard label="Milestone progress" value={`${rewards.ordersThisMonth}/${MILESTONE_TARGET}`} sub="orders to next reward" accent={T.green} />
+      </div>
+
+      {(lowStock.length > 0 || stale.length > 0) && (
+        <Card accent={T.red} style={{ background: "#fff5f5" }}>
+          <div style={{ fontWeight: 800, color: T.red, marginBottom: 8, fontSize: 13 }}>⚠ Active Alerts</div>
+          {lowStock.map(i => <div key={i.id} style={{ fontSize: 12, color: T.graphite, marginBottom: 3 }}>🔴 <strong>{i.name}</strong> — {i.stock} units left at {i.location}</div>)}
+          {stale.map(i => <div key={i.id} style={{ fontSize: 12, color: T.graphite, marginBottom: 3 }}>🟡 <strong>{i.name}</strong> — no movement in 30+ days ({i.location})</div>)}
+        </Card>
+      )}
+
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+        <Card style={{ flex: 2, minWidth: 260 }}>
+          <div style={{ fontWeight: 800, fontSize: 13, color: T.navy, marginBottom: 14 }}>Monthly Orders — 2026</div>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 100 }}>
+            {monthly.map(d => (
+              <div key={d.m} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                <div style={{ fontSize: 9, color: T.mist }}>{d.v}</div>
+                <div style={{ width: "100%", background: T.gold, borderRadius: "3px 3px 0 0", height: `${(d.v / max) * 80}px` }} />
+                <div style={{ fontSize: 9, color: T.graphite }}>{d.m}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card style={{ flex: 1, minWidth: 180 }}>
+          <div style={{ fontWeight: 800, fontSize: 13, color: T.navy, marginBottom: 14 }}>Warehouse Split</div>
+          {byLocation.map(({ loc, count }) => (
+            <div key={loc} style={{ marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                <span>{loc}</span><span>{count} SKUs</span>
+              </div>
+              <div style={{ height: 6, background: "#e8e4dc", borderRadius: 3 }}>
+                <div style={{ height: "100%", width: `${(count / inventory.length) * 100}%`, background: T.gold, borderRadius: 3 }} />
+              </div>
+            </div>
+          ))}
+        </Card>
+      </div>
+
+      <Card accent={T.green}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <span style={{ fontWeight: 800, fontSize: 13 }}>Rewards Milestone — June</span>
+          <span style={{ fontSize: 12, color: T.green, fontWeight: 700 }}>{rewards.ordersThisMonth}/{MILESTONE_TARGET} orders</span>
+        </div>
+        <div style={{ height: 10, background: "#e8e4dc", borderRadius: 5 }}>
+          <div style={{ height: "100%", width: `${Math.min(rewards.ordersThisMonth / MILESTONE_TARGET, 1) * 100}%`, background: T.green, borderRadius: 5, transition: "width 0.6s ease" }} />
+        </div>
+        <div style={{ fontSize: 11, color: T.graphite, marginTop: 6 }}>Reach {MILESTONE_TARGET} orders to unlock ₦5,000 wallet credit + free packaging</div>
+      </Card>
+
+      <Card>
+        <div style={{ fontWeight: 800, fontSize: 13, color: T.navy, marginBottom: 12 }}>Recent Orders</div>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <thead>
+            <tr style={{ borderBottom: `2px solid ${T.surface}` }}>
+              {["Order", "Customer", "Item", "Location", "Stage"].map(h => (
+                <th key={h} style={{ padding: "6px 8px", textAlign: "left", color: T.mist, fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: 0.8 }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {orders.slice(0, 5).map(o => (
+              <tr key={o.id} style={{ borderBottom: `1px solid ${T.surface}` }}>
+                <td style={{ padding: "8px", fontFamily: "monospace", fontSize: 11, color: T.gold, fontWeight: 700 }}>{o.id}</td>
+                <td style={{ padding: "8px" }}>{o.customer}</td>
+                <td style={{ padding: "8px" }}>{o.item}</td>
+                <td style={{ padding: "8px" }}>{o.location}</td>
+                <td style={{ padding: "8px" }}><Badge status={o.status} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+    </div>
+  );
+}
+
+// ─── INVENTORY ────────────────────────────────────────────────────────────────
+function Inventory({ inventory, setInventory }) {
+  const [filterLoc, setFilterLoc] = useState("All");
+  const [showModal, setShowModal] = useState(false);
+  const [csvText, setCsvText] = useState("");
+  const [showCsv, setShowCsv] = useState(false);
+  const [form, setForm] = useState({ name: "", sku: "", cost: "", price: "", vat: "7.5", stock: "", location: "Abuja", category: "", shipping: "1200", pickup: false, image: null });
+  const fileRef = useRef();
+
+  function handleImg(e) {
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader(); r.onload = ev => setForm(p => ({ ...p, image: ev.target.result })); r.readAsDataURL(f);
+  }
+
+  function save() {
+    if (!form.name || !form.price || !form.stock) return;
+    setInventory(p => [...p, { ...form, id: Date.now(), cost: +form.cost, price: +form.price, vat: +form.vat, stock: +form.stock, lastMoved: new Date().toISOString().split("T")[0] }]);
+    setShowModal(false);
+    setForm({ name: "", sku: "", cost: "", price: "", vat: "7.5", stock: "", location: "Abuja", category: "", shipping: "1200", pickup: false, image: null });
+  }
+
+  function importCsv() {
+    const lines = csvText.trim().split("\n").slice(1);
+    const parsed = lines.map((l, i) => {
+      const [name, sku, cost, price, stock, location, category] = l.split(",");
+      return { id: Date.now() + i, name: name?.trim(), sku: sku?.trim(), cost: +cost, price: +price, vat: 7.5, stock: +stock, location: location?.trim() || "Abuja", category: category?.trim(), shipping: 1200, pickup: false, image: null, lastMoved: new Date().toISOString().split("T")[0] };
+    }).filter(i => i.name);
+    setInventory(p => [...p, ...parsed]);
+    setShowCsv(false); setCsvText("");
+  }
+
+  const visible = filterLoc === "All" ? inventory : inventory.filter(i => i.location === filterLoc);
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
+        <div style={{ display: "flex", gap: 6 }}>
+          {["All", ...LOCS].map(l => (
+            <button key={l} onClick={() => setFilterLoc(l)} style={{ padding: "5px 14px", borderRadius: 20, border: `1.5px solid ${filterLoc === l ? T.gold : "#ddd"}`, background: filterLoc === l ? T.gold : "transparent", color: filterLoc === l ? T.navy : T.graphite, fontWeight: 700, fontSize: 11, cursor: "pointer" }}>{l}</button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Btn variant="ghost" onClick={() => setShowCsv(true)}>⬆ Import CSV</Btn>
+          <Btn onClick={() => setShowModal(true)}>+ Add Product</Btn>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 12 }}>
+        {visible.map(item => {
+          const isLow = item.stock <= 3;
+          const isStale = (new Date() - new Date(item.lastMoved)) / 86400000 > 30;
+          return (
+            <div key={item.id} style={{ background: T.fog, borderRadius: 8, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.08)", borderTop: `3px solid ${isLow ? T.red : isStale ? "#E8A020" : T.gold}` }}>
+              <div style={{ height: 110, background: T.surface, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                {item.image ? <img src={item.image} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 34 }}>📦</span>}
+              </div>
+              <div style={{ padding: "12px 14px" }}>
+                <div style={{ fontWeight: 800, fontSize: 13, color: T.navy }}>{item.name}</div>
+                <div style={{ fontSize: 10, color: T.mist, marginBottom: 6 }}>{item.sku || "—"} · {item.location}</div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+                  <span style={{ fontWeight: 700, color: T.green }}>₦{item.price.toLocaleString()}</span>
+                  <span style={{ color: T.mist }}>Cost ₦{item.cost.toLocaleString()}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5, fontSize: 11 }}>
+                  <span style={{ color: T.graphite }}>VAT {item.vat}%</span>
+                  <span style={{ color: isLow ? T.red : T.graphite, fontWeight: isLow ? 800 : 400 }}>{item.stock} in stock{isLow ? " ⚠" : ""}</span>
+                </div>
+                {item.pickup && <div style={{ fontSize: 10, color: T.green, marginTop: 4, fontWeight: 700 }}>✓ Pickup enabled</div>}
+                {isStale && <div style={{ fontSize: 10, color: "#E8A020", marginTop: 2, fontWeight: 700 }}>🕐 Stale — 30+ days</div>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {showModal && (
+        <Modal title="Add Product to Inventory" onClose={() => setShowModal(false)}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+            <div onClick={() => fileRef.current.click()} style={{ width: 90, height: 90, background: T.surface, borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", border: `2px dashed ${T.gold}` }}>
+              {form.image ? <img src={form.image} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ fontSize: 28 }}>📷</span>}
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleImg} />
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <Input label="Product Name *" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Ankara Tote" />
+            <Input label="SKU" value={form.sku} onChange={e => setForm(p => ({ ...p, sku: e.target.value }))} placeholder="ATB-001" />
+          </div>
+          <Input label="Category" value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))} />
+          <div style={{ display: "flex", gap: 10 }}>
+            <Input label="Cost Price (₦)" type="number" value={form.cost} onChange={e => setForm(p => ({ ...p, cost: e.target.value }))} />
+            <Input label="Sale Price (₦) *" type="number" value={form.price} onChange={e => setForm(p => ({ ...p, price: e.target.value }))} />
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <Input label="VAT (%)" type="number" value={form.vat} onChange={e => setForm(p => ({ ...p, vat: e.target.value }))} />
+            <Input label="Stock Qty *" type="number" value={form.stock} onChange={e => setForm(p => ({ ...p, stock: e.target.value }))} />
+          </div>
+          <Sel label="Warehouse Location" value={form.location} onChange={e => setForm(p => ({ ...p, location: e.target.value }))}>
+            {LOCS.map(l => <option key={l}>{l}</option>)}
+          </Sel>
+          <Input label="Shipping Fee (₦)" type="number" value={form.shipping} onChange={e => setForm(p => ({ ...p, shipping: e.target.value }))} />
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 600, marginBottom: 16, color: T.graphite, cursor: "pointer" }}>
+            <input type="checkbox" checked={form.pickup} onChange={e => setForm(p => ({ ...p, pickup: e.target.checked }))} />
+            Enable customer pickup option
+          </label>
+          <Btn onClick={save} style={{ width: "100%" }}>Save Product</Btn>
+        </Modal>
+      )}
+
+      {showCsv && (
+        <Modal title="Import Inventory via CSV" onClose={() => setShowCsv(false)}>
+          <div style={{ fontSize: 11, color: T.mist, marginBottom: 10, background: "#f5f5f5", padding: "10px 12px", borderRadius: 6, fontFamily: "monospace" }}>
+            Format: Name, SKU, Cost, Price, Stock, Location, Category<br />
+            e.g. Ankara Bag, ATB-001, 4500, 8500, 10, Abuja, Bags
+          </div>
+          <textarea value={csvText} onChange={e => setCsvText(e.target.value)} placeholder="Paste CSV rows here..." style={{ width: "100%", height: 140, padding: "10px 12px", border: "1.5px solid #ddd", borderRadius: 6, fontSize: 12, fontFamily: "monospace", boxSizing: "border-box", resize: "vertical" }} />
+          <Btn onClick={importCsv} style={{ width: "100%", marginTop: 10 }}>Import Products</Btn>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ─── ORDERS ───────────────────────────────────────────────────────────────────
+function Orders({ orders, setOrders, inventory, wallet }) {
+  const [filter, setFilter] = useState("All");
+  const [filterLoc, setFilterLoc] = useState("All");
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState({ customer: "", item: "", qty: 1, rider: "BNP Fleet" });
+
+  const restricted = (wallet.balance - wallet.buffer) <= 0;
+
+  function addOrder() {
+    if (!form.customer || !form.item) return;
+    const inv = inventory.find(i => i.name === form.item);
+    const total = inv ? inv.price * form.qty : 0;
+    setOrders(p => [{ ...form, id: `ORD-${String(p.length + 50).padStart(4, "0")}`, status: "Packaging", location: inv?.location || "Abuja", date: new Date().toISOString().split("T")[0], total, qty: +form.qty }, ...p]);
+    setShowModal(false);
+  }
+
+  function updateStatus(id, status) { setOrders(p => p.map(o => o.id === id ? { ...o, status } : o)); }
+
+  let visible = orders;
+  if (filter !== "All") visible = visible.filter(o => o.status === filter);
+  if (filterLoc !== "All") visible = visible.filter(o => o.location === filterLoc);
+
+  return (
+    <div>
+      {restricted && (
+        <div style={{ background: T.red, color: "#fff", borderRadius: 8, padding: "12px 16px", marginBottom: 14, fontWeight: 700, fontSize: 12 }}>
+          ⛔ Fulfillment suspended — wallet below buffer. Top up to create new orders.
+        </div>
+      )}
+      <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {["All", ...STAGE_FLOW].map(s => (
+            <button key={s} onClick={() => setFilter(s)} style={{ padding: "5px 12px", borderRadius: 20, border: `1.5px solid ${filter === s ? T.navy : "#ddd"}`, background: filter === s ? T.navy : "transparent", color: filter === s ? "#fff" : T.graphite, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>{s}</button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Sel label="" value={filterLoc} onChange={e => setFilterLoc(e.target.value)} style={{ margin: 0 }}>
+            {["All", ...LOCS].map(l => <option key={l}>{l}</option>)}
+          </Sel>
+          <Btn onClick={() => setShowModal(true)} style={{ opacity: restricted ? 0.4 : 1 }} disabled={restricted}>+ New Order</Btn>
+        </div>
+      </div>
+
+      {visible.map(o => (
+        <Card key={o.id} accent={STAGE_COLOR[o.status] || T.gold}>
+          <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: "monospace", fontSize: 11, color: T.gold, fontWeight: 700 }}>{o.id} · {o.date}</div>
+              <div style={{ fontWeight: 800, fontSize: 14, color: T.navy, marginTop: 2 }}>{o.customer}</div>
+              <div style={{ fontSize: 12, color: T.graphite }}>{o.item} × {o.qty} — <strong>₦{o.total?.toLocaleString()}</strong></div>
+              <div style={{ fontSize: 11, color: T.mist, marginTop: 3 }}>📍 {o.location} · 🚴 {o.rider}</div>
+              {!["Returned", "Damaged"].includes(o.status) && <Pipeline current={o.status} />}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+              <Badge status={o.status} />
+              <select value={o.status} onChange={e => updateStatus(o.id, e.target.value)} style={{ fontSize: 11, padding: "5px 8px", border: "1px solid #ddd", borderRadius: 5, fontFamily: "inherit" }}>
+                {STAGE_FLOW.map(s => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+        </Card>
+      ))}
+
+      {showModal && (
+        <Modal title="Create New Order" onClose={() => setShowModal(false)}>
+          <Input label="Customer Name *" value={form.customer} onChange={e => setForm(p => ({ ...p, customer: e.target.value }))} />
+          <Sel label="Product *" value={form.item} onChange={e => setForm(p => ({ ...p, item: e.target.value }))}>
+            <option value="">— Select product —</option>
+            {inventory.map(i => <option key={i.id}>{i.name}</option>)}
+          </Sel>
+          <Input label="Quantity" type="number" min="1" value={form.qty} onChange={e => setForm(p => ({ ...p, qty: e.target.value }))} />
+          <Sel label="Rider" value={form.rider} onChange={e => setForm(p => ({ ...p, rider: e.target.value }))}>
+            <option>BNP Fleet</option>
+            <option>Own Rider</option>
+            <option>Pickup</option>
+          </Sel>
+          <div style={{ background: T.fog, borderRadius: 6, padding: "10px 14px", fontSize: 12, marginBottom: 14 }}>
+            ℹ Order will auto-route to the warehouse holding this product.
+          </div>
+          <Btn onClick={addOrder} style={{ width: "100%" }}>Submit Order → BNP Fulfillment</Btn>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ─── WALLET ───────────────────────────────────────────────────────────────────
+function WalletTab({ wallet, setWallet }) {
+  const [amount, setAmount] = useState("");
+  const available = wallet.balance - wallet.buffer;
+  const restricted = available <= 0;
+
+  function topUp() {
+    const n = parseFloat(amount); if (!n || n <= 0) return;
+    setWallet(p => ({ ...p, balance: p.balance + n, transactions: [{ id: Date.now(), type: "Top-up", amount: n, date: new Date().toISOString().split("T")[0], note: "Manual top-up" }, ...p.transactions] }));
+    setAmount("");
+  }
+
+  function deduct(n, note) {
+    if (wallet.balance < n) return;
+    setWallet(p => ({ ...p, balance: p.balance - n, transactions: [{ id: Date.now(), type: "Deduction", amount: -n, date: new Date().toISOString().split("T")[0], note }, ...p.transactions] }));
+  }
+
+  return (
+    <div>
+      <Card style={{ background: T.navy, borderLeftColor: T.gold }}>
+        <div style={{ color: T.mist, fontSize: 10, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase" }}>Total Balance</div>
+        <div style={{ fontSize: 38, fontWeight: 900, color: "#fff", margin: "6px 0 2px" }}>₦{wallet.balance.toLocaleString()}</div>
+        <div style={{ display: "flex", gap: 20 }}>
+          <div>
+            <div style={{ fontSize: 10, color: T.mist }}>Available (after buffer)</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: restricted ? T.red : T.gold }}>₦{available.toLocaleString()}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: T.mist }}>Locked Buffer</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: T.mist }}>₦{wallet.buffer.toLocaleString()}</div>
+          </div>
+        </div>
+        {restricted && <div style={{ marginTop: 10, fontSize: 11, color: T.red, fontWeight: 700 }}>⛔ Fulfillment access suspended until you top up above the buffer.</div>}
+      </Card>
+
+      <Card>
+        <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 12 }}>Top Up Wallet</div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <input value={amount} onChange={e => setAmount(e.target.value)} type="number" placeholder="Enter amount in ₦" style={{ flex: 1, padding: "9px 12px", border: "1.5px solid #ddd", borderRadius: 6, fontSize: 13, fontFamily: "inherit" }} />
+          <Btn onClick={topUp}>Add Funds</Btn>
+        </div>
+        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+          {[5000, 20000, 50000, 100000].map(v => (
+            <button key={v} onClick={() => setAmount(v)} style={{ padding: "5px 11px", border: `1px solid ${T.gold}`, borderRadius: 5, background: "transparent", color: T.gold, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>₦{v.toLocaleString()}</button>
+          ))}
+        </div>
+      </Card>
+
+      <Card accent={T.red}>
+        <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 10 }}>Simulate BNP Deductions</div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Btn variant="ghost" onClick={() => deduct(12000, "Monthly subscription fee")} style={{ fontSize: 11 }}>Deduct ₦12k Subscription</Btn>
+          <Btn variant="danger" onClick={() => deduct(PENALTY, "Early product retraction penalty")} style={{ fontSize: 11 }}>Apply ₦20k Penalty</Btn>
+          <Btn variant="ghost" onClick={() => deduct(3000, "Storage overage")} style={{ fontSize: 11 }}>Deduct ₦3k Storage</Btn>
+        </div>
+        <div style={{ fontSize: 10, color: T.mist, marginTop: 8 }}>A ₦20,000 penalty applies if products are retracted within 2 months of onboarding.</div>
+      </Card>
+
+      <Card>
+        <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 12 }}>Transaction History</div>
+        {wallet.transactions.map(t => (
+          <div key={t.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${T.surface}`, fontSize: 12 }}>
+            <div>
+              <div style={{ fontWeight: 700 }}>{t.note}</div>
+              <div style={{ fontSize: 10, color: T.mist, marginTop: 2 }}>{t.date} · {t.type}</div>
+            </div>
+            <div style={{ fontWeight: 800, color: t.amount > 0 ? T.green : T.red }}>
+              {t.amount > 0 ? "+" : ""}₦{Math.abs(t.amount).toLocaleString()}
+            </div>
+          </div>
+        ))}
+      </Card>
+    </div>
+  );
+}
+
+// ─── REWARDS ─────────────────────────────────────────────────────────────────
+function Rewards({ rewards, setRewards, wallet, setWallet }) {
+  const pct = Math.min(rewards.ordersThisMonth / MILESTONE_TARGET, 1);
+  const claimed = pct >= 1;
+
+  function claimReward() {
+    if (!claimed) return;
+    const credit = 5000;
+    setWallet(p => ({ ...p, balance: p.balance + credit, transactions: [{ id: Date.now(), type: "Reward", amount: credit, date: new Date().toISOString().split("T")[0], note: "June milestone reward — non-withdrawable" }, ...p.transactions] }));
+    setRewards(p => ({ ...p, ordersThisMonth: 0, rewardsHistory: [{ id: Date.now(), type: "Wallet Credit", amount: credit, date: new Date().toISOString().split("T")[0], reason: "Hit 30 orders milestone" }, ...p.rewardsHistory] }));
+  }
+
+  return (
+    <div>
+      <Card accent={T.green}>
+        <div style={{ fontWeight: 800, fontSize: 14, color: T.navy, marginBottom: 4 }}>June Milestone</div>
+        <div style={{ fontSize: 12, color: T.graphite, marginBottom: 14 }}>Complete {MILESTONE_TARGET} orders → unlock ₦5,000 wallet credit + free packaging</div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+          <span>{rewards.ordersThisMonth} orders</span><span>{MILESTONE_TARGET} goal</span>
+        </div>
+        <div style={{ height: 14, background: T.surface, borderRadius: 7, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${pct * 100}%`, background: T.green, borderRadius: 7, transition: "width 0.5s" }} />
+        </div>
+        <div style={{ marginTop: 14 }}>
+          <Btn variant={claimed ? "green" : "ghost"} onClick={claimReward} style={{ opacity: claimed ? 1 : 0.5 }} disabled={!claimed}>
+            {claimed ? "🎉 Claim ₦5,000 Reward" : `${MILESTONE_TARGET - rewards.ordersThisMonth} more orders to unlock`}
+          </Btn>
+        </div>
+      </Card>
+
+      <Card>
+        <div style={{ fontWeight: 800, fontSize: 13, color: T.navy, marginBottom: 14 }}>Badges</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 10 }}>
+          {BADGES.map(b => (
+            <div key={b.id} style={{ textAlign: "center", padding: "14px 10px", background: b.earned ? T.navy : T.surface, borderRadius: 8, opacity: b.earned ? 1 : 0.5 }}>
+              <div style={{ fontSize: 26 }}>{b.icon}</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: b.earned ? T.gold : T.graphite, marginTop: 6 }}>{b.label}</div>
+              <div style={{ fontSize: 9, color: b.earned ? T.mist : T.graphite, marginTop: 3 }}>{b.desc}</div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card>
+        <div style={{ fontWeight: 800, fontSize: 13, color: T.navy, marginBottom: 14 }}>🏆 Top Sellers — June</div>
+        {LEADERBOARD.map(l => (
+          <div key={l.rank} style={{ display: "flex", alignItems: "center", gap: 12, padding: "9px 0", borderBottom: `1px solid ${T.surface}`, background: l.you ? "rgba(201,168,76,0.07)" : "transparent", borderRadius: l.you ? 4 : 0 }}>
+            <div style={{ width: 24, height: 24, borderRadius: "50%", background: l.rank === 1 ? T.gold : T.surface, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 12, color: l.rank === 1 ? T.navy : T.graphite }}>
+              {l.rank === 1 ? "🥇" : l.rank}
+            </div>
+            <div style={{ flex: 1, fontSize: 13, fontWeight: l.you ? 800 : 400, color: l.you ? T.navy : T.graphite }}>
+              {l.name} {l.you && <span style={{ fontSize: 10, color: T.gold, fontWeight: 800 }}>← You</span>}
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.graphite }}>{l.orders} orders</div>
+          </div>
+        ))}
+      </Card>
+
+      <Card>
+        <div style={{ fontWeight: 800, fontSize: 13, color: T.navy, marginBottom: 12 }}>Rewards History</div>
+        {rewards.rewardsHistory.map(r => (
+          <div key={r.id} style={{ display: "flex", justifyContent: "space-between", padding: "9px 0", borderBottom: `1px solid ${T.surface}`, fontSize: 12 }}>
+            <div>
+              <div style={{ fontWeight: 700 }}>{r.type}</div>
+              <div style={{ fontSize: 10, color: T.mist }}>{r.date} · {r.reason}</div>
+            </div>
+            {r.amount > 0 && <div style={{ fontWeight: 800, color: T.green }}>+₦{r.amount.toLocaleString()}</div>}
+            {r.amount === 0 && <div style={{ fontWeight: 700, color: T.graphite, fontSize: 11 }}>Non-monetary</div>}
+          </div>
+        ))}
+      </Card>
+    </div>
+  );
+}
+
+// ─── RETURNS & CLAIMS ─────────────────────────────────────────────────────────
+function Returns({ returns, setReturns, orders }) {
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState({ orderId: "", item: "", reason: "", image: null });
+  const imgRef = useRef();
+
+  function handleImg(e) {
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader(); r.onload = ev => setForm(p => ({ ...p, image: ev.target.result })); r.readAsDataURL(f);
+  }
+
+  function submit() {
+    if (!form.orderId || !form.reason) return;
+    setReturns(p => [{ ...form, id: `RET-${String(p.length + 2).padStart(3, "0")}`, status: "Under Review", date: new Date().toISOString().split("T")[0] }, ...p]);
+    setShowModal(false);
+    setForm({ orderId: "", item: "", reason: "", image: null });
+  }
+
+  const STATUS_C = { "Under Review": "#C9A84C", "Approved": T.green, "Rejected": T.red, "Resolved": T.navy };
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
+        <Btn onClick={() => setShowModal(true)}>+ Report Return / Damage</Btn>
+      </div>
+      {returns.length === 0 && <Card><div style={{ textAlign: "center", color: T.mist, fontSize: 13, padding: "20px 0" }}>No returns or claims filed. That's a good sign.</div></Card>}
+      {returns.map(r => (
+        <Card key={r.id} accent={STATUS_C[r.status] || T.gold}>
+          <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+            <div>
+              <div style={{ fontFamily: "monospace", fontSize: 11, color: T.gold, fontWeight: 700 }}>{r.id} · {r.orderId}</div>
+              <div style={{ fontWeight: 800, fontSize: 14, color: T.navy, marginTop: 2 }}>{r.item || "—"}</div>
+              <div style={{ fontSize: 12, color: T.graphite, marginTop: 2 }}>{r.reason}</div>
+              <div style={{ fontSize: 10, color: T.mist, marginTop: 4 }}>Filed {r.date}</div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+              <span style={{ background: STATUS_C[r.status] || T.gold, color: "#fff", padding: "2px 10px", borderRadius: 20, fontSize: 10, fontWeight: 800 }}>{r.status?.toUpperCase()}</span>
+              {r.image && <img src={r.image} alt="claim" style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 6, border: `1px solid #ddd` }} />}
+            </div>
+          </div>
+        </Card>
+      ))}
+
+      {showModal && (
+        <Modal title="Report Return / Damage" onClose={() => setShowModal(false)}>
+          <Sel label="Order Reference" value={form.orderId} onChange={e => { const o = orders.find(o => o.id === e.target.value); setForm(p => ({ ...p, orderId: e.target.value, item: o?.item || "" })); }}>
+            <option value="">— Select order —</option>
+            {orders.map(o => <option key={o.id}>{o.id}</option>)}
+          </Sel>
+          <Input label="Product Name" value={form.item} onChange={e => setForm(p => ({ ...p, item: e.target.value }))} />
+          <Field label="Reason / Description">
+            <textarea value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} placeholder="Describe the issue in detail..." style={{ width: "100%", height: 90, padding: "9px 12px", border: "1.5px solid #ddd", borderRadius: 6, fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", resize: "vertical" }} />
+          </Field>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+            <div onClick={() => imgRef.current.click()} style={{ width: 100, height: 80, background: T.surface, borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", border: `2px dashed ${T.gold}` }}>
+              {form.image ? <img src={form.image} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ fontSize: 24 }}>📸 Upload</span>}
+            </div>
+            <input ref={imgRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleImg} />
+          </div>
+          <Btn onClick={submit} style={{ width: "100%" }}>Submit Claim</Btn>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ─── REPORTS ─────────────────────────────────────────────────────────────────
+function Reports({ inventory, orders, wallet }) {
+  function exportCSV(data, filename) {
+    if (!data.length) return;
+    const headers = Object.keys(data[0]);
+    const rows = [headers, ...data.map(r => headers.map(h => r[h] ?? ""))];
+    const csv = rows.map(r => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+  }
+
+  function exportInvCSV() {
+    exportCSV(inventory.map(i => ({ SKU: i.sku, Name: i.name, Location: i.location, Stock: i.stock, CostPrice: i.cost, SalePrice: i.price, VAT: i.vat, LastMoved: i.lastMoved })), "bnp_inventory.csv");
+  }
+
+  function exportOrdersCSV() {
+    exportCSV(orders.map(o => ({ OrderID: o.id, Customer: o.customer, Item: o.item, Qty: o.qty, Total: o.total, Location: o.location, Status: o.status, Date: o.date })), "bnp_orders.csv");
+  }
+
+  function exportWalletCSV() {
+    exportCSV(wallet.transactions.map(t => ({ Date: t.date, Type: t.type, Amount: t.amount, Note: t.note })), "bnp_wallet_history.csv");
+  }
+
+  const totalSales = orders.reduce((s, o) => s + (o.total || 0), 0);
+  const fulfilled = orders.filter(o => o.status === "Delivered").length;
+  const returns = orders.filter(o => o.status === "Returned" || o.status === "Damaged").length;
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
+        <StatCard label="Total Revenue" value={`₦${totalSales.toLocaleString()}`} sub="all orders" />
+        <StatCard label="Fulfilled" value={fulfilled} sub="delivered orders" accent={T.green} />
+        <StatCard label="Returns / Damages" value={returns} accent={T.red} />
+        <StatCard label="Total SKUs" value={inventory.length} />
+      </div>
+
+      <Card>
+        <div style={{ fontWeight: 800, fontSize: 13, color: T.navy, marginBottom: 14 }}>Download Reports</div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <Btn variant="dark" onClick={exportInvCSV}>⬇ Inventory CSV</Btn>
+          <Btn variant="dark" onClick={exportOrdersCSV}>⬇ Orders CSV</Btn>
+          <Btn variant="dark" onClick={exportWalletCSV}>⬇ Wallet History CSV</Btn>
+        </div>
+        <div style={{ fontSize: 11, color: T.mist, marginTop: 10 }}>All exports are in CSV format, compatible with Excel and Google Sheets. PDF export available via browser print.</div>
+      </Card>
+
+      <Card>
+        <div style={{ fontWeight: 800, fontSize: 13, color: T.navy, marginBottom: 12 }}>Inventory by Warehouse</div>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <thead>
+            <tr style={{ borderBottom: `2px solid ${T.surface}` }}>
+              {["Warehouse", "SKUs", "Total Stock", "Low Stock Items"].map(h => (
+                <th key={h} style={{ padding: "6px 8px", textAlign: "left", color: T.mist, fontWeight: 700, fontSize: 10, textTransform: "uppercase" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {LOCS.map(loc => {
+              const locInv = inventory.filter(i => i.location === loc);
+              return (
+                <tr key={loc} style={{ borderBottom: `1px solid ${T.surface}` }}>
+                  <td style={{ padding: "8px" }}>{loc}</td>
+                  <td style={{ padding: "8px" }}>{locInv.length}</td>
+                  <td style={{ padding: "8px" }}>{locInv.reduce((s, i) => s + i.stock, 0)}</td>
+                  <td style={{ padding: "8px", color: T.red, fontWeight: 700 }}>{locInv.filter(i => i.stock <= 3).length || "—"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </Card>
+
+      <Card>
+        <div style={{ fontWeight: 800, fontSize: 13, color: T.navy, marginBottom: 12 }}>Order Fulfillment Stages</div>
+        {STAGE_FLOW.map(s => {
+          const c = orders.filter(o => o.status === s).length;
+          return (
+            <div key={s} style={{ marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                <span style={{ fontWeight: 600 }}>{s}</span><span style={{ color: T.mist }}>{c} orders</span>
+              </div>
+              <div style={{ height: 7, background: T.surface, borderRadius: 4 }}>
+                <div style={{ height: "100%", width: orders.length ? `${(c / orders.length) * 100}%` : "0%", background: STAGE_COLOR[s] || T.gold, borderRadius: 4 }} />
+              </div>
+            </div>
+          );
+        })}
+      </Card>
+    </div>
+  );
+}
+
+// ─── WHATSAPP CHATBOT SIMULATION ─────────────────────────────────────────────
+function WhatsApp({ orders, inventory, wallet }) {
+  const [msgs, setMsgs] = useState([
+    { from: "bot", text: "👋 Welcome to *BoxNPick* on WhatsApp!\n\nReply with a number:\n1️⃣ Check order status\n2️⃣ View stock levels\n3️⃣ Check wallet balance\n4️⃣ Create a quick order" },
+  ]);
+  const [input, setInput] = useState("");
+  const [step, setStep] = useState("menu");
+  const [pendingOrderItem, setPendingOrderItem] = useState(null);
+  const bottomRef = useRef();
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+
+  function addMsg(from, text) { setMsgs(p => [...p, { from, text }]); }
+
+  function send() {
+    const msg = input.trim(); if (!msg) return;
+    addMsg("user", msg);
+    setInput("");
+    setTimeout(() => respond(msg), 600);
+  }
+
+  function respond(msg) {
+    const m = msg.toLowerCase();
+    if (step === "menu") {
+      if (m === "1") {
+        addMsg("bot", "Enter your *Order ID* (e.g. ORD-0041):");
+        setStep("order_lookup");
+      } else if (m === "2") {
+        const low = inventory.filter(i => i.stock <= 3);
+        const txt = inventory.map(i => `• ${i.name}: ${i.stock} units (${i.location})`).join("\n");
+        addMsg("bot", `📦 *Your stock levels:*\n\n${txt}\n\n${low.length ? `⚠ ${low.length} item(s) are low on stock!` : "✅ All stocks healthy."}`);
+      } else if (m === "3") {
+        const avail = wallet.balance - wallet.buffer;
+        addMsg("bot", `💳 *Wallet Balance:*\nTotal: ₦${wallet.balance.toLocaleString()}\nAvailable: ₦${avail.toLocaleString()}\nLocked buffer: ₦${wallet.buffer.toLocaleString()}\n\n${avail <= 0 ? "⛔ Fulfillment suspended — please top up." : "✅ Your fulfillment access is active."}`);
+      } else if (m === "4") {
+        addMsg("bot", `Which product do you want to ship?\n\n${inventory.map((i, idx) => `${idx + 1}. ${i.name} — ₦${i.price.toLocaleString()} (${i.location})`).join("\n")}\n\nReply with a number:`);
+        setStep("order_select");
+      } else {
+        addMsg("bot", "Reply with *1, 2, 3, or 4* to choose an option.");
+      }
+    } else if (step === "order_lookup") {
+      const order = orders.find(o => o.id.toLowerCase() === m.toUpperCase().toLowerCase());
+      if (order) {
+        addMsg("bot", `📋 *Order ${order.id}*\nCustomer: ${order.customer}\nItem: ${order.item} × ${order.qty}\nStatus: *${order.status}*\nLocation: ${order.location}\nDate: ${order.date}`);
+      } else {
+        addMsg("bot", `❌ No order found for "${msg.toUpperCase()}". Check the ID and try again.`);
+      }
+      setStep("menu");
+      setTimeout(() => addMsg("bot", "Reply with 1-4 to return to the menu."), 800);
+    } else if (step === "order_select") {
+      const idx = parseInt(m) - 1;
+      if (!isNaN(idx) && inventory[idx]) {
+        setPendingOrderItem(inventory[idx]);
+        addMsg("bot", `Got it — *${inventory[idx].name}*. What is the customer's name?`);
+        setStep("order_customer");
+      } else {
+        addMsg("bot", "Please reply with a valid number from the list.");
+      }
+    } else if (step === "order_customer") {
+      addMsg("bot", `✅ Order created!\n\nItem: ${pendingOrderItem?.name}\nCustomer: ${msg}\nWarehouse: ${pendingOrderItem?.location}\nStatus: *Packaging*\n\nBNP team has been notified. 🚀`);
+      setPendingOrderItem(null);
+      setStep("menu");
+      setTimeout(() => addMsg("bot", "Reply with 1-4 anytime to access more options."), 1000);
+    }
+  }
+
+  return (
+    <div>
+      <Card>
+        <div style={{ fontWeight: 800, fontSize: 13, color: T.navy, marginBottom: 4 }}>WhatsApp Chatbot</div>
+        <div style={{ fontSize: 12, color: T.graphite }}>Your customers can create orders, check stock, and monitor their wallet status directly on WhatsApp — synced with this dashboard in real time.</div>
+      </Card>
+      <div style={{ background: "#e5ddd5", borderRadius: 10, overflow: "hidden", maxWidth: 420, margin: "0 auto" }}>
+        <div style={{ background: "#075e54", padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 36, height: 36, background: T.gold, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, color: T.navy, fontSize: 14 }}>B</div>
+          <div>
+            <div style={{ color: "#fff", fontWeight: 700, fontSize: 13 }}>BoxNPick Partner Bot</div>
+            <div style={{ color: "#acdfda", fontSize: 10 }}>🟢 Online · Fulfillment Assistant</div>
+          </div>
+        </div>
+        <div style={{ height: 360, overflowY: "auto", padding: "14px 12px", display: "flex", flexDirection: "column", gap: 10 }}>
+          {msgs.map((m, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: m.from === "user" ? "flex-end" : "flex-start" }}>
+              <div style={{ maxWidth: "78%", background: m.from === "user" ? "#dcf8c6" : "#fff", padding: "8px 12px", borderRadius: m.from === "user" ? "10px 0 10px 10px" : "0 10px 10px 10px", fontSize: 12, color: "#111", boxShadow: "0 1px 2px rgba(0,0,0,0.1)", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
+                {m.text}
+              </div>
+            </div>
+          ))}
+          <div ref={bottomRef} />
+        </div>
+        <div style={{ background: "#f0f0f0", padding: "10px 12px", display: "flex", gap: 8 }}>
+          <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder="Type a message..." style={{ flex: 1, padding: "9px 14px", border: "none", borderRadius: 20, fontSize: 13, fontFamily: "inherit", outline: "none" }} />
+          <button onClick={send} style={{ width: 38, height: 38, borderRadius: "50%", background: "#075e54", border: "none", color: "#fff", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>➤</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ALERTS ───────────────────────────────────────────────────────────────────
+function Alerts({ inventory, wallet }) {
+  const lowStock = inventory.filter(i => i.stock <= 3);
+  const stale = inventory.filter(i => (new Date() - new Date(i.lastMoved)) / 86400000 > 30);
+  const walletLow = (wallet.balance - wallet.buffer) < 10000;
+
+  return (
+    <div>
+      {walletLow && (
+        <Card accent={T.red} style={{ background: "#fff5f5" }}>
+          <div style={{ fontWeight: 800, color: T.red, fontSize: 13, marginBottom: 6 }}>💳 Low Wallet Alert</div>
+          <div style={{ fontSize: 12, color: T.graphite }}>Available balance is below ₦10,000. Top up to avoid fulfillment suspension when the buffer is breached.</div>
+        </Card>
+      )}
+      <Card accent={T.red}>
+        <div style={{ fontWeight: 800, fontSize: 13, color: T.red, marginBottom: 10 }}>🔴 Low Stock</div>
+        {lowStock.length === 0 ? <div style={{ color: T.mist, fontSize: 12 }}>All products are sufficiently stocked.</div>
+          : lowStock.map(i => (
+            <div key={i.id} style={{ padding: "10px 0", borderBottom: `1px solid ${T.surface}` }}>
+              <div style={{ fontWeight: 700, fontSize: 13 }}>{i.name}</div>
+              <div style={{ fontSize: 11, color: T.mist }}>{i.location} · SKU: {i.sku} · {i.stock} units remaining</div>
+              <div style={{ fontSize: 11, color: T.red, marginTop: 2, fontWeight: 700 }}>Restock urgently to avoid failed orders.</div>
+            </div>
+          ))}
+      </Card>
+      <Card accent="#E8A020">
+        <div style={{ fontWeight: 800, fontSize: 13, color: "#7A4F00", marginBottom: 10 }}>🟡 Stale Inventory (30+ days)</div>
+        {stale.length === 0 ? <div style={{ color: T.mist, fontSize: 12 }}>No stale inventory detected.</div>
+          : stale.map(i => (
+            <div key={i.id} style={{ padding: "10px 0", borderBottom: `1px solid ${T.surface}` }}>
+              <div style={{ fontWeight: 700, fontSize: 13 }}>{i.name}</div>
+              <div style={{ fontSize: 11, color: T.mist }}>{i.location} · Last moved: {i.lastMoved}</div>
+              <div style={{ fontSize: 11, color: "#7A4F00", marginTop: 2 }}>Run a promotion or markdown to clear this stock.</div>
+            </div>
+          ))}
+      </Card>
+    </div>
+  );
+}
+
+// ─── APP ROOT ─────────────────────────────────────────────────────────────────
+function App() {
+  const [tab, setTab] = useState("dashboard");
+  const [inventory, setInventory] = useState(SEED_INV);
+  const [orders, setOrders] = useState(SEED_ORDERS);
+  const [wallet, setWallet] = useState(SEED_WALLET);
+  const [rewards, setRewards] = useState(SEED_REWARDS);
+  const [returns, setReturns] = useState(SEED_RETURNS);
+  const [toast, setToast] = useState("");
+
+  const alertCount = inventory.filter(i => i.stock <= 3 || (new Date() - new Date(i.lastMoved)) / 86400000 > 30).length
+    + ((wallet.balance - wallet.buffer) < 10000 ? 1 : 0);
+
+  function showToast(msg) { setToast(msg); setTimeout(() => setToast(""), 3000); }
+
+  return (
+    <div style={{ fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif", minHeight: "100vh", background: T.surface }}>
+      <div style={{ background: T.navy, height: 56, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 22px", position: "sticky", top: 0, zIndex: 200 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 30, height: 30, background: T.gold, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, color: T.navy, fontSize: 13 }}>B</div>
+          <div>
+            <div style={{ color: "#fff", fontWeight: 900, fontSize: 14, lineHeight: 1 }}>BoxNPick</div>
+            <div style={{ color: T.gold, fontSize: 9, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase" }}>Partner Portal</div>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 10, color: T.mist }}>Wallet</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: T.gold }}>₦{(wallet.balance - wallet.buffer).toLocaleString()}</div>
+          </div>
+          {alertCount > 0 && <div style={{ background: T.red, color: "#fff", borderRadius: "50%", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900 }}>{alertCount}</div>}
+          <div style={{ width: 30, height: 30, background: "#1a2d40", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: T.gold, fontWeight: 800, fontSize: 13 }}>G</div>
+        </div>
+      </div>
+
+      <div style={{ display: "flex" }}>
+        <div style={{ width: 196, background: T.navy, minHeight: "calc(100vh - 56px)", padding: "16px 0", flexShrink: 0, position: "sticky", top: 56, height: "calc(100vh - 56px)", overflowY: "auto" }}>
+          {NAV.map(n => (
+            <button key={n.id} onClick={() => setTab(n.id)} style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              width: "100%", padding: "10px 18px", background: tab === n.id ? "rgba(201,168,76,0.12)" : "transparent",
+              border: "none", borderLeft: `3px solid ${tab === n.id ? T.gold : "transparent"}`,
+              color: tab === n.id ? T.gold : T.mist, fontSize: 12, fontWeight: 700, cursor: "pointer", textAlign: "left", fontFamily: "inherit", gap: 8,
+            }}>
+              <span style={{ display: "flex", gap: 8, alignItems: "center" }}><span>{n.icon}</span>{n.label}</span>
+              {n.id === "alerts" && alertCount > 0 && <span style={{ background: T.red, color: "#fff", borderRadius: 10, fontSize: 9, fontWeight: 900, padding: "1px 6px", minWidth: 16, textAlign: "center" }}>{alertCount}</span>}
+            </button>
+          ))}
+
+          <div style={{ margin: "20px 12px 0", padding: "12px", background: "rgba(201,168,76,0.08)", borderRadius: 8, borderLeft: `3px solid ${T.gold}` }}>
+            <div style={{ fontSize: 10, color: T.mist, fontWeight: 700, marginBottom: 4 }}>WAREHOUSES</div>
+            {LOCS.map(l => <div key={l} style={{ fontSize: 11, color: T.gold, padding: "2px 0" }}>● {l}</div>)}
+          </div>
+        </div>
+
+        <div style={{ flex: 1, padding: "22px 26px", maxWidth: 920, overflowX: "hidden" }}>
+          <div style={{ marginBottom: 16 }}>
+            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: T.navy, letterSpacing: -0.3 }}>
+              {NAV.find(n => n.id === tab)?.label}
+            </h1>
+          </div>
+
+          {tab === "dashboard" && <Dashboard inventory={inventory} orders={orders} wallet={wallet} rewards={rewards} />}
+          {tab === "inventory" && <Inventory inventory={inventory} setInventory={setInventory} />}
+          {tab === "orders" && <Orders orders={orders} setOrders={setOrders} inventory={inventory} wallet={wallet} />}
+          {tab === "wallet" && <WalletTab wallet={wallet} setWallet={setWallet} />}
+          {tab === "rewards" && <Rewards rewards={rewards} setRewards={setRewards} wallet={wallet} setWallet={setWallet} />}
+          {tab === "returns" && <Returns returns={returns} setReturns={setReturns} orders={orders} />}
+          {tab === "reports" && <Reports inventory={inventory} orders={orders} wallet={wallet} />}
+          {tab === "whatsapp" && <WhatsApp orders={orders} inventory={inventory} wallet={wallet} />}
+          {tab === "alerts" && <Alerts inventory={inventory} wallet={wallet} />}
+        </div>
+      </div>
+
+      <Toast msg={toast} />
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+</body>
+</html>
