@@ -7,9 +7,21 @@ const AUTH_PATHS = ["/login", "/signup"];
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    // Missing config should not take the whole site down. Auth-gated pages
+    // simply render in a signed-out state until the env vars are set.
+    console.error(
+      "[middleware] Supabase env vars are missing, skipping session refresh.",
+    );
+    return response;
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    anonKey,
     {
       cookies: {
         getAll() {
