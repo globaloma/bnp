@@ -50,7 +50,13 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="hidden md:block">
+        <div className="hidden items-center gap-4 md:flex">
+          <Link
+            href="/login"
+            className="text-sm font-medium text-mist transition-colors hover:text-teal-300"
+          >
+            Partner login
+          </Link>
           <Button render={<Link href={nav.cta.href} />} size="lg" className="px-5">
             {nav.cta.label}
           </Button>
@@ -85,13 +91,21 @@ export function SiteHeader() {
                 </Link>
               ))}
             </nav>
-            <div className="mt-4 px-4">
+            <div className="mt-4 flex flex-col gap-2 px-4">
               <Button
                 render={<Link href={nav.cta.href} onClick={() => setOpen(false)} />}
                 size="xl"
                 className="w-full"
               >
                 {nav.cta.label}
+              </Button>
+              <Button
+                render={<Link href="/login" onClick={() => setOpen(false)} />}
+                size="xl"
+                variant="outline"
+                className="w-full"
+              >
+                Partner login
               </Button>
             </div>
           </SheetContent>
