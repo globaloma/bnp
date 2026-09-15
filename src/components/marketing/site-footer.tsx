@@ -80,7 +80,15 @@ export function SiteFooter() {
                   href="/login"
                   className="transition-colors hover:text-teal-300"
                 >
-                  Partner login
+                  Sign in
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/signup"
+                  className="transition-colors hover:text-teal-300"
+                >
+                  Sign up
                 </Link>
               </li>
             </ul>

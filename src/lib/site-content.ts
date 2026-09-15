@@ -25,13 +25,53 @@ export const hero = {
   titleLines: ["No branch.", "No staff.", "No operational stress."],
   subtitle:
     "BNP Fulfillment is your Abuja operations partner. We store your inventory, fulfil your orders and deliver to your customers, so you stay focused on growing your business.",
-  primaryCta: { label: "Become a partner", href: "#apply" },
+  primaryCta: { label: "Sign up free", href: "/signup" },
   secondaryCta: { label: "See how it works", href: "#how" },
   stats: [
     { value: 2400, suffix: "+", label: "Orders fulfilled" },
     { value: 80, suffix: "+", label: "Active partners" },
     { value: 7, suffix: " days", label: "Average launch time" },
     { value: 98, suffix: "%", label: "On time delivery" },
+  ],
+  preview: {
+    tag: "Live on your dashboard",
+    orderRef: "ORD-0182",
+    customer: "Amara T.",
+    item: "Ankara Tote x2",
+    total: "₦14,000",
+    steps: ["Packaging", "Shipping", "Delivered"],
+    activeStep: 1,
+  },
+} as const;
+
+export const stakeholders = {
+  label: "Three ways to work with BNP",
+  title: "Built for merchants, fulfillment centers and their customers.",
+  description:
+    "One platform, three roles. Whichever seat you take, you get a dashboard built for exactly what you need to do.",
+  items: [
+    {
+      icon: "Store",
+      title: "Merchants",
+      body: "List your products, we store, pack and ship every order. Track inventory and orders from one dashboard, from anywhere.",
+      cta: { label: "Sign up as a merchant", href: "/signup?role=merchant" },
+    },
+    {
+      icon: "Boxes",
+      title: "Fulfillment centers",
+      body: "Run warehouse operations for our merchant network. Dispatch orders, manage stock and track performance across every brand you serve.",
+      cta: {
+        label: "Sign up as a fulfillment center",
+        href: "/signup?role=fulfillment_center",
+      },
+    },
+    {
+      icon: "ShoppingBag",
+      title: "Customers",
+      body: "Shop directly from the brands you love on BNP, with fast, reliable delivery to your door.",
+      cta: null,
+      badge: "Coming soon",
+    },
   ],
 } as const;
 
@@ -262,10 +302,11 @@ export const testimonials = {
 } as const;
 
 export const apply = {
-  label: "Partner application",
-  title: "Ready to get started?",
+  label: "Talk to us first",
+  title: "Have questions before you sign up?",
   description:
-    "Most partners go live within five to seven days of approval. No payment is required at application stage. We confirm the fit first.",
+    "Tell us about your business and a real person on our team will get back to you within 48 hours. Prefer to skip the wait? Create your account instantly instead.",
+  directCta: { label: "Sign up instantly", href: "/signup" },
   perks: [
     {
       icon: "Zap",
@@ -289,7 +330,7 @@ export const apply = {
     },
   ],
   form: {
-    title: "Apply to become a partner",
+    title: "Tell us about your business",
     subtitle: "Takes three minutes. We respond within 48 hours.",
     categories: [
       "Fashion and accessories",
@@ -356,12 +397,13 @@ export const nav = {
     { label: "Our hub", href: "#hub" },
     { label: "FAQ", href: "#faq" },
   ],
-  cta: { label: "Become a partner", href: "#apply" },
+  signIn: { label: "Sign in", href: "/login" },
+  cta: { label: "Sign up", href: "/signup" },
 } as const;
 
 export const footer = {
   description:
-    "The partner first fulfillment network of Nigeria, storing and shipping your products across Abuja, Lagos and the USA.",
+    "The fulfillment network of Nigeria, connecting merchants, fulfillment centers and customers across Abuja, Lagos and the USA.",
   columns: [
     {
       title: "Services",
@@ -378,7 +420,7 @@ export const footer = {
         { label: "How it works", href: "#how" },
         { label: "Pricing", href: "#pricing" },
         { label: "Our hub in Jabi", href: "#hub" },
-        { label: "Partner application", href: "#apply" },
+        { label: "Talk to us", href: "#apply" },
       ],
     },
   ],

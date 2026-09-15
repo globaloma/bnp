@@ -21,12 +21,12 @@ function FieldError({ messages }: { messages?: string[] }) {
   return <p className="mt-1 text-xs text-destructive">{messages[0]}</p>;
 }
 
-export function SignupForm() {
+export function SignupForm({ initialRole = "merchant" }: { initialRole?: Role }) {
   const [state, formAction, pending] = useActionState<AuthResult | null, FormData>(
     signUp,
     null,
   );
-  const [role, setRole] = useState<Role>("merchant");
+  const [role, setRole] = useState<Role>(initialRole);
 
   const errors = state && !state.ok ? state.fieldErrors : undefined;
   const awaitingConfirmation = state?.ok === true;
@@ -190,7 +190,7 @@ export function SignupForm() {
       )}
 
       <p className="mt-6 text-center text-sm text-graphite">
-        Already a partner?{" "}
+        Already have an account?{" "}
         <Link href="/login" className="font-semibold text-teal hover:text-teal-700">
           Sign in
         </Link>

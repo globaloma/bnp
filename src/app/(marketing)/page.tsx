@@ -1,4 +1,5 @@
 import { Hero } from "@/components/marketing/hero";
+import { Stakeholders } from "@/components/marketing/stakeholders";
 import { Services } from "@/components/marketing/services";
 import { HowItWorks } from "@/components/marketing/how-it-works";
 import { Audience } from "@/components/marketing/audience";
@@ -12,6 +13,7 @@ export default function HomePage() {
   return (
     <>
       <Hero />
+      <Stakeholders />
       <Services />
       <HowItWorks />
       <Audience />

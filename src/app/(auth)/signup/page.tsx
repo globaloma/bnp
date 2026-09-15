@@ -2,9 +2,14 @@ import type { Metadata } from "next";
 import { SignupForm } from "./signup-form";
 
 export const metadata: Metadata = {
-  title: "Create your partner account",
+  title: "Sign up",
 };
 
-export default function SignupPage() {
-  return <SignupForm />;
+export default async function SignupPage({
+  searchParams,
+}: PageProps<"/signup">) {
+  const params = await searchParams;
+  const role = params.role === "fulfillment_center" ? "fulfillment_center" : "merchant";
+
+  return <SignupForm initialRole={role} />;
 }
