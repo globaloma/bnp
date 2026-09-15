@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Menu, LogOut } from "lucide-react";
 import { naira } from "@/lib/format";
 import { signOut } from "@/app/(auth)/actions";
@@ -13,20 +13,28 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { navByVariant, type DashboardNavVariant } from "@/lib/dashboard-nav";
 import { SidebarNav } from "./sidebar-nav";
 
 export function DashboardShell({
   businessName,
   walletAvailable,
   alertCount,
+  alertHref,
+  navVariant = "merchant",
+  sidebarFooter,
   children,
 }: {
   businessName: string;
-  walletAvailable: number;
-  alertCount: number;
+  walletAvailable?: number;
+  alertCount?: number;
+  alertHref?: string;
+  navVariant?: DashboardNavVariant;
+  sidebarFooter?: ReactNode;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const nav = navByVariant[navVariant];
 
   return (
     <div className="flex min-h-dvh flex-col bg-stone">
@@ -51,19 +59,27 @@ export function DashboardShell({
                   <Logo />
                 </SheetTitle>
               </SheetHeader>
-              <SidebarNav alertCount={alertCount} onNavigate={() => setOpen(false)} />
+              <SidebarNav
+                items={nav}
+                alertCount={alertCount}
+                alertHref={alertHref}
+                footer={sidebarFooter}
+                onNavigate={() => setOpen(false)}
+              />
             </SheetContent>
           </Sheet>
           <Logo />
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="hidden text-right sm:block">
-            <div className="text-[10px] text-mist">Wallet</div>
-            <div className="text-sm font-semibold text-gold">
-              {naira(walletAvailable)}
+          {walletAvailable !== undefined ? (
+            <div className="hidden text-right sm:block">
+              <div className="text-[10px] text-mist">Wallet</div>
+              <div className="text-sm font-semibold text-gold">
+                {naira(walletAvailable)}
+              </div>
             </div>
-          </div>
+          ) : null}
           <span className="hidden h-8 items-center rounded-full bg-white/5 px-3 text-xs font-medium text-mist sm:flex">
             {businessName}
           </span>
@@ -83,7 +99,7 @@ export function DashboardShell({
 
       <div className="flex flex-1">
         <aside className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-56 shrink-0 border-r border-white/10 bg-navy lg:block">
-          <SidebarNav alertCount={alertCount} />
+          <SidebarNav items={nav} alertCount={alertCount} alertHref={alertHref} footer={sidebarFooter} />
         </aside>
 
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:py-8">

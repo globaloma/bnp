@@ -1,16 +1,22 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { dashboardNav } from "@/lib/dashboard-nav";
-import { LOCATIONS } from "@/types/db";
+import { dashboardNav, type DashboardNavItem } from "@/lib/dashboard-nav";
 
 export function SidebarNav({
+  items = dashboardNav,
   alertCount,
+  alertHref = "/dashboard/alerts",
+  footer,
   onNavigate,
 }: {
-  alertCount: number;
+  items?: DashboardNavItem[];
+  alertCount?: number;
+  alertHref?: string;
+  footer?: ReactNode;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
@@ -18,10 +24,10 @@ export function SidebarNav({
   return (
     <div className="flex h-full flex-col">
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto py-3">
-        {dashboardNav.map((item) => {
+        {items.map((item) => {
           const active =
-            item.href === "/dashboard"
-              ? pathname === "/dashboard"
+            item.href === "/dashboard" || item.href === "/fc"
+              ? pathname === item.href
               : pathname.startsWith(item.href);
           const Icon = item.icon;
           return (
@@ -40,7 +46,7 @@ export function SidebarNav({
                 <Icon className="size-4" strokeWidth={1.8} />
                 {item.label}
               </span>
-              {item.href === "/dashboard/alerts" && alertCount > 0 ? (
+              {item.href === alertHref && alertCount && alertCount > 0 ? (
                 <span className="flex min-w-4 items-center justify-center rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-bold text-white">
                   {alertCount}
                 </span>
@@ -50,19 +56,7 @@ export function SidebarNav({
         })}
       </nav>
 
-      <div className="m-3 rounded-lg border-l-2 border-gold bg-gold/10 p-3">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-mist">
-          Warehouses
-        </p>
-        <ul className="mt-1.5 flex flex-col gap-1">
-          {LOCATIONS.map((loc) => (
-            <li key={loc} className="flex items-center gap-1.5 text-[12px] text-gold">
-              <span className="size-1.5 rounded-full bg-gold" />
-              {loc}
-            </li>
-          ))}
-        </ul>
-      </div>
+      {footer}
     </div>
   );
 }

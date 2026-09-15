@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/middleware";
+import { updateSession } from "@/lib/supabase/proxy";
 
-export async function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   return updateSession(request);
 }
 
@@ -9,5 +9,5 @@ export async function middleware(request: NextRequest) {
 // the marketing site out of the matcher means a Supabase misconfiguration
 // can only ever break auth, never take the whole site down.
 export const config = {
-  matcher: ["/dashboard/:path*", "/login", "/signup"],
+  matcher: ["/dashboard/:path*", "/fc/:path*", "/login", "/signup"],
 };

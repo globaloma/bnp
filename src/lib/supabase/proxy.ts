@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED_PREFIX = "/dashboard";
+const PROTECTED_PREFIXES = ["/dashboard", "/fc"];
 const AUTH_PATHS = ["/login", "/signup"];
 
 export async function updateSession(request: NextRequest) {
@@ -14,7 +14,7 @@ export async function updateSession(request: NextRequest) {
     // Missing config should not take the whole site down. Auth-gated pages
     // simply render in a signed-out state until the env vars are set.
     console.error(
-      "[middleware] Supabase env vars are missing, skipping session refresh.",
+      "[proxy] Supabase env vars are missing, skipping session refresh.",
     );
     return response;
   }
@@ -46,7 +46,7 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  if (!user && pathname.startsWith(PROTECTED_PREFIX)) {
+  if (!user && PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
@@ -54,8 +54,16 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user && AUTH_PATHS.includes(pathname)) {
+    // Already signed in and browsing straight to /login or /signup, send
+    // them to the dashboard that matches their role.
+    const { data: partner } = await supabase
+      .from("partners")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = partner?.role === "fulfillment_center" ? "/fc" : "/dashboard";
     url.search = "";
     return NextResponse.redirect(url);
   }

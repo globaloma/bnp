@@ -1,5 +1,6 @@
 export type WarehouseLocation = "Abuja" | "Lagos" | "USA";
 export type PartnerStatus = "pending" | "active" | "suspended";
+export type PartnerRole = "merchant" | "fulfillment_center";
 export type OrderStatus =
   | "Packaging"
   | "Shipping"
@@ -18,6 +19,7 @@ export type Partner = {
   phone: string | null;
   category: string | null;
   status: PartnerStatus;
+  role: PartnerRole;
   wallet_balance: number;
   wallet_buffer: number;
   created_at: string;
@@ -57,6 +59,7 @@ export type Order = {
   rider: OrderRider;
   placed_at: string;
   created_at: string;
+  updated_at: string;
 };
 
 export type WalletTransaction = {

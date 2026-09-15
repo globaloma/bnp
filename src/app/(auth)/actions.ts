@@ -23,7 +23,8 @@ export async function signIn(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  const { data: signInData, error } =
+    await supabase.auth.signInWithPassword(parsed.data);
 
   if (error) {
     return {
@@ -35,13 +36,18 @@ export async function signIn(
     };
   }
 
+  const { data: partnerRow } = await supabase
+    .from("partners")
+    .select("role")
+    .eq("id", signInData.user.id)
+    .maybeSingle();
+  const home = partnerRow?.role === "fulfillment_center" ? "/fc" : "/dashboard";
+
   const next = formData.get("next");
   const target =
-    typeof next === "string" && next.startsWith("/dashboard")
-      ? next
-      : "/dashboard";
+    typeof next === "string" && next.startsWith(home) ? next : home;
 
-  revalidatePath("/dashboard", "layout");
+  revalidatePath(home, "layout");
   redirect(target);
 }
 
@@ -50,6 +56,7 @@ export async function signUp(
   formData: FormData,
 ): Promise<AuthResult> {
   const parsed = signUpSchema.safeParse({
+    role: formData.get("role") || undefined,
     businessName: formData.get("businessName"),
     contactName: formData.get("contactName"),
     email: formData.get("email"),
@@ -67,7 +74,7 @@ export async function signUp(
   }
 
   const supabase = await createClient();
-  const { businessName, contactName, email, phone, category, password } =
+  const { role, businessName, contactName, email, phone, category, password } =
     parsed.data;
 
   const { data, error } = await supabase.auth.signUp({
@@ -75,6 +82,7 @@ export async function signUp(
     password,
     options: {
       data: {
+        role,
         business_name: businessName,
         contact_name: contactName,
         phone,
@@ -93,6 +101,8 @@ export async function signUp(
     };
   }
 
+  const home = role === "fulfillment_center" ? "/fc" : "/dashboard";
+
   if (!data.session) {
     return {
       ok: true,
@@ -101,8 +111,8 @@ export async function signUp(
     };
   }
 
-  revalidatePath("/dashboard", "layout");
-  redirect("/dashboard");
+  revalidatePath(home, "layout");
+  redirect(home);
 }
 
 export async function signOut() {
