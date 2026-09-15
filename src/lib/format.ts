@@ -15,3 +15,13 @@ export function daysSince(value: string | Date): number {
   const d = typeof value === "string" ? new Date(value) : value;
   return Math.floor((Date.now() - d.getTime()) / 86_400_000);
 }
+
+export function isToday(value: string | Date): boolean {
+  const d = typeof value === "string" ? new Date(value) : value;
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+}

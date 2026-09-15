@@ -26,3 +26,9 @@ export const dashboardNav: DashboardNavItem[] = [
   { href: "/dashboard/reports", label: "Reports", icon: FileBarChart },
   { href: "/dashboard/alerts", label: "Alerts", icon: Bell },
 ];
+
+export const fcDashboardNav: DashboardNavItem[] = [
+  { href: "/fc", label: "Overview", icon: LayoutGrid },
+  { href: "/fc/orders", label: "Orders", icon: ClipboardList },
+  { href: "/fc/inventory", label: "Inventory", icon: Boxes },
+];

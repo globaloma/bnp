@@ -39,11 +39,19 @@ a trigger that creates a pending partner profile on signup, and the
 New partners land in `pending` status after signup. Approve one by setting
 `status = 'active'` on their row in the `partners` table.
 
+Every `partners` row also has a `role`: `merchant` (lists products, receives
+customer orders) or `fulfillment_center` (dispatches and tracks stock across
+every merchant). Fulfillment centers get read/update access to all merchants'
+`products` and `orders` via RLS policies in `0004_fulfillment_centers.sql`.
+
 ## Project structure
 
 - `src/app/(marketing)` — public site
-- `src/app/(auth)` — sign up / sign in
-- `src/app/dashboard` — the partner portal, one folder per section
+- `src/app/(auth)` — sign up / sign in, with a role toggle for merchant vs.
+  fulfillment center
+- `src/app/dashboard` — the merchant portal, one folder per section
+- `src/app/fc` — the fulfillment center portal (Overview, Orders, Inventory,
+  aggregated across every merchant)
 - `src/components/marketing`, `src/components/dashboard`, `src/components/ui`
 - `src/lib` — Supabase clients, schemas, shared data access
 - `reference/` — the original static HTML this project replaced, kept for content reference

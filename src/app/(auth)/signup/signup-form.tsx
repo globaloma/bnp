@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { signUp } from "../actions";
@@ -8,6 +8,8 @@ import type { AuthResult } from "@/lib/schemas/auth";
 import { apply } from "@/lib/site-content";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+
+type Role = "merchant" | "fulfillment_center";
 
 const fieldClass =
   "h-11 w-full rounded-md border border-stone bg-white px-3 text-sm text-navy outline-none transition-colors placeholder:text-mist focus-visible:border-teal focus-visible:ring-2 focus-visible:ring-teal/25";
@@ -24,17 +26,46 @@ export function SignupForm() {
     signUp,
     null,
   );
+  const [role, setRole] = useState<Role>("merchant");
 
   const errors = state && !state.ok ? state.fieldErrors : undefined;
   const awaitingConfirmation = state?.ok === true;
+  const isFc = role === "fulfillment_center";
 
   return (
     <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-[0_20px_60px_-20px_rgba(15,42,68,0.5)]">
-      <h1 className="text-xl font-semibold text-navy">Create your partner account</h1>
+      <h1 className="text-xl font-semibold text-navy">
+        {isFc ? "Create your fulfillment center account" : "Create your merchant account"}
+      </h1>
       <p className="mt-1 text-sm text-graphite">
         Set up your dashboard access. Your account starts in review while our
         team confirms fit, most partners are approved within 48 hours.
       </p>
+
+      {!awaitingConfirmation ? (
+        <div className="mt-5 grid grid-cols-2 gap-2 rounded-lg bg-stone p-1">
+          {(
+            [
+              ["merchant", "Merchant"],
+              ["fulfillment_center", "Fulfillment center"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setRole(value)}
+              className={cn(
+                "rounded-md py-2 text-xs font-semibold transition-colors",
+                role === value
+                  ? "bg-navy text-white"
+                  : "text-graphite hover:text-navy",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {awaitingConfirmation ? (
         <div className="mt-6 flex items-start gap-3 rounded-lg border border-success/30 bg-success/10 p-4 text-sm text-success">
@@ -50,17 +81,20 @@ export function SignupForm() {
           ) : null}
 
           <form action={formAction} className="mt-6 flex flex-col gap-4">
+            <input type="hidden" name="role" value={role} />
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass} htmlFor="businessName">
-                  Business name
+                  {isFc ? "Fulfillment center name" : "Business name"}
                 </label>
                 <input
                   id="businessName"
                   name="businessName"
                   required
                   className={fieldClass}
-                  placeholder="Your business name"
+                  placeholder={
+                    isFc ? "Your fulfillment center name" : "Your business name"
+                  }
                 />
                 <FieldError messages={errors?.businessName} />
               </div>
@@ -95,7 +129,7 @@ export function SignupForm() {
               <FieldError messages={errors?.email} />
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className={cn("grid gap-4", !isFc && "sm:grid-cols-2")}>
               <div>
                 <label className={labelClass} htmlFor="phone">
                   Phone
@@ -110,24 +144,26 @@ export function SignupForm() {
                 />
                 <FieldError messages={errors?.phone} />
               </div>
-              <div>
-                <label className={labelClass} htmlFor="category">
-                  Product category
-                </label>
-                <select
-                  id="category"
-                  name="category"
-                  defaultValue=""
-                  className={cn(fieldClass, "appearance-none")}
-                >
-                  <option value="">Select</option>
-                  {apply.form.categories.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {isFc ? null : (
+                <div>
+                  <label className={labelClass} htmlFor="category">
+                    Product category
+                  </label>
+                  <select
+                    id="category"
+                    name="category"
+                    defaultValue=""
+                    className={cn(fieldClass, "appearance-none")}
+                  >
+                    <option value="">Select</option>
+                    {apply.form.categories.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div>

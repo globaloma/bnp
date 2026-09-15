@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getAuthedPartner, getDashboardData } from "@/lib/data/partner";
-import { isFulfillmentRestricted } from "@/lib/dashboard-metrics";
+import {
+  deliveredToday,
+  isFulfillmentRestricted,
+  ordersToday,
+  pendingReview,
+  revenueInFlight,
+} from "@/lib/dashboard-metrics";
 import { naira } from "@/lib/format";
-import { PageHeader } from "@/components/dashboard/ui";
+import { PageHeader, StatCard } from "@/components/dashboard/ui";
 import { OrdersClient } from "./orders-client";
 
 export const metadata: Metadata = { title: "Orders" };
@@ -26,6 +32,22 @@ export default async function OrdersPage() {
           buffer. Top up to create new orders.
         </div>
       ) : null}
+
+      <div className="mb-5 flex flex-wrap gap-3">
+        <StatCard label="Orders today" value={ordersToday(orders).length} accent="gold" />
+        <StatCard
+          label="Revenue in flight"
+          value={naira(revenueInFlight(orders))}
+          accent="teal"
+        />
+        <StatCard label="Delivered today" value={deliveredToday(orders).length} accent="success" />
+        <StatCard
+          label="Pending review"
+          value={pendingReview(orders).length}
+          sub="returned or damaged orders"
+          accent="destructive"
+        />
+      </div>
 
       <OrdersClient orders={orders} products={products} restricted={restricted} />
     </div>

@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { EmptyState } from "@/components/dashboard/ui";
+import { EmptyState, StatCard } from "@/components/dashboard/ui";
 import { ImageUploadField } from "@/components/dashboard/image-upload";
 import { addProduct } from "./actions";
 import type { ActionResult } from "@/lib/schemas/product";
@@ -24,26 +24,84 @@ const fieldClass =
   "h-10 w-full rounded-md border border-stone bg-white px-3 text-sm text-navy outline-none transition-colors placeholder:text-mist focus-visible:border-teal focus-visible:ring-2 focus-visible:ring-teal/25";
 const labelClass = "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.08em] text-graphite";
 
+type StockFilter = "All" | "In stock" | "Low stock" | "Out of stock";
+
+function stockBucket(stock: number): Exclude<StockFilter, "All"> {
+  if (stock === 0) return "Out of stock";
+  if (stock <= LOW_STOCK_THRESHOLD) return "Low stock";
+  return "In stock";
+}
+
 export function InventoryClient({ products }: { products: Product[] }) {
-  const [filter, setFilter] = useState<"All" | WarehouseLocation>("All");
+  const [locFilter, setLocFilter] = useState<"All" | WarehouseLocation>("All");
+  const [stockFilter, setStockFilter] = useState<StockFilter>("All");
   const [open, setOpen] = useState(false);
 
+  const totalStock = products.reduce((sum, p) => sum + p.stock, 0);
+  const lowCount = products.filter((p) => stockBucket(p.stock) === "Low stock").length;
+  const outCount = products.filter((p) => stockBucket(p.stock) === "Out of stock").length;
+  const inCount = products.length - lowCount - outCount;
+  const stockCounts: Record<StockFilter, number> = {
+    All: products.length,
+    "In stock": inCount,
+    "Low stock": lowCount,
+    "Out of stock": outCount,
+  };
+
   const visible = useMemo(
-    () => (filter === "All" ? products : products.filter((p) => p.location === filter)),
-    [products, filter],
+    () =>
+      products.filter(
+        (p) =>
+          (locFilter === "All" || p.location === locFilter) &&
+          (stockFilter === "All" || stockBucket(p.stock) === stockFilter),
+      ),
+    [products, locFilter, stockFilter],
   );
 
   return (
     <div>
+      <div className="mb-5 flex flex-wrap gap-3">
+        <StatCard label="Total stock" value={totalStock} sub="Across all your warehouses" accent="teal" />
+        <StatCard
+          label="Low stock SKUs"
+          value={lowCount}
+          sub="At or below their alert threshold"
+          accent="gold"
+        />
+        <StatCard
+          label="Out of stock SKUs"
+          value={outCount}
+          sub="Products with zero units available"
+          accent="destructive"
+        />
+      </div>
+
+      <div className="mb-3 flex flex-wrap gap-2">
+        {(["All", "In stock", "Low stock", "Out of stock"] as const).map((s) => (
+          <button
+            key={s}
+            onClick={() => setStockFilter(s)}
+            className={cn(
+              "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors",
+              stockFilter === s
+                ? "border-navy bg-navy text-white"
+                : "border-stone bg-card text-graphite hover:border-teal/40",
+            )}
+          >
+            {s} {stockCounts[s]}
+          </button>
+        ))}
+      </div>
+
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
           {(["All", ...LOCATIONS] as const).map((loc) => (
             <button
               key={loc}
-              onClick={() => setFilter(loc)}
+              onClick={() => setLocFilter(loc)}
               className={cn(
                 "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors",
-                filter === loc
+                locFilter === loc
                   ? "border-gold bg-gold text-navy"
                   : "border-stone bg-card text-graphite hover:border-teal/40",
               )}
