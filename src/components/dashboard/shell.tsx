@@ -13,7 +13,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { dashboardNav, type DashboardNavItem } from "@/lib/dashboard-nav";
+import { navByVariant, type DashboardNavVariant } from "@/lib/dashboard-nav";
 import { SidebarNav } from "./sidebar-nav";
 
 export function DashboardShell({
@@ -21,7 +21,7 @@ export function DashboardShell({
   walletAvailable,
   alertCount,
   alertHref,
-  nav = dashboardNav,
+  navVariant = "merchant",
   sidebarFooter,
   children,
 }: {
@@ -29,11 +29,12 @@ export function DashboardShell({
   walletAvailable?: number;
   alertCount?: number;
   alertHref?: string;
-  nav?: DashboardNavItem[];
+  navVariant?: DashboardNavVariant;
   sidebarFooter?: ReactNode;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const nav = navByVariant[navVariant];
 
   return (
     <div className="flex min-h-dvh flex-col bg-stone">

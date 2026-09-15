@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { getAuthedFulfillmentCenter } from "@/lib/data/fulfillment-center";
 import { DashboardShell } from "@/components/dashboard/shell";
 import { StatusGate } from "@/components/dashboard/status-gate";
-import { fcDashboardNav } from "@/lib/dashboard-nav";
 
 export default async function FulfillmentCenterLayout({
   children,
@@ -28,7 +27,7 @@ export default async function FulfillmentCenterLayout({
   }
 
   return (
-    <DashboardShell businessName={fc.business_name} nav={fcDashboardNav}>
+    <DashboardShell businessName={fc.business_name} navVariant="fc">
       {children}
     </DashboardShell>
   );

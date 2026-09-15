@@ -32,3 +32,14 @@ export const fcDashboardNav: DashboardNavItem[] = [
   { href: "/fc/orders", label: "Orders", icon: ClipboardList },
   { href: "/fc/inventory", label: "Inventory", icon: Boxes },
 ];
+
+// Nav items (and their icon components) can't cross the server/client
+// boundary as props, since icons are function references, not serializable
+// data. Server layouts pass this variant string instead, and the client
+// shell resolves the actual array itself.
+export type DashboardNavVariant = "merchant" | "fc";
+
+export const navByVariant: Record<DashboardNavVariant, DashboardNavItem[]> = {
+  merchant: dashboardNav,
+  fc: fcDashboardNav,
+};
