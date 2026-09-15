@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useId, useRef } from "react";
-import { CheckCircle2 } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { apply } from "@/lib/site-content";
 import type { ApplicationResult } from "@/lib/schemas/application";
@@ -51,6 +52,15 @@ export function Apply() {
             title={apply.title}
             description={apply.description}
           />
+
+          <Link
+            href={apply.directCta.href}
+            className="mt-6 inline-flex items-center gap-2 rounded-lg border border-teal/30 bg-teal/10 px-4 py-3 text-sm font-semibold text-teal-700 transition-colors hover:bg-teal/15"
+          >
+            {apply.directCta.label}
+            <ArrowRight className="size-4" />
+          </Link>
+
           <ul className="mt-8 flex flex-col">
             {apply.perks.map((perk) => (
               <li

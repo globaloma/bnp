@@ -19,9 +19,9 @@ export function LoginForm({ next }: { next?: string }) {
 
   return (
     <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-[0_20px_60px_-20px_rgba(15,42,68,0.5)]">
-      <h1 className="text-xl font-semibold text-navy">Partner login</h1>
+      <h1 className="text-xl font-semibold text-navy">Sign in</h1>
       <p className="mt-1 text-sm text-graphite">
-        Sign in to manage your inventory, orders and wallet.
+        Sign in to your BNP dashboard to manage inventory, orders and more.
       </p>
 
       {state && !state.ok ? (
@@ -66,9 +66,9 @@ export function LoginForm({ next }: { next?: string }) {
       </form>
 
       <p className="mt-6 text-center text-sm text-graphite">
-        New partner?{" "}
+        Don&apos;t have an account?{" "}
         <Link href="/signup" className="font-semibold text-teal hover:text-teal-700">
-          Apply to join
+          Sign up
         </Link>
       </p>
     </div>

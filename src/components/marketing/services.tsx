@@ -2,6 +2,8 @@ import { services } from "@/lib/site-content";
 import { SectionHeading } from "./section-heading";
 import { Reveal } from "./reveal";
 import { Icon } from "./icon";
+import { accentTileClass } from "./accent";
+import { cn } from "@/lib/utils";
 
 export function Services() {
   return (
@@ -20,7 +22,12 @@ export function Services() {
               delay={(i % 4) * 0.05}
               className="group flex flex-col rounded-xl border border-stone bg-cream p-6 transition-shadow hover:shadow-[0_12px_40px_-12px_rgba(46,139,154,0.25)]"
             >
-              <span className="flex size-11 items-center justify-center rounded-lg bg-teal/10 text-teal">
+              <span
+                className={cn(
+                  "flex size-11 items-center justify-center rounded-lg",
+                  accentTileClass(i),
+                )}
+              >
                 <Icon name={item.icon} className="size-5" />
               </span>
               <h3 className="mt-4 text-base font-semibold text-navy">

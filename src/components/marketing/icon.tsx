@@ -1,6 +1,7 @@
 import {
   BarChart3,
   Bike,
+  Boxes,
   ClipboardList,
   CreditCard,
   FileBarChart,
@@ -11,6 +12,7 @@ import {
   PackageCheck,
   Rocket,
   ShieldCheck,
+  ShoppingBag,
   Smartphone,
   Store,
   TrendingUp,
@@ -25,6 +27,7 @@ import {
 const registry = {
   BarChart3,
   Bike,
+  Boxes,
   ClipboardList,
   CreditCard,
   FileBarChart,
@@ -35,6 +38,7 @@ const registry = {
   PackageCheck,
   Rocket,
   ShieldCheck,
+  ShoppingBag,
   Smartphone,
   Store,
   TrendingUp,

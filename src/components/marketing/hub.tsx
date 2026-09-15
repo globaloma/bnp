@@ -3,6 +3,8 @@ import { company, hub } from "@/lib/site-content";
 import { SectionHeading } from "./section-heading";
 import { Reveal } from "./reveal";
 import { Icon } from "./icon";
+import { accentTileClass } from "./accent";
+import { cn } from "@/lib/utils";
 
 export function Hub() {
   return (
@@ -17,12 +19,17 @@ export function Hub() {
         <div className="mt-14 grid gap-10 lg:grid-cols-2 lg:items-start">
           <Reveal>
             <ul className="flex flex-col">
-              {hub.points.map((point) => (
+              {hub.points.map((point, i) => (
                 <li
                   key={point.title}
                   className="flex gap-4 border-b border-stone py-4 last:border-b-0"
                 >
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-teal/10 text-teal">
+                  <span
+                    className={cn(
+                      "flex size-10 shrink-0 items-center justify-center rounded-lg",
+                      accentTileClass(i),
+                    )}
+                  >
                     <Icon name={point.icon} className="size-5" />
                   </span>
                   <div>
