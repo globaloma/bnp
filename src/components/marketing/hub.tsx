@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { MapPin, Mail, Phone, Globe } from "lucide-react";
 import { company, hub } from "@/lib/site-content";
 import { SectionHeading } from "./section-heading";
@@ -16,7 +17,23 @@ export function Hub() {
           description={hub.description}
         />
 
-        <div className="mt-14 grid gap-10 lg:grid-cols-2 lg:items-start">
+        <Reveal className="relative mt-10 aspect-[16/7] w-full overflow-hidden rounded-2xl">
+          <Image
+            src="/images/marketing/warehouse.jpg"
+            alt="Rows of shelved inventory inside a fulfillment warehouse"
+            fill
+            sizes="(min-width: 1024px) 76rem, 100vw"
+            className="object-cover"
+            priority={false}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-navy/80 via-navy/10 to-transparent" />
+          <div className="absolute bottom-4 left-5 inline-flex items-center gap-2 rounded-full bg-navy/70 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-teal-300 backdrop-blur">
+            <MapPin className="size-3" />
+            {hub.card.city}, {hub.card.area}
+          </div>
+        </Reveal>
+
+        <div className="mt-10 grid gap-10 lg:grid-cols-2 lg:items-start">
           <Reveal>
             <ul className="flex flex-col">
               {hub.points.map((point, i) => (

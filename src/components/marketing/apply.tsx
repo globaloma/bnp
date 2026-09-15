@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useId, useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
@@ -60,6 +61,16 @@ export function Apply() {
             {apply.directCta.label}
             <ArrowRight className="size-4" />
           </Link>
+
+          <div className="relative mt-8 h-40 w-full overflow-hidden rounded-xl">
+            <Image
+              src="/images/marketing/laptop.jpg"
+              alt="Managing a business dashboard from a laptop"
+              fill
+              sizes="(min-width: 1024px) 34rem, 100vw"
+              className="object-cover"
+            />
+          </div>
 
           <ul className="mt-8 flex flex-col">
             {apply.perks.map((perk) => (
