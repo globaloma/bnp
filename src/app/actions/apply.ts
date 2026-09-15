@@ -7,7 +7,10 @@ import { company } from "@/lib/site-content";
 const FROM =
   process.env.APPLICATION_FROM_EMAIL ??
   "BNP Fulfillment <onboarding@resend.dev>";
-const TO = process.env.APPLICATION_TO_EMAIL ?? company.email;
+const TO =
+  process.env.APPLICATION_TO_EMAIL?.split(",")
+    .map((email) => email.trim())
+    .filter(Boolean) ?? [company.email];
 
 function row(label: string, value?: string) {
   if (!value) return "";
