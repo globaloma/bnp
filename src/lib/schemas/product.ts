@@ -12,6 +12,7 @@ export const productSchema = z.object({
   shippingFee: z.coerce.number().min(0).default(0),
   pickupEnabled: z.coerce.boolean().default(false),
   imageUrl: z.string().trim().max(600).optional(),
+  published: z.coerce.boolean().default(true),
 });
 
 export type ProductInput = z.infer<typeof productSchema>;

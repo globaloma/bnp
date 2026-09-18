@@ -70,7 +70,7 @@ export const stakeholders = {
       title: "Customers",
       body: "Shop directly from the brands you love on BNP, with fast, reliable delivery to your door.",
       cta: null,
-      badge: "Coming soon",
+      badge: "Ask a merchant for their store link",
     },
   ],
 } as const;

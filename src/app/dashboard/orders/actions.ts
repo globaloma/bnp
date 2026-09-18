@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { generateOrderRef } from "@/lib/orders";
 import { orderSchema, type ActionResult } from "@/lib/schemas/order";
 import type { OrderStatus } from "@/types/db";
 import { ORDER_STATUSES } from "@/types/db";
@@ -50,12 +51,7 @@ export async function createOrder(
     };
   }
 
-  const { count } = await supabase
-    .from("orders")
-    .select("id", { count: "exact", head: true })
-    .eq("partner_id", user.id);
-
-  const orderRef = `ORD-${String((count ?? 0) + 41).padStart(4, "0")}`;
+  const orderRef = await generateOrderRef(supabase, user.id);
   const total = product.sale_price * d.quantity;
 
   const { error: insertError } = await supabase.from("orders").insert({
@@ -70,6 +66,8 @@ export async function createOrder(
     location: product.location,
     rider: d.rider,
     status: "Packaging",
+    channel: "dashboard",
+    payment_status: "paid",
   });
 
   if (insertError) {
