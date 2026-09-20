@@ -40,9 +40,19 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"] =
+    null;
+
+  try {
+    ({
+      data: { user },
+    } = await supabase.auth.getUser());
+  } catch (error) {
+    // A network blip or Supabase outage should not take the whole site
+    // down. Treat the request as signed-out for this pass.
+    console.error("[proxy] Supabase auth.getUser() failed:", error);
+    return response;
+  }
 
   const { pathname } = request.nextUrl;
 
@@ -56,16 +66,21 @@ export async function updateSession(request: NextRequest) {
   if (user && AUTH_PATHS.includes(pathname)) {
     // Already signed in and browsing straight to /login or /signup, send
     // them to the dashboard that matches their role.
-    const { data: partner } = await supabase
-      .from("partners")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle();
+    try {
+      const { data: partner } = await supabase
+        .from("partners")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
 
-    const url = request.nextUrl.clone();
-    url.pathname = partner?.role === "fulfillment_center" ? "/fc" : "/dashboard";
-    url.search = "";
-    return NextResponse.redirect(url);
+      const url = request.nextUrl.clone();
+      url.pathname = partner?.role === "fulfillment_center" ? "/fc" : "/dashboard";
+      url.search = "";
+      return NextResponse.redirect(url);
+    } catch (error) {
+      console.error("[proxy] Supabase partners lookup failed:", error);
+      return response;
+    }
   }
 
   return response;

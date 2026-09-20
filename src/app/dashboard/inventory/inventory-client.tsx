@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
-import { Plus, Boxes } from "lucide-react";
+import { useActionState, useMemo, useState, useTransition } from "react";
+import { Plus, Boxes, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { LOCATIONS, type Product, type WarehouseLocation } from "@/types/db";
 import { daysSince, naira } from "@/lib/format";
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { EmptyState, StatCard } from "@/components/dashboard/ui";
 import { ImageUploadField } from "@/components/dashboard/image-upload";
-import { addProduct } from "./actions";
+import { addProduct, toggleProductPublished } from "./actions";
 import type { ActionResult } from "@/lib/schemas/product";
 
 const fieldClass =
@@ -145,6 +145,21 @@ export function InventoryClient({ products }: { products: Product[] }) {
 function ProductCard({ item }: { item: Product }) {
   const isLow = item.stock <= LOW_STOCK_THRESHOLD;
   const isStale = daysSince(item.last_moved_at) > STALE_DAYS_THRESHOLD;
+  const [published, setPublished] = useState(item.published);
+  const [pending, startTransition] = useTransition();
+
+  function handleTogglePublished() {
+    const next = !published;
+    startTransition(async () => {
+      const result = await toggleProductPublished(item.id, next);
+      if (result.ok) {
+        setPublished(next);
+        toast.success(next ? "Visible on your storefront" : "Hidden from your storefront");
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
 
   return (
     <div
@@ -192,6 +207,20 @@ function ProductCard({ item }: { item: Product }) {
             Stale, 30+ days
           </div>
         ) : null}
+        <button
+          type="button"
+          onClick={handleTogglePublished}
+          disabled={pending}
+          className={cn(
+            "mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] font-semibold transition-colors disabled:opacity-60",
+            published
+              ? "border-stone text-graphite hover:border-teal/40"
+              : "border-gold/50 bg-gold/10 text-gold-300",
+          )}
+        >
+          {published ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+          {published ? "Visible on storefront" : "Hidden from storefront"}
+        </button>
       </div>
     </div>
   );
@@ -279,6 +308,16 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
       <label className="flex items-center gap-2 text-xs font-medium text-graphite">
         <input type="checkbox" name="pickupEnabled" className="size-4 rounded border-stone" />
         Enable customer pickup option
+      </label>
+
+      <label className="flex items-center gap-2 text-xs font-medium text-graphite">
+        <input
+          type="checkbox"
+          name="published"
+          defaultChecked
+          className="size-4 rounded border-stone"
+        />
+        Show on your public storefront
       </label>
 
       {state && !state.ok && !state.fieldErrors ? (

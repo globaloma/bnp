@@ -26,6 +26,7 @@ export async function addProduct(
     shippingFee: formData.get("shippingFee") || 0,
     pickupEnabled: formData.get("pickupEnabled") === "on",
     imageUrl: formData.get("imageUrl") || undefined,
+    published: formData.get("published") === "on",
   });
 
   if (!parsed.success) {
@@ -50,6 +51,7 @@ export async function addProduct(
     shipping_fee: d.shippingFee,
     pickup_enabled: d.pickupEnabled,
     image_url: d.imageUrl || null,
+    published: d.published,
   });
 
   if (error) {
@@ -67,5 +69,19 @@ export async function deleteProduct(productId: string): Promise<ActionResult> {
   if (error) return { ok: false, error: error.message };
   revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+export async function toggleProductPublished(
+  productId: string,
+  published: boolean,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("products")
+    .update({ published })
+    .eq("id", productId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/dashboard/inventory");
   return { ok: true };
 }
