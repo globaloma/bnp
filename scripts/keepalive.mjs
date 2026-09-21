@@ -6,8 +6,10 @@
 //
 // Usage: node scripts/keepalive.mjs
 // Requires NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in
-// the environment (already in .env.local locally; set as repo secrets for
-// the GitHub Actions workflow).
+// the environment (already in .env.local locally; set as repository
+// variables - Settings -> Secrets and variables -> Actions -> Variables -
+// for the GitHub Actions workflow. Both are safe to expose, so plain
+// variables are fine here, not Secrets).
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
