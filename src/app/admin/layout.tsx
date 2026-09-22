@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getAuthedAdmin } from "@/lib/data/admin";
 import { DashboardShell } from "@/components/dashboard/shell";
 import { StatusGate } from "@/components/dashboard/status-gate";
+import { BackToDashboardLink } from "@/components/dashboard/admin-link";
 import { roleHome } from "@/lib/roles";
 
 export default async function AdminLayout({ children }: LayoutProps<"/">) {
@@ -26,7 +27,11 @@ export default async function AdminLayout({ children }: LayoutProps<"/">) {
   }
 
   return (
-    <DashboardShell businessName={admin.business_name} navVariant="admin">
+    <DashboardShell
+      businessName={admin.business_name}
+      navVariant="admin"
+      sidebarFooter={<BackToDashboardLink href={roleHome(admin.role)} />}
+    >
       {children}
     </DashboardShell>
   );
