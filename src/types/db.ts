@@ -1,6 +1,6 @@
 export type WarehouseLocation = "Abuja" | "Lagos" | "USA";
 export type PartnerStatus = "pending" | "active" | "suspended";
-export type PartnerRole = "merchant" | "fulfillment_center" | "admin";
+export type PartnerRole = "merchant" | "fulfillment_center";
 export type OrderStatus =
   | "Packaging"
   | "Shipping"
@@ -22,6 +22,7 @@ export type Partner = {
   category: string | null;
   status: PartnerStatus;
   role: PartnerRole;
+  is_admin: boolean;
   slug: string;
   wallet_balance: number;
   wallet_buffer: number;

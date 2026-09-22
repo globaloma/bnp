@@ -15,7 +15,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/">) {
     return <StatusGate title="Setting up your account" pending />;
   }
 
-  if (admin.role !== "admin") redirect(roleHome(admin.role));
+  if (!admin.is_admin) redirect(roleHome(admin.role));
 
   if (admin.status === "pending") {
     return <StatusGate title="Application under review" pending />;

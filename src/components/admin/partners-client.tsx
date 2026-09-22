@@ -21,7 +21,6 @@ const STATUS_COLOR: Record<PartnerStatus, string> = {
 const ROLE_LABEL: Record<Partner["role"], string> = {
   merchant: "Merchant",
   fulfillment_center: "Fulfillment center",
-  admin: "Admin",
 };
 
 export function AdminPartnersClient({ partners }: { partners: Partner[] }) {
@@ -110,7 +109,14 @@ function PartnerRow({ partner }: { partner: Partner }) {
         <div className="font-medium text-navy">{partner.business_name}</div>
         <div className="text-xs text-mist">{partner.email}</div>
       </td>
-      <td className="px-4 py-3 text-graphite">{ROLE_LABEL[partner.role]}</td>
+      <td className="px-4 py-3 text-graphite">
+        {ROLE_LABEL[partner.role]}
+        {partner.is_admin ? (
+          <span className="ml-2 inline-flex items-center rounded-full bg-navy px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+            Admin
+          </span>
+        ) : null}
+      </td>
       <td className="px-4 py-3">
         <span
           className={cn(

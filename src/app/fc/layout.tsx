@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getAuthedFulfillmentCenter } from "@/lib/data/fulfillment-center";
 import { DashboardShell } from "@/components/dashboard/shell";
 import { StatusGate } from "@/components/dashboard/status-gate";
+import { AdminLink } from "@/components/dashboard/admin-link";
 
 export default async function FulfillmentCenterLayout({
   children,
@@ -27,7 +28,11 @@ export default async function FulfillmentCenterLayout({
   }
 
   return (
-    <DashboardShell businessName={fc.business_name} navVariant="fc">
+    <DashboardShell
+      businessName={fc.business_name}
+      navVariant="fc"
+      sidebarFooter={fc.is_admin ? <AdminLink /> : undefined}
+    >
       {children}
     </DashboardShell>
   );

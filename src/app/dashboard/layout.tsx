@@ -5,6 +5,7 @@ import { walletAvailable } from "@/lib/dashboard-metrics";
 import { DashboardShell } from "@/components/dashboard/shell";
 import { StatusGate } from "@/components/dashboard/status-gate";
 import { WarehouseFooter } from "@/components/dashboard/warehouse-footer";
+import { AdminLink } from "@/components/dashboard/admin-link";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardLayout({ children }: LayoutProps<"/">) {
@@ -46,7 +47,12 @@ export default async function DashboardLayout({ children }: LayoutProps<"/">) {
       walletAvailable={walletAvailable(partner)}
       alertCount={alerts}
       alertHref="/dashboard/alerts"
-      sidebarFooter={<WarehouseFooter />}
+      sidebarFooter={
+        <>
+          {partner.is_admin ? <AdminLink /> : null}
+          <WarehouseFooter />
+        </>
+      }
     >
       {children}
     </DashboardShell>
