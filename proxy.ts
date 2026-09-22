@@ -9,5 +9,5 @@ export function proxy(request: NextRequest) {
 // the marketing site out of the matcher means a Supabase misconfiguration
 // can only ever break auth, never take the whole site down.
 export const config = {
-  matcher: ["/dashboard/:path*", "/fc/:path*", "/login", "/signup"],
+  matcher: ["/dashboard/:path*", "/fc/:path*", "/admin/:path*", "/login", "/signup"],
 };

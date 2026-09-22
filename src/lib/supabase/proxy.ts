@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { roleHome } from "@/lib/roles";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/fc"];
+const PROTECTED_PREFIXES = ["/dashboard", "/fc", "/admin"];
 const AUTH_PATHS = ["/login", "/signup"];
 
 export async function updateSession(request: NextRequest) {
@@ -74,7 +75,7 @@ export async function updateSession(request: NextRequest) {
         .maybeSingle();
 
       const url = request.nextUrl.clone();
-      url.pathname = partner?.role === "fulfillment_center" ? "/fc" : "/dashboard";
+      url.pathname = roleHome(partner?.role);
       url.search = "";
       return NextResponse.redirect(url);
     } catch (error) {

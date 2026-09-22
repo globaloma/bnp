@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { signInSchema, signUpSchema, type AuthResult } from "@/lib/schemas/auth";
+import { roleHome } from "@/lib/roles";
 
 export async function signIn(
   _prev: AuthResult | null,
@@ -41,7 +42,7 @@ export async function signIn(
     .select("role")
     .eq("id", signInData.user.id)
     .maybeSingle();
-  const home = partnerRow?.role === "fulfillment_center" ? "/fc" : "/dashboard";
+  const home = roleHome(partnerRow?.role);
 
   const next = formData.get("next");
   const target =
@@ -101,7 +102,7 @@ export async function signUp(
     };
   }
 
-  const home = role === "fulfillment_center" ? "/fc" : "/dashboard";
+  const home = roleHome(role);
 
   if (!data.session) {
     return {
