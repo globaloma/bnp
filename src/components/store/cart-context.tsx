@@ -6,6 +6,7 @@ export type CartItem = {
   productId: string;
   name: string;
   price: number;
+  vat: number;
   shippingFee: number;
   imageUrl: string | null;
   stock: number;
@@ -20,6 +21,7 @@ type CartContextValue = {
   clear: () => void;
   count: number;
   subtotal: number;
+  vatTotal: number;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -88,10 +90,14 @@ export function CartProvider({ slug, children }: { slug: string; children: React
 
   const count = items.reduce((sum, i) => sum + i.quantity, 0);
   const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const vatTotal = items.reduce(
+    (sum, i) => sum + i.price * i.quantity * (i.vat / 100),
+    0,
+  );
 
   return (
     <CartContext.Provider
-      value={{ items, addItem, removeItem, setQuantity, clear, count, subtotal }}
+      value={{ items, addItem, removeItem, setQuantity, clear, count, subtotal, vatTotal }}
     >
       {children}
     </CartContext.Provider>

@@ -10,13 +10,15 @@ export function ImageUploadField({
   bucket,
   name,
   className,
+  initialUrl,
 }: {
   bucket: "product-images" | "claim-images";
   name: string;
   className?: string;
+  initialUrl?: string;
 }) {
-  const [preview, setPreview] = useState<string | null>(null);
-  const [url, setUrl] = useState("");
+  const [preview, setPreview] = useState<string | null>(initialUrl ?? null);
+  const [url, setUrl] = useState(initialUrl ?? "");
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 

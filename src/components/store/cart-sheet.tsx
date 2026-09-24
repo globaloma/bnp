@@ -16,7 +16,7 @@ import {
 import { useCart } from "./cart-context";
 
 export function CartSheet({ slug }: { slug: string }) {
-  const { items, removeItem, setQuantity, count, subtotal } = useCart();
+  const { items, removeItem, setQuantity, count, subtotal, vatTotal } = useCart();
 
   return (
     <Sheet>
@@ -57,7 +57,17 @@ export function CartSheet({ slug }: { slug: string }) {
                       >
                         <Minus className="size-3" />
                       </button>
-                      <span className="w-5 text-center text-sm">{item.quantity}</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max={item.stock}
+                        value={item.quantity}
+                        onChange={(e) => {
+                          const next = parseInt(e.target.value, 10);
+                          if (!Number.isNaN(next)) setQuantity(item.productId, next);
+                        }}
+                        className="w-10 rounded border border-stone text-center text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      />
                       <button
                         type="button"
                         onClick={() => setQuantity(item.productId, item.quantity + 1)}
@@ -83,9 +93,19 @@ export function CartSheet({ slug }: { slug: string }) {
         </div>
 
         <SheetFooter>
-          <div className="flex items-center justify-between text-sm font-semibold text-navy">
+          <div className="flex items-center justify-between text-sm text-graphite">
             <span>Subtotal</span>
             <span>{naira(subtotal)}</span>
+          </div>
+          {vatTotal > 0 ? (
+            <div className="flex items-center justify-between text-sm text-graphite">
+              <span>VAT</span>
+              <span>{naira(vatTotal)}</span>
+            </div>
+          ) : null}
+          <div className="flex items-center justify-between text-sm font-semibold text-navy">
+            <span>Total</span>
+            <span>{naira(subtotal + vatTotal)}</span>
           </div>
           <Button
             render={<Link href={`/store/${slug}/checkout`} />}

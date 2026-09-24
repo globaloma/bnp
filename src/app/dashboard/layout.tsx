@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getAuthedPartner } from "@/lib/data/partner";
-import { alertCount as computeAlertCount } from "@/lib/dashboard-metrics";
-import { walletAvailable } from "@/lib/dashboard-metrics";
+import { alertCount as computeAlertCount, isWalletLow, walletAvailable } from "@/lib/dashboard-metrics";
 import { DashboardShell } from "@/components/dashboard/shell";
 import { StatusGate } from "@/components/dashboard/status-gate";
 import { WarehouseFooter } from "@/components/dashboard/warehouse-footer";
@@ -45,6 +44,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/">) {
     <DashboardShell
       businessName={partner.business_name}
       walletAvailable={walletAvailable(partner)}
+      walletLow={isWalletLow(partner)}
       alertCount={alerts}
       alertHref="/dashboard/alerts"
       sidebarFooter={

@@ -19,6 +19,7 @@ import { SidebarNav } from "./sidebar-nav";
 export function DashboardShell({
   businessName,
   walletAvailable,
+  walletLow,
   alertCount,
   alertHref,
   navVariant = "merchant",
@@ -27,6 +28,7 @@ export function DashboardShell({
 }: {
   businessName: string;
   walletAvailable?: number;
+  walletLow?: boolean;
   alertCount?: number;
   alertHref?: string;
   navVariant?: DashboardNavVariant;
@@ -75,7 +77,9 @@ export function DashboardShell({
           {walletAvailable !== undefined ? (
             <div className="hidden text-right sm:block">
               <div className="text-[10px] text-mist">Wallet</div>
-              <div className="text-sm font-semibold text-gold">
+              <div
+                className={`text-sm font-semibold ${walletLow ? "text-destructive" : "text-gold"}`}
+              >
                 {naira(walletAvailable)}
               </div>
             </div>

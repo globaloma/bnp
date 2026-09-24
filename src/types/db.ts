@@ -10,6 +10,7 @@ export type OrderStatus =
 export type OrderRider = "BNP Fleet" | "Own Rider" | "Pickup";
 export type OrderChannel = "dashboard" | "storefront";
 export type OrderPaymentStatus = "pending" | "paid" | "failed";
+export type OrderDiscountType = "fixed" | "percentage";
 export type WalletTxnType = "Top-up" | "Deduction" | "Reward";
 export type ReturnStatus = "Under Review" | "Approved" | "Rejected" | "Resolved";
 
@@ -68,6 +69,13 @@ export type Order = {
   customer_phone: string | null;
   customer_email: string | null;
   delivery_address: string | null;
+  notes: string | null;
+  discount_type: OrderDiscountType | null;
+  discount_value: number;
+  discount_amount: number;
+  vat_rate: number;
+  vat_amount: number;
+  subtotal: number;
   placed_at: string;
   created_at: string;
   updated_at: string;
@@ -87,6 +95,7 @@ export type StorefrontProduct = {
   sku: string | null;
   category: string | null;
   sale_price: number;
+  vat: number;
   stock: number;
   location: WarehouseLocation;
   shipping_fee: number;

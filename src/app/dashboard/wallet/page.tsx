@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getAuthedPartner, getDashboardData } from "@/lib/data/partner";
-import { isFulfillmentRestricted, walletAvailable } from "@/lib/dashboard-metrics";
+import { isFulfillmentRestricted, isWalletLow, walletAvailable } from "@/lib/dashboard-metrics";
 import { naira, formatDate } from "@/lib/format";
 import { PageHeader, Panel, EmptyState } from "@/components/dashboard/ui";
 import { Receipt } from "lucide-react";
@@ -16,6 +16,7 @@ export default async function WalletPage() {
 
   const { walletTransactions } = await getDashboardData(partner.id);
   const restricted = isFulfillmentRestricted(partner);
+  const low = isWalletLow(partner);
 
   return (
     <div>
@@ -25,7 +26,9 @@ export default async function WalletPage() {
         <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-mist">
           Total balance
         </div>
-        <div className="mt-1 text-4xl font-semibold text-white">
+        <div
+          className={`mt-1 text-4xl font-semibold ${low ? "text-destructive" : "text-white"}`}
+        >
           {naira(partner.wallet_balance)}
         </div>
         <div className="mt-4 flex flex-wrap gap-8">

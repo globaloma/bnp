@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { checkoutSchema, type ActionResult } from "@/lib/schemas/checkout";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { generateOrderRef } from "@/lib/orders";
+import { computeOrderTotals, generateOrderRef } from "@/lib/orders";
 import { initializeTransaction } from "@/lib/paystack";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bnpfulfillment.com";
@@ -52,7 +52,7 @@ export async function startCheckout(
   const productIds = d.items.map((i) => i.productId);
   const { data: products } = await admin
     .from("products")
-    .select("id, partner_id, name, sale_price, stock, shipping_fee, published, location")
+    .select("id, partner_id, name, sale_price, vat, stock, shipping_fee, published, location")
     .in("id", productIds);
 
   const byId = new Map((products ?? []).map((p) => [p.id, p]));
@@ -62,6 +62,9 @@ export async function startCheckout(
     name: string;
     quantity: number;
     unitPrice: number;
+    vatRate: number;
+    subtotal: number;
+    vatAmount: number;
     total: number;
     location: string;
     shippingFee: number;
@@ -75,12 +78,20 @@ export async function startCheckout(
     if (product.stock < item.quantity) {
       return { ok: false, error: `Only ${product.stock} of ${product.name} left in stock.` };
     }
+    const totals = computeOrderTotals({
+      unitPrice: product.sale_price,
+      quantity: item.quantity,
+      vatRate: product.vat,
+    });
     lineItems.push({
       productId: product.id,
       name: product.name,
       quantity: item.quantity,
       unitPrice: product.sale_price,
-      total: product.sale_price * item.quantity,
+      vatRate: product.vat,
+      subtotal: totals.subtotal,
+      vatAmount: totals.vatAmount,
+      total: totals.total,
       location: product.location,
       shippingFee: product.shipping_fee,
     });
@@ -106,6 +117,9 @@ export async function startCheckout(
     product_name: string;
     quantity: number;
     unit_price: number;
+    subtotal: number;
+    vat_rate: number;
+    vat_amount: number;
     total: number;
     status: "Packaging";
     location: string;
@@ -124,6 +138,9 @@ export async function startCheckout(
     product_name: item.name,
     quantity: item.quantity,
     unit_price: item.unitPrice,
+    subtotal: item.subtotal,
+    vat_rate: item.vatRate,
+    vat_amount: item.vatAmount,
     total: item.total,
     status: "Packaging" as const,
     location: item.location,
@@ -145,6 +162,9 @@ export async function startCheckout(
       product_name: "Shipping",
       quantity: 1,
       unit_price: shippingFee,
+      subtotal: shippingFee,
+      vat_rate: 0,
+      vat_amount: 0,
       total: shippingFee,
       status: "Packaging" as const,
       location: lineItems[0].location,

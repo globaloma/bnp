@@ -17,6 +17,7 @@ export function ProductCard({ product }: { product: StorefrontProduct }) {
         productId: product.id,
         name: product.name,
         price: product.sale_price,
+        vat: product.vat,
         shippingFee: product.shipping_fee,
         imageUrl: product.image_url,
         stock: product.stock,

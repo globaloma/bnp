@@ -13,7 +13,7 @@ const labelClass =
   "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.08em] text-graphite";
 
 export function CheckoutForm({ slug }: { slug: string }) {
-  const { items, subtotal } = useCart();
+  const { items, subtotal, vatTotal } = useCart();
   const boundAction = startCheckout.bind(null, slug);
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
     boundAction,
@@ -83,13 +83,19 @@ export function CheckoutForm({ slug }: { slug: string }) {
           <span>Subtotal</span>
           <span>{naira(subtotal)}</span>
         </div>
+        {vatTotal > 0 ? (
+          <div className="flex justify-between text-graphite">
+            <span>VAT</span>
+            <span>{naira(vatTotal)}</span>
+          </div>
+        ) : null}
         <div className="flex justify-between text-graphite">
           <span>Delivery</span>
           <span>{naira(shippingFee)}</span>
         </div>
         <div className="mt-1.5 flex justify-between border-t border-stone pt-1.5 font-semibold text-navy">
           <span>Total</span>
-          <span>{naira(subtotal + shippingFee)}</span>
+          <span>{naira(subtotal + vatTotal + shippingFee)}</span>
         </div>
       </div>
 
