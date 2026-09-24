@@ -45,10 +45,14 @@ create unique index if not exists products_partner_sku_key
 -- ---------------------------------------------------------------------------
 -- storefront_products was missing vat entirely - the actual blocker on
 -- showing/charging VAT in the storefront cart, not just app code.
+-- `vat` must be appended at the end of the select list, not inserted among
+-- the existing columns - CREATE OR REPLACE VIEW can only add new trailing
+-- columns, it errors if an existing column's position/name would shift.
 -- ---------------------------------------------------------------------------
 create or replace view storefront_products as
-  select p.id, p.partner_id, p.name, p.sku, p.category, p.sale_price, p.vat,
-         p.stock, p.location, p.shipping_fee, p.pickup_enabled, p.image_url
+  select p.id, p.partner_id, p.name, p.sku, p.category, p.sale_price,
+         p.stock, p.location, p.shipping_fee, p.pickup_enabled, p.image_url,
+         p.vat
   from products p
   join partners pa on pa.id = p.partner_id
   where p.published = true and pa.status = 'active';
