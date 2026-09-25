@@ -35,7 +35,7 @@ export default async function WalletPage() {
           <div>
             <div className="text-[10px] text-mist">Available (after buffer)</div>
             <div
-              className={`text-base font-semibold ${restricted ? "text-destructive" : "text-gold"}`}
+              className={`text-base font-semibold ${low ? "text-destructive" : "text-gold"}`}
             >
               {naira(walletAvailable(partner))}
             </div>
