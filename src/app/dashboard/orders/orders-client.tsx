@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
-import { Plus, PackageSearch, Search } from "lucide-react";
+import { useActionState, useMemo, useState, useTransition } from "react";
+import { Plus, PackageSearch, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Order, OrderPaymentStatus, OrderStatus, Product } from "@/types/db";
 import { ORDER_STATUSES, LOCATIONS } from "@/types/db";
 import { naira, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { computeOrderTotals } from "@/lib/orders";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { EmptyState, OrderStatusBadge, Panel } from "@/components/dashboard/ui";
 import { groupOrdersByRef } from "@/lib/orders";
-import { createOrder } from "./actions";
+import { createOrder, deleteOrderGroups } from "./actions";
 import type { ActionResult } from "@/lib/schemas/order";
 import { OrderDetail } from "./order-detail";
 
@@ -44,6 +45,9 @@ export function OrdersClient({
   );
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [bulkPending, startBulkTransition] = useTransition();
 
   const groups = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -62,9 +66,37 @@ export function OrdersClient({
     );
   }, [orders, statusFilter, paymentFilter, locFilter, search]);
 
+  const allSelected = groups.length > 0 && selected.size === groups.length;
+
+  function toggleSelect(orderRef: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(orderRef)) next.delete(orderRef);
+      else next.add(orderRef);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelected(allSelected ? new Set() : new Set(groups.map(([ref]) => ref)));
+  }
+
+  function handleBulkDelete() {
+    startBulkTransition(async () => {
+      const result = await deleteOrderGroups(Array.from(selected));
+      if (result.ok) {
+        toast.success(`${selected.size} order(s) deleted`);
+        setSelected(new Set());
+        setConfirmBulkDelete(false);
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
+
   return (
     <div>
-      <div className="mb-3 flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         {(["All", ...ORDER_STATUSES] as const).map((s) => (
           <button
             key={s}
@@ -81,24 +113,7 @@ export function OrdersClient({
         ))}
       </div>
 
-      <div className="mb-5 flex flex-wrap gap-2">
-        {(["All", ...PAYMENT_STATUSES] as const).map((s) => (
-          <button
-            key={s}
-            onClick={() => setPaymentFilter(s)}
-            className={cn(
-              "rounded-full border px-3 py-1.5 text-xs font-semibold capitalize transition-colors",
-              paymentFilter === s
-                ? "border-teal bg-teal text-white"
-                : "border-stone bg-card text-graphite hover:border-teal/40",
-            )}
-          >
-            {s}
-          </button>
-        ))}
-      </div>
-
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-stone bg-card p-2.5">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-mist" />
@@ -106,22 +121,47 @@ export function OrdersClient({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search customer or order ref"
-              className="h-9 w-56 rounded-md border border-stone bg-card pl-8 pr-2.5 text-xs text-navy placeholder:text-mist"
+              className="h-9 w-56 rounded-md border border-stone bg-white pl-8 pr-2.5 text-xs text-navy placeholder:text-mist"
             />
           </div>
-          <select
-            value={locFilter}
-            onChange={(e) =>
-              setLocFilter(e.target.value as "All" | (typeof LOCATIONS)[number])
-            }
-            className="h-9 rounded-md border border-stone bg-card px-2.5 text-xs font-medium text-graphite"
-          >
-            {(["All", ...LOCATIONS] as const).map((l) => (
-              <option key={l} value={l}>
-                {l}
-              </option>
-            ))}
-          </select>
+
+          <div className="flex items-center gap-1.5">
+            <label className="text-[10px] font-semibold uppercase tracking-[0.06em] text-mist">
+              Payment
+            </label>
+            <select
+              value={paymentFilter}
+              onChange={(e) =>
+                setPaymentFilter(e.target.value as "All" | OrderPaymentStatus)
+              }
+              className="h-9 rounded-md border border-stone bg-white px-2.5 text-xs font-medium text-graphite capitalize"
+            >
+              {(["All", ...PAYMENT_STATUSES] as const).map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <label className="text-[10px] font-semibold uppercase tracking-[0.06em] text-mist">
+              Location
+            </label>
+            <select
+              value={locFilter}
+              onChange={(e) =>
+                setLocFilter(e.target.value as "All" | (typeof LOCATIONS)[number])
+              }
+              className="h-9 rounded-md border border-stone bg-white px-2.5 text-xs font-medium text-graphite"
+            >
+              {(["All", ...LOCATIONS] as const).map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <Dialog open={open} onOpenChange={setOpen}>
@@ -145,12 +185,74 @@ export function OrdersClient({
           body="Try a different filter, or create your first order."
         />
       ) : (
-        <div className="flex flex-col gap-3">
-          {groups.map(([orderRef, lines]) => (
-            <OrderGroupRow key={orderRef} orderRef={orderRef} lines={lines} />
-          ))}
-        </div>
+        <>
+          <div className="mb-2.5 flex items-center justify-between">
+            <label className="flex items-center gap-1.5 text-xs font-medium text-graphite">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={toggleSelectAll}
+                className="size-4 rounded border-stone"
+              />
+              Select all
+            </label>
+            {selected.size > 0 ? (
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={() => setConfirmBulkDelete(true)}
+              >
+                <Trash2 className="size-3.5" />
+                Delete {selected.size} selected
+              </Button>
+            ) : null}
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {groups.map(([orderRef, lines]) => (
+              <OrderGroupRow
+                key={orderRef}
+                orderRef={orderRef}
+                lines={lines}
+                selected={selected.has(orderRef)}
+                onToggleSelect={() => toggleSelect(orderRef)}
+              />
+            ))}
+          </div>
+        </>
       )}
+
+      <Dialog open={confirmBulkDelete} onOpenChange={setConfirmBulkDelete}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete {selected.size} order(s)?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-graphite">
+            This deletes every selected order and restocks their items. This can&apos;t be
+            undone.
+          </p>
+          <div className="mt-2 flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmBulkDelete(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={bulkPending}
+              onClick={handleBulkDelete}
+            >
+              Delete selected
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -163,7 +265,17 @@ const ACCENT: Record<OrderStatus, "gold" | "teal" | "none" | "destructive"> = {
   Damaged: "destructive",
 };
 
-function OrderGroupRow({ orderRef, lines }: { orderRef: string; lines: Order[] }) {
+function OrderGroupRow({
+  orderRef,
+  lines,
+  selected,
+  onToggleSelect,
+}: {
+  orderRef: string;
+  lines: Order[];
+  selected: boolean;
+  onToggleSelect: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const first = lines[0];
   const total = lines.reduce((sum, l) => sum + l.total, 0);
@@ -176,35 +288,48 @@ function OrderGroupRow({ orderRef, lines }: { orderRef: string; lines: Order[] }
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="block w-full text-left">
-        <Panel accent={allSameStatus ? ACCENT[first.status] : "none"}>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div className="font-mono text-xs font-semibold text-teal">
-                {orderRef} · {formatDate(first.placed_at)}
+      <div className="relative">
+        <input
+          type="checkbox"
+          checked={selected}
+          onClick={(e) => e.stopPropagation()}
+          onChange={onToggleSelect}
+          className="absolute top-4 left-3 z-10 size-4 rounded border-stone"
+        />
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="block w-full pl-7 text-left"
+        >
+          <Panel accent={allSameStatus ? ACCENT[first.status] : "none"}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="font-mono text-xs font-semibold text-teal">
+                  {orderRef} · {formatDate(first.placed_at)}
+                </div>
+                <div className="mt-0.5 text-sm font-semibold text-navy">
+                  {first.customer_name}
+                </div>
+                <div className="text-xs text-graphite">
+                  {summary}, {naira(total)}
+                </div>
+                <div className="mt-1 text-[11px] text-mist">
+                  {first.location} · {first.rider} · {first.payment_status}
+                </div>
               </div>
-              <div className="mt-0.5 text-sm font-semibold text-navy">
-                {first.customer_name}
-              </div>
-              <div className="text-xs text-graphite">
-                {summary}, {naira(total)}
-              </div>
-              <div className="mt-1 text-[11px] text-mist">
-                {first.location} · {first.rider} · {first.payment_status}
+              <div className="flex flex-col items-end gap-2">
+                {allSameStatus ? (
+                  <OrderStatusBadge status={first.status} />
+                ) : (
+                  <span className="inline-flex items-center rounded-full bg-mist/20 px-2.5 py-0.5 text-[10px] font-bold tracking-wide text-graphite uppercase">
+                    Mixed status
+                  </span>
+                )}
               </div>
             </div>
-            <div className="flex flex-col items-end gap-2">
-              {allSameStatus ? (
-                <OrderStatusBadge status={first.status} />
-              ) : (
-                <span className="inline-flex items-center rounded-full bg-mist/20 px-2.5 py-0.5 text-[10px] font-bold tracking-wide text-graphite uppercase">
-                  Mixed status
-                </span>
-              )}
-            </div>
-          </div>
-        </Panel>
-      </button>
+          </Panel>
+        </button>
+      </div>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -224,7 +349,13 @@ function CreateOrderForm({
   products: Product[];
   onDone: () => void;
 }) {
+  const [productId, setProductId] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  const [rider, setRider] = useState("BNP Fleet");
   const [discountType, setDiscountType] = useState<"" | "fixed" | "percentage">("");
+  const [discountValue, setDiscountValue] = useState(0);
+  const [deliveryFee, setDeliveryFee] = useState(0);
+
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
     async (prev, formData) => {
       const result = await createOrder(prev, formData);
@@ -238,6 +369,19 @@ function CreateOrderForm({
   );
 
   const errors = state && !state.ok ? state.fieldErrors : undefined;
+  const selectedProduct = products.find((p) => p.id === productId);
+  const isOwnRider = rider === "Own Rider";
+
+  const totals = selectedProduct
+    ? computeOrderTotals({
+        unitPrice: selectedProduct.sale_price,
+        quantity,
+        vatRate: selectedProduct.vat,
+        discountType: discountType || undefined,
+        discountValue,
+        deliveryFee: isOwnRider ? deliveryFee : 0,
+      })
+    : null;
 
   if (products.length === 0) {
     return (
@@ -270,7 +414,13 @@ function CreateOrderForm({
 
       <div>
         <label className={labelClass}>Product *</label>
-        <select name="productId" required className={cn(fieldClass, "appearance-none")}>
+        <select
+          name="productId"
+          required
+          value={productId}
+          onChange={(e) => setProductId(e.target.value)}
+          className={cn(fieldClass, "appearance-none")}
+        >
           <option value="">Select a product</option>
           {products.map((p) => (
             <option key={p.id} value={p.id}>
@@ -290,19 +440,41 @@ function CreateOrderForm({
             name="quantity"
             type="number"
             min="1"
-            defaultValue="1"
+            value={quantity}
+            onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
             className={fieldClass}
           />
         </div>
         <div>
           <label className={labelClass}>Rider / delivery</label>
-          <select name="rider" defaultValue="BNP Fleet" className={cn(fieldClass, "appearance-none")}>
+          <select
+            name="rider"
+            value={rider}
+            onChange={(e) => setRider(e.target.value)}
+            className={cn(fieldClass, "appearance-none")}
+          >
             <option>BNP Fleet</option>
             <option>Own Rider</option>
             <option>Pickup</option>
           </select>
         </div>
       </div>
+
+      {isOwnRider ? (
+        <div>
+          <label className={labelClass}>Delivery price (₦)</label>
+          <input
+            name="deliveryFee"
+            type="number"
+            min="0"
+            step="0.01"
+            value={deliveryFee}
+            onChange={(e) => setDeliveryFee(Math.max(0, Number(e.target.value) || 0))}
+            className={fieldClass}
+            placeholder="What you're charging for the rider"
+          />
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -327,7 +499,8 @@ function CreateOrderForm({
             type="number"
             min="0"
             step="0.01"
-            defaultValue="0"
+            value={discountValue}
+            onChange={(e) => setDiscountValue(Math.max(0, Number(e.target.value) || 0))}
             disabled={!discountType}
             className={cn(fieldClass, !discountType && "opacity-50")}
           />
@@ -339,9 +512,40 @@ function CreateOrderForm({
         <textarea name="notes" rows={2} className={cn(fieldClass, "h-auto py-2")} />
       </div>
 
-      <p className="rounded-md bg-teal/10 px-3 py-2 text-xs text-teal-700">
-        This order routes automatically to the warehouse holding the product.
-      </p>
+      {totals ? (
+        <div className="rounded-lg border border-stone bg-white p-3 text-sm">
+          <div className="flex justify-between text-graphite">
+            <span>Subtotal</span>
+            <span>{naira(totals.subtotal)}</span>
+          </div>
+          {totals.discountAmount > 0 ? (
+            <div className="flex justify-between text-graphite">
+              <span>Discount</span>
+              <span>-{naira(totals.discountAmount)}</span>
+            </div>
+          ) : null}
+          {totals.vatAmount > 0 ? (
+            <div className="flex justify-between text-graphite">
+              <span>VAT</span>
+              <span>{naira(totals.vatAmount)}</span>
+            </div>
+          ) : null}
+          {totals.deliveryFee > 0 ? (
+            <div className="flex justify-between text-graphite">
+              <span>Delivery</span>
+              <span>{naira(totals.deliveryFee)}</span>
+            </div>
+          ) : null}
+          <div className="mt-1.5 flex justify-between border-t border-stone pt-1.5 font-semibold text-navy">
+            <span>Total</span>
+            <span>{naira(totals.total)}</span>
+          </div>
+        </div>
+      ) : (
+        <p className="rounded-md bg-teal/10 px-3 py-2 text-xs text-teal-700">
+          Select a product to see the order total.
+        </p>
+      )}
 
       {state && !state.ok && !state.fieldErrors ? (
         <p className="text-xs text-destructive">{state.error}</p>

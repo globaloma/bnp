@@ -18,6 +18,7 @@ export const orderSchema = z.object({
   rider: z.enum(["BNP Fleet", "Own Rider", "Pickup"]),
   discountType: z.enum(["fixed", "percentage"]).optional(),
   discountValue: z.coerce.number().min(0).default(0),
+  deliveryFee: z.coerce.number().min(0).default(0),
 });
 
 export type OrderInput = z.infer<typeof orderSchema>;
@@ -39,6 +40,7 @@ export const orderEditSchema = z.object({
   status: z.enum(["Packaging", "Shipping", "Delivered", "Returned", "Damaged"]),
   discountType: z.enum(["fixed", "percentage"]).optional(),
   discountValue: z.coerce.number().min(0).default(0),
+  deliveryFee: z.coerce.number().min(0).default(0),
 });
 
 export type OrderEditInput = z.infer<typeof orderEditSchema>;

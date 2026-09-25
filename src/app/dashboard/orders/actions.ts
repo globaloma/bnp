@@ -27,6 +27,7 @@ export async function createOrder(
     rider: formData.get("rider") || "BNP Fleet",
     discountType: formData.get("discountType") || undefined,
     discountValue: formData.get("discountValue") || 0,
+    deliveryFee: formData.get("deliveryFee") || 0,
   });
 
   if (!parsed.success) {
@@ -56,6 +57,7 @@ export async function createOrder(
     };
   }
 
+  const deliveryFee = d.rider === "Own Rider" ? d.deliveryFee : 0;
   const orderRef = await generateOrderRef(supabase, user.id);
   const totals = computeOrderTotals({
     unitPrice: product.sale_price,
@@ -63,6 +65,7 @@ export async function createOrder(
     vatRate: product.vat,
     discountType: d.discountType,
     discountValue: d.discountValue,
+    deliveryFee,
   });
 
   const { error: insertError } = await supabase.from("orders").insert({
@@ -82,6 +85,7 @@ export async function createOrder(
     discount_amount: totals.discountAmount,
     vat_rate: product.vat,
     vat_amount: totals.vatAmount,
+    delivery_fee: deliveryFee,
     total: totals.total,
     location: product.location,
     rider: d.rider,
@@ -153,6 +157,7 @@ export async function editOrder(
     status: formData.get("status"),
     discountType: formData.get("discountType") || undefined,
     discountValue: formData.get("discountValue") || 0,
+    deliveryFee: formData.get("deliveryFee") || 0,
   });
 
   if (!parsed.success) {
@@ -187,12 +192,14 @@ export async function editOrder(
     }
   }
 
+  const deliveryFee = d.rider === "Own Rider" ? d.deliveryFee : 0;
   const totals = computeOrderTotals({
     unitPrice: order.unit_price,
     quantity: d.quantity,
     vatRate: order.vat_rate,
     discountType: d.discountType,
     discountValue: d.discountValue,
+    deliveryFee,
   });
 
   const { error: updateError } = await supabase
@@ -211,6 +218,7 @@ export async function editOrder(
       discount_value: d.discountValue,
       discount_amount: totals.discountAmount,
       vat_amount: totals.vatAmount,
+      delivery_fee: deliveryFee,
       total: totals.total,
     })
     .eq("id", orderId);
@@ -249,6 +257,63 @@ export async function deleteOrderLine(orderId: string): Promise<ActionResult> {
       await supabase
         .from("products")
         .update({ stock: product.stock + order.quantity })
+        .eq("id", product.id);
+    }
+  }
+
+  revalidatePath("/dashboard/orders");
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+export async function deleteOrderGroups(orderRefs: string[]): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Your session expired, sign in again." };
+
+  if (orderRefs.length === 0) return { ok: false, error: "No orders selected." };
+
+  const { data: lines, error: fetchError } = await supabase
+    .from("orders")
+    .select("id, product_id, quantity")
+    .in("order_ref", orderRefs)
+    .eq("partner_id", user.id);
+
+  if (fetchError) return { ok: false, error: fetchError.message };
+  if (!lines || lines.length === 0) {
+    return { ok: false, error: "Those orders could not be found." };
+  }
+
+  const { error: deleteError } = await supabase
+    .from("orders")
+    .delete()
+    .in("order_ref", orderRefs)
+    .eq("partner_id", user.id);
+
+  if (deleteError) return { ok: false, error: deleteError.message };
+
+  const restockByProduct = new Map<string, number>();
+  for (const line of lines) {
+    if (!line.product_id) continue;
+    restockByProduct.set(
+      line.product_id,
+      (restockByProduct.get(line.product_id) ?? 0) + line.quantity,
+    );
+  }
+
+  for (const [productId, qty] of restockByProduct) {
+    const { data: product } = await supabase
+      .from("products")
+      .select("id, stock")
+      .eq("id", productId)
+      .single();
+    if (product) {
+      await supabase
+        .from("products")
+        .update({ stock: product.stock + qty })
         .eq("id", product.id);
     }
   }

@@ -75,6 +75,7 @@ export type Order = {
   discount_amount: number;
   vat_rate: number;
   vat_amount: number;
+  delivery_fee: number;
   subtotal: number;
   placed_at: string;
   created_at: string;

@@ -8,8 +8,9 @@ import { useCart } from "./cart-context";
 import type { StorefrontProduct } from "@/types/db";
 
 export function ProductCard({ product }: { product: StorefrontProduct }) {
-  const { addItem } = useCart();
+  const { addItem, items } = useCart();
   const outOfStock = product.stock <= 0;
+  const inCart = items.find((i) => i.productId === product.id)?.quantity ?? 0;
 
   function handleAdd() {
     addItem(
@@ -29,7 +30,12 @@ export function ProductCard({ product }: { product: StorefrontProduct }) {
 
   return (
     <div className="overflow-hidden rounded-xl border border-stone bg-white shadow-sm">
-      <div className="flex h-40 items-center justify-center bg-stone">
+      <div className="relative flex h-40 items-center justify-center bg-stone">
+        {inCart > 0 ? (
+          <span className="absolute top-2 right-2 z-10 flex min-w-5 items-center justify-center rounded-full bg-gold px-1.5 py-0.5 text-[11px] font-bold text-navy shadow">
+            {inCart} in cart
+          </span>
+        ) : null}
         {product.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img

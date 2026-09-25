@@ -15,6 +15,7 @@ export function buildReceiptText(orderRef: string, lines: Order[]): string {
   const subtotal = lines.reduce((sum, l) => sum + l.subtotal, 0);
   const discount = lines.reduce((sum, l) => sum + l.discount_amount, 0);
   const vat = lines.reduce((sum, l) => sum + l.vat_amount, 0);
+  const delivery = lines.reduce((sum, l) => sum + l.delivery_fee, 0);
   const total = lines.reduce((sum, l) => sum + l.total, 0);
 
   const itemLines = lines
@@ -32,6 +33,7 @@ export function buildReceiptText(orderRef: string, lines: Order[]): string {
   ];
   if (discount > 0) parts.push(`Discount: -${naira(discount)}`);
   if (vat > 0) parts.push(`VAT: ${naira(vat)}`);
+  if (delivery > 0) parts.push(`Delivery: ${naira(delivery)}`);
   parts.push(`Total: ${naira(total)}`);
 
   return parts.join("\n");

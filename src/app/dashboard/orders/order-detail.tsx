@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { OrderStatusBadge } from "@/components/dashboard/ui";
 import { buildReceiptText, normalizeNigerianPhone } from "@/lib/receipt";
+import { computeOrderTotals } from "@/lib/orders";
 import { editOrder, deleteOrderLine, deleteOrderGroup } from "./actions";
 import type { ActionResult } from "@/lib/schemas/order";
 
@@ -38,6 +39,7 @@ export function OrderDetail({
   const subtotal = lines.reduce((sum, l) => sum + l.subtotal, 0);
   const discount = lines.reduce((sum, l) => sum + l.discount_amount, 0);
   const vat = lines.reduce((sum, l) => sum + l.vat_amount, 0);
+  const delivery = lines.reduce((sum, l) => sum + l.delivery_fee, 0);
   const total = lines.reduce((sum, l) => sum + l.total, 0);
 
   function handleDeleteLine(orderId: string) {
@@ -108,6 +110,11 @@ export function OrderDetail({
       doc.text(naira(vat), 180, y, { align: "right" });
       y += 6;
     }
+    if (delivery > 0) {
+      doc.text("Delivery", 14, y);
+      doc.text(naira(delivery), 180, y, { align: "right" });
+      y += 6;
+    }
     doc.setFontSize(12);
     doc.text("Total", 14, y);
     doc.text(naira(total), 180, y, { align: "right" });
@@ -162,6 +169,7 @@ export function OrderDetail({
                     {naira(line.unit_price)} each
                     {line.discount_amount > 0 ? ` · discount -${naira(line.discount_amount)}` : ""}
                     {line.vat_amount > 0 ? ` · VAT ${naira(line.vat_amount)}` : ""}
+                    {line.delivery_fee > 0 ? ` · delivery ${naira(line.delivery_fee)}` : ""}
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1.5">
@@ -209,6 +217,12 @@ export function OrderDetail({
           <div className="flex justify-between text-graphite">
             <span>VAT</span>
             <span>{naira(vat)}</span>
+          </div>
+        ) : null}
+        {delivery > 0 ? (
+          <div className="flex justify-between text-graphite">
+            <span>Delivery</span>
+            <span>{naira(delivery)}</span>
           </div>
         ) : null}
         <div className="mt-1.5 flex justify-between border-t border-stone pt-1.5 font-semibold text-navy">
@@ -292,9 +306,13 @@ export function OrderDetail({
 }
 
 function EditLineForm({ line, onDone }: { line: Order; onDone: () => void }) {
+  const [quantity, setQuantity] = useState(line.quantity);
+  const [rider, setRider] = useState<string>(line.rider);
   const [discountType, setDiscountType] = useState<"" | "fixed" | "percentage">(
     line.discount_type ?? "",
   );
+  const [discountValue, setDiscountValue] = useState(line.discount_value);
+  const [deliveryFee, setDeliveryFee] = useState(line.delivery_fee);
   const boundAction = editOrder.bind(null, line.id);
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
     async (prev, formData) => {
@@ -309,6 +327,15 @@ function EditLineForm({ line, onDone }: { line: Order; onDone: () => void }) {
   );
 
   const errors = state && !state.ok ? state.fieldErrors : undefined;
+  const isOwnRider = rider === "Own Rider";
+  const totals = computeOrderTotals({
+    unitPrice: line.unit_price,
+    quantity,
+    vatRate: line.vat_rate,
+    discountType: discountType || undefined,
+    discountValue,
+    deliveryFee: isOwnRider ? deliveryFee : 0,
+  });
 
   return (
     <form action={formAction} className="flex flex-col gap-2.5 rounded-lg border border-teal/30 bg-teal/5 p-3">
@@ -343,19 +370,40 @@ function EditLineForm({ line, onDone }: { line: Order; onDone: () => void }) {
             name="quantity"
             type="number"
             min="1"
-            defaultValue={line.quantity}
+            value={quantity}
+            onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
             className={fieldClass}
           />
         </div>
         <div>
           <label className={labelClass}>Rider</label>
-          <select name="rider" defaultValue={line.rider} className={cn(fieldClass, "appearance-none")}>
+          <select
+            name="rider"
+            value={rider}
+            onChange={(e) => setRider(e.target.value)}
+            className={cn(fieldClass, "appearance-none")}
+          >
             <option>BNP Fleet</option>
             <option>Own Rider</option>
             <option>Pickup</option>
           </select>
         </div>
       </div>
+
+      {isOwnRider ? (
+        <div>
+          <label className={labelClass}>Delivery price (₦)</label>
+          <input
+            name="deliveryFee"
+            type="number"
+            min="0"
+            step="0.01"
+            value={deliveryFee}
+            onChange={(e) => setDeliveryFee(Math.max(0, Number(e.target.value) || 0))}
+            className={fieldClass}
+          />
+        </div>
+      ) : null}
 
       <div>
         <label className={labelClass}>Status</label>
@@ -389,7 +437,8 @@ function EditLineForm({ line, onDone }: { line: Order; onDone: () => void }) {
             type="number"
             min="0"
             step="0.01"
-            defaultValue={line.discount_value}
+            value={discountValue}
+            onChange={(e) => setDiscountValue(Math.max(0, Number(e.target.value) || 0))}
             disabled={!discountType}
             className={cn(fieldClass, !discountType && "opacity-50")}
           />
@@ -399,6 +448,35 @@ function EditLineForm({ line, onDone }: { line: Order; onDone: () => void }) {
       <div>
         <label className={labelClass}>Notes</label>
         <textarea name="notes" rows={2} defaultValue={line.notes ?? ""} className={cn(fieldClass, "h-auto py-1.5")} />
+      </div>
+
+      <div className="rounded-md border border-stone bg-white p-2.5 text-xs">
+        <div className="flex justify-between text-graphite">
+          <span>Subtotal</span>
+          <span>{naira(totals.subtotal)}</span>
+        </div>
+        {totals.discountAmount > 0 ? (
+          <div className="flex justify-between text-graphite">
+            <span>Discount</span>
+            <span>-{naira(totals.discountAmount)}</span>
+          </div>
+        ) : null}
+        {totals.vatAmount > 0 ? (
+          <div className="flex justify-between text-graphite">
+            <span>VAT</span>
+            <span>{naira(totals.vatAmount)}</span>
+          </div>
+        ) : null}
+        {totals.deliveryFee > 0 ? (
+          <div className="flex justify-between text-graphite">
+            <span>Delivery</span>
+            <span>{naira(totals.deliveryFee)}</span>
+          </div>
+        ) : null}
+        <div className="mt-1 flex justify-between border-t border-stone pt-1 font-semibold text-navy">
+          <span>Total</span>
+          <span>{naira(totals.total)}</span>
+        </div>
       </div>
 
       {state && !state.ok && !state.fieldErrors ? (

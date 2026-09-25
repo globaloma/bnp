@@ -7,13 +7,15 @@ export function computeOrderTotals({
   vatRate,
   discountType,
   discountValue,
+  deliveryFee = 0,
 }: {
   unitPrice: number;
   quantity: number;
   vatRate: number;
   discountType?: OrderDiscountType | null;
   discountValue?: number;
-}): { subtotal: number; discountAmount: number; vatAmount: number; total: number } {
+  deliveryFee?: number;
+}): { subtotal: number; discountAmount: number; vatAmount: number; deliveryFee: number; total: number } {
   const subtotal = unitPrice * quantity;
 
   let discountAmount = 0;
@@ -25,9 +27,9 @@ export function computeOrderTotals({
 
   const discounted = subtotal - discountAmount;
   const vatAmount = discounted * (vatRate / 100);
-  const total = discounted + vatAmount;
+  const total = discounted + vatAmount + deliveryFee;
 
-  return { subtotal, discountAmount, vatAmount, total };
+  return { subtotal, discountAmount, vatAmount, deliveryFee, total };
 }
 
 export function groupOrdersByRef(orders: Order[]): Map<string, Order[]> {
