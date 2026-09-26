@@ -313,6 +313,7 @@ function EditLineForm({ line, onDone }: { line: Order; onDone: () => void }) {
   );
   const [discountValue, setDiscountValue] = useState(line.discount_value);
   const [deliveryFee, setDeliveryFee] = useState(line.delivery_fee);
+  const [applyVat, setApplyVat] = useState(line.vat_rate > 0);
   const boundAction = editOrder.bind(null, line.id);
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
     async (prev, formData) => {
@@ -331,7 +332,7 @@ function EditLineForm({ line, onDone }: { line: Order; onDone: () => void }) {
   const totals = computeOrderTotals({
     unitPrice: line.unit_price,
     quantity,
-    vatRate: line.vat_rate,
+    vatRate: applyVat ? line.vat_rate : 0,
     discountType: discountType || undefined,
     discountValue,
     deliveryFee: isOwnRider ? deliveryFee : 0,
@@ -404,6 +405,17 @@ function EditLineForm({ line, onDone }: { line: Order; onDone: () => void }) {
           />
         </div>
       ) : null}
+
+      <label className="flex items-center gap-2 text-[11px] font-medium text-graphite">
+        <input
+          type="checkbox"
+          name="applyVat"
+          checked={applyVat}
+          onChange={(e) => setApplyVat(e.target.checked)}
+          className="size-4 rounded border-stone"
+        />
+        Apply VAT
+      </label>
 
       <div>
         <label className={labelClass}>Status</label>

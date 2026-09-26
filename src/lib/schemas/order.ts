@@ -19,6 +19,7 @@ export const orderSchema = z.object({
   discountType: z.enum(["fixed", "percentage"]).optional(),
   discountValue: z.coerce.number().min(0).default(0),
   deliveryFee: z.coerce.number().min(0).default(0),
+  applyVat: z.coerce.boolean().default(true),
 });
 
 export type OrderInput = z.infer<typeof orderSchema>;
@@ -41,6 +42,7 @@ export const orderEditSchema = z.object({
   discountType: z.enum(["fixed", "percentage"]).optional(),
   discountValue: z.coerce.number().min(0).default(0),
   deliveryFee: z.coerce.number().min(0).default(0),
+  applyVat: z.coerce.boolean().default(true),
 });
 
 export type OrderEditInput = z.infer<typeof orderEditSchema>;

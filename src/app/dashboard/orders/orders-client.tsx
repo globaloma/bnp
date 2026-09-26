@@ -355,6 +355,7 @@ function CreateOrderForm({
   const [discountType, setDiscountType] = useState<"" | "fixed" | "percentage">("");
   const [discountValue, setDiscountValue] = useState(0);
   const [deliveryFee, setDeliveryFee] = useState(0);
+  const [applyVat, setApplyVat] = useState(true);
 
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
     async (prev, formData) => {
@@ -376,7 +377,7 @@ function CreateOrderForm({
     ? computeOrderTotals({
         unitPrice: selectedProduct.sale_price,
         quantity,
-        vatRate: selectedProduct.vat,
+        vatRate: applyVat ? selectedProduct.vat : 0,
         discountType: discountType || undefined,
         discountValue,
         deliveryFee: isOwnRider ? deliveryFee : 0,
@@ -475,6 +476,20 @@ function CreateOrderForm({
           />
         </div>
       ) : null}
+
+      <label className="flex items-center gap-2 text-xs font-medium text-graphite">
+        <input
+          type="checkbox"
+          name="applyVat"
+          checked={applyVat}
+          onChange={(e) => setApplyVat(e.target.checked)}
+          className="size-4 rounded border-stone"
+        />
+        Apply VAT
+        {selectedProduct ? (
+          <span className="text-mist">({selectedProduct.vat}% on this product)</span>
+        ) : null}
+      </label>
 
       <div className="grid grid-cols-2 gap-3">
         <div>

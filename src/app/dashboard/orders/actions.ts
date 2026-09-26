@@ -28,6 +28,7 @@ export async function createOrder(
     discountType: formData.get("discountType") || undefined,
     discountValue: formData.get("discountValue") || 0,
     deliveryFee: formData.get("deliveryFee") || 0,
+    applyVat: formData.get("applyVat") === "on",
   });
 
   if (!parsed.success) {
@@ -58,11 +59,12 @@ export async function createOrder(
   }
 
   const deliveryFee = d.rider === "Own Rider" ? d.deliveryFee : 0;
+  const vatRate = d.applyVat ? product.vat : 0;
   const orderRef = await generateOrderRef(supabase, user.id);
   const totals = computeOrderTotals({
     unitPrice: product.sale_price,
     quantity: d.quantity,
-    vatRate: product.vat,
+    vatRate,
     discountType: d.discountType,
     discountValue: d.discountValue,
     deliveryFee,
@@ -83,7 +85,7 @@ export async function createOrder(
     discount_type: d.discountType ?? null,
     discount_value: d.discountValue,
     discount_amount: totals.discountAmount,
-    vat_rate: product.vat,
+    vat_rate: vatRate,
     vat_amount: totals.vatAmount,
     delivery_fee: deliveryFee,
     total: totals.total,
@@ -158,6 +160,7 @@ export async function editOrder(
     discountType: formData.get("discountType") || undefined,
     discountValue: formData.get("discountValue") || 0,
     deliveryFee: formData.get("deliveryFee") || 0,
+    applyVat: formData.get("applyVat") === "on",
   });
 
   if (!parsed.success) {
@@ -170,33 +173,42 @@ export async function editOrder(
 
   const d = parsed.data;
 
-  // Adjust stock by the delta if quantity changed on a real product line
-  // (the synthetic "Shipping" row has no product_id).
-  if (order.product_id && d.quantity !== order.quantity) {
+  // The product's own VAT rate is looked up fresh here (not the order's
+  // frozen vat_rate) so toggling "Apply VAT" back on after turning it off
+  // restores the real rate, not a previously-zeroed one. The synthetic
+  // "Shipping" row has no product_id, so it just keeps whatever rate was
+  // already on the order (never VAT-bearing in practice).
+  let productVatRate = order.vat_rate;
+  if (order.product_id) {
     const { data: product } = await supabase
       .from("products")
-      .select("id, stock")
+      .select("id, stock, vat")
       .eq("id", order.product_id)
       .single();
 
     if (product) {
-      const delta = d.quantity - order.quantity;
-      const newStock = product.stock - delta;
-      if (newStock < 0) {
-        return { ok: false, error: "Not enough stock to increase this order's quantity." };
+      productVatRate = product.vat;
+
+      if (d.quantity !== order.quantity) {
+        const delta = d.quantity - order.quantity;
+        const newStock = product.stock - delta;
+        if (newStock < 0) {
+          return { ok: false, error: "Not enough stock to increase this order's quantity." };
+        }
+        await supabase
+          .from("products")
+          .update({ stock: newStock, last_moved_at: new Date().toISOString() })
+          .eq("id", product.id);
       }
-      await supabase
-        .from("products")
-        .update({ stock: newStock, last_moved_at: new Date().toISOString() })
-        .eq("id", product.id);
     }
   }
 
   const deliveryFee = d.rider === "Own Rider" ? d.deliveryFee : 0;
+  const vatRate = d.applyVat ? productVatRate : 0;
   const totals = computeOrderTotals({
     unitPrice: order.unit_price,
     quantity: d.quantity,
-    vatRate: order.vat_rate,
+    vatRate,
     discountType: d.discountType,
     discountValue: d.discountValue,
     deliveryFee,
@@ -217,6 +229,7 @@ export async function editOrder(
       discount_type: d.discountType ?? null,
       discount_value: d.discountValue,
       discount_amount: totals.discountAmount,
+      vat_rate: vatRate,
       vat_amount: totals.vatAmount,
       delivery_fee: deliveryFee,
       total: totals.total,
