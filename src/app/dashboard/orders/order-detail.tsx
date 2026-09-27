@@ -24,10 +24,12 @@ const labelClass =
 export function OrderDetail({
   orderRef,
   lines,
+  chargesVat,
   onClose,
 }: {
   orderRef: string;
   lines: Order[];
+  chargesVat: boolean;
   onClose: () => void;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -156,6 +158,7 @@ export function OrderDetail({
             <EditLineForm
               key={line.id}
               line={line}
+              chargesVat={chargesVat}
               onDone={() => setEditingId(null)}
             />
           ) : (
@@ -305,7 +308,15 @@ export function OrderDetail({
   );
 }
 
-function EditLineForm({ line, onDone }: { line: Order; onDone: () => void }) {
+function EditLineForm({
+  line,
+  chargesVat,
+  onDone,
+}: {
+  line: Order;
+  chargesVat: boolean;
+  onDone: () => void;
+}) {
   const [quantity, setQuantity] = useState(line.quantity);
   const [rider, setRider] = useState<string>(line.rider);
   const [discountType, setDiscountType] = useState<"" | "fixed" | "percentage">(
@@ -313,7 +324,6 @@ function EditLineForm({ line, onDone }: { line: Order; onDone: () => void }) {
   );
   const [discountValue, setDiscountValue] = useState(line.discount_value);
   const [deliveryFee, setDeliveryFee] = useState(line.delivery_fee);
-  const [applyVat, setApplyVat] = useState(line.vat_rate > 0);
   const boundAction = editOrder.bind(null, line.id);
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
     async (prev, formData) => {
@@ -332,7 +342,7 @@ function EditLineForm({ line, onDone }: { line: Order; onDone: () => void }) {
   const totals = computeOrderTotals({
     unitPrice: line.unit_price,
     quantity,
-    vatRate: applyVat ? line.vat_rate : 0,
+    vatRate: chargesVat ? line.vat_rate : 0,
     discountType: discountType || undefined,
     discountValue,
     deliveryFee: isOwnRider ? deliveryFee : 0,
@@ -405,17 +415,6 @@ function EditLineForm({ line, onDone }: { line: Order; onDone: () => void }) {
           />
         </div>
       ) : null}
-
-      <label className="flex items-center gap-2 text-[11px] font-medium text-graphite">
-        <input
-          type="checkbox"
-          name="applyVat"
-          checked={applyVat}
-          onChange={(e) => setApplyVat(e.target.checked)}
-          className="size-4 rounded border-stone"
-        />
-        Apply VAT
-      </label>
 
       <div>
         <label className={labelClass}>Status</label>

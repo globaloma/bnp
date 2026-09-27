@@ -28,7 +28,6 @@ export async function createOrder(
     discountType: formData.get("discountType") || undefined,
     discountValue: formData.get("discountValue") || 0,
     deliveryFee: formData.get("deliveryFee") || 0,
-    applyVat: formData.get("applyVat") === "on",
   });
 
   if (!parsed.success) {
@@ -40,6 +39,12 @@ export async function createOrder(
   }
 
   const d = parsed.data;
+
+  const { data: partner } = await supabase
+    .from("partners")
+    .select("charges_vat")
+    .eq("id", user.id)
+    .single();
 
   const { data: product, error: productError } = await supabase
     .from("products")
@@ -59,7 +64,7 @@ export async function createOrder(
   }
 
   const deliveryFee = d.rider === "Own Rider" ? d.deliveryFee : 0;
-  const vatRate = d.applyVat ? product.vat : 0;
+  const vatRate = partner?.charges_vat ? product.vat : 0;
   const orderRef = await generateOrderRef(supabase, user.id);
   const totals = computeOrderTotals({
     unitPrice: product.sale_price,
@@ -137,6 +142,10 @@ export async function editOrder(
   formData: FormData,
 ): Promise<ActionResult> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Your session expired, sign in again." };
 
   const { data: order, error: fetchError } = await supabase
     .from("orders")
@@ -160,7 +169,6 @@ export async function editOrder(
     discountType: formData.get("discountType") || undefined,
     discountValue: formData.get("discountValue") || 0,
     deliveryFee: formData.get("deliveryFee") || 0,
-    applyVat: formData.get("applyVat") === "on",
   });
 
   if (!parsed.success) {
@@ -173,11 +181,17 @@ export async function editOrder(
 
   const d = parsed.data;
 
+  const { data: partner } = await supabase
+    .from("partners")
+    .select("charges_vat")
+    .eq("id", user.id)
+    .single();
+
   // The product's own VAT rate is looked up fresh here (not the order's
-  // frozen vat_rate) so toggling "Apply VAT" back on after turning it off
-  // restores the real rate, not a previously-zeroed one. The synthetic
-  // "Shipping" row has no product_id, so it just keeps whatever rate was
-  // already on the order (never VAT-bearing in practice).
+  // frozen vat_rate), so edits always reflect the merchant's current
+  // charges_vat setting rather than whatever was true at creation time.
+  // The synthetic "Shipping" row has no product_id, so it just keeps
+  // whatever rate was already on the order (never VAT-bearing in practice).
   let productVatRate = order.vat_rate;
   if (order.product_id) {
     const { data: product } = await supabase
@@ -204,7 +218,7 @@ export async function editOrder(
   }
 
   const deliveryFee = d.rider === "Own Rider" ? d.deliveryFee : 0;
-  const vatRate = d.applyVat ? productVatRate : 0;
+  const vatRate = partner?.charges_vat ? productVatRate : 0;
   const totals = computeOrderTotals({
     unitPrice: order.unit_price,
     quantity: d.quantity,

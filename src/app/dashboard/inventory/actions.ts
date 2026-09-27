@@ -204,3 +204,22 @@ export async function toggleProductPublished(
   revalidatePath("/dashboard/inventory");
   return { ok: true };
 }
+
+export async function setChargesVat(chargesVat: boolean): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Your session expired, sign in again." };
+
+  const { error } = await supabase
+    .from("partners")
+    .update({ charges_vat: chargesVat })
+    .eq("id", user.id);
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard/orders");
+  return { ok: true };
+}

@@ -25,6 +25,7 @@ export type Partner = {
   role: PartnerRole;
   is_admin: boolean;
   slug: string;
+  charges_vat: boolean;
   wallet_balance: number;
   wallet_buffer: number;
   created_at: string;
@@ -87,6 +88,7 @@ export type StorefrontPartner = {
   slug: string;
   business_name: string;
   category: string | null;
+  charges_vat: boolean;
 };
 
 export type StorefrontProduct = {

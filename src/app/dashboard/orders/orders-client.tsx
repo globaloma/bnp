@@ -33,10 +33,12 @@ export function OrdersClient({
   orders,
   products,
   restricted,
+  chargesVat,
 }: {
   orders: Order[];
   products: Product[];
   restricted: boolean;
+  chargesVat: boolean;
 }) {
   const [statusFilter, setStatusFilter] = useState<"All" | OrderStatus>("All");
   const [paymentFilter, setPaymentFilter] = useState<"All" | OrderPaymentStatus>("All");
@@ -173,7 +175,11 @@ export function OrdersClient({
             <DialogHeader>
               <DialogTitle>Create new order</DialogTitle>
             </DialogHeader>
-            <CreateOrderForm products={products} onDone={() => setOpen(false)} />
+            <CreateOrderForm
+              products={products}
+              chargesVat={chargesVat}
+              onDone={() => setOpen(false)}
+            />
           </DialogContent>
         </Dialog>
       </div>
@@ -215,6 +221,7 @@ export function OrdersClient({
                 key={orderRef}
                 orderRef={orderRef}
                 lines={lines}
+                chargesVat={chargesVat}
                 selected={selected.has(orderRef)}
                 onToggleSelect={() => toggleSelect(orderRef)}
               />
@@ -268,11 +275,13 @@ const ACCENT: Record<OrderStatus, "gold" | "teal" | "none" | "destructive"> = {
 function OrderGroupRow({
   orderRef,
   lines,
+  chargesVat,
   selected,
   onToggleSelect,
 }: {
   orderRef: string;
   lines: Order[];
+  chargesVat: boolean;
   selected: boolean;
   onToggleSelect: () => void;
 }) {
@@ -335,7 +344,12 @@ function OrderGroupRow({
           <DialogHeader>
             <DialogTitle>Order {orderRef}</DialogTitle>
           </DialogHeader>
-          <OrderDetail orderRef={orderRef} lines={lines} onClose={() => setOpen(false)} />
+          <OrderDetail
+            orderRef={orderRef}
+            lines={lines}
+            chargesVat={chargesVat}
+            onClose={() => setOpen(false)}
+          />
         </DialogContent>
       </Dialog>
     </>
@@ -344,9 +358,11 @@ function OrderGroupRow({
 
 function CreateOrderForm({
   products,
+  chargesVat,
   onDone,
 }: {
   products: Product[];
+  chargesVat: boolean;
   onDone: () => void;
 }) {
   const [productId, setProductId] = useState("");
@@ -355,7 +371,6 @@ function CreateOrderForm({
   const [discountType, setDiscountType] = useState<"" | "fixed" | "percentage">("");
   const [discountValue, setDiscountValue] = useState(0);
   const [deliveryFee, setDeliveryFee] = useState(0);
-  const [applyVat, setApplyVat] = useState(true);
 
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
     async (prev, formData) => {
@@ -377,7 +392,7 @@ function CreateOrderForm({
     ? computeOrderTotals({
         unitPrice: selectedProduct.sale_price,
         quantity,
-        vatRate: applyVat ? selectedProduct.vat : 0,
+        vatRate: chargesVat ? selectedProduct.vat : 0,
         discountType: discountType || undefined,
         discountValue,
         deliveryFee: isOwnRider ? deliveryFee : 0,
@@ -476,20 +491,6 @@ function CreateOrderForm({
           />
         </div>
       ) : null}
-
-      <label className="flex items-center gap-2 text-xs font-medium text-graphite">
-        <input
-          type="checkbox"
-          name="applyVat"
-          checked={applyVat}
-          onChange={(e) => setApplyVat(e.target.checked)}
-          className="size-4 rounded border-stone"
-        />
-        Apply VAT
-        {selectedProduct ? (
-          <span className="text-mist">({selectedProduct.vat}% on this product)</span>
-        ) : null}
-      </label>
 
       <div className="grid grid-cols-2 gap-3">
         <div>

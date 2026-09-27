@@ -49,7 +49,12 @@ export default async function OrdersPage() {
         />
       </div>
 
-      <OrdersClient orders={orders} products={products} restricted={restricted} />
+      <OrdersClient
+        orders={orders}
+        products={products}
+        restricted={restricted}
+        chargesVat={partner.charges_vat}
+      />
     </div>
   );
 }

@@ -41,7 +41,7 @@ export async function startCheckout(
 
   const { data: partner } = await admin
     .from("partners")
-    .select("id, status")
+    .select("id, status, charges_vat")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -78,17 +78,18 @@ export async function startCheckout(
     if (product.stock < item.quantity) {
       return { ok: false, error: `Only ${product.stock} of ${product.name} left in stock.` };
     }
+    const vatRate = partner.charges_vat ? product.vat : 0;
     const totals = computeOrderTotals({
       unitPrice: product.sale_price,
       quantity: item.quantity,
-      vatRate: product.vat,
+      vatRate,
     });
     lineItems.push({
       productId: product.id,
       name: product.name,
       quantity: item.quantity,
       unitPrice: product.sale_price,
-      vatRate: product.vat,
+      vatRate,
       subtotal: totals.subtotal,
       vatAmount: totals.vatAmount,
       total: totals.total,

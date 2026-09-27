@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getAuthedPartner, getDashboardData } from "@/lib/data/partner";
 import { PageHeader } from "@/components/dashboard/ui";
 import { StorefrontLink } from "@/components/dashboard/storefront-link";
+import { VatToggle } from "@/components/dashboard/vat-toggle";
 import { InventoryClient } from "./inventory-client";
 
 export const metadata: Metadata = { title: "Inventory" };
@@ -20,7 +21,12 @@ export default async function InventoryPage() {
       <PageHeader
         title="Inventory"
         description='Products stored across your warehouses. Only products marked "Show on your public storefront" are visible to customers.'
-        action={<StorefrontLink slug={auth.partner.slug} siteUrl={SITE_URL} />}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <VatToggle initialChargesVat={auth.partner.charges_vat} />
+            <StorefrontLink slug={auth.partner.slug} siteUrl={SITE_URL} />
+          </div>
+        }
       />
       <InventoryClient products={products} />
     </div>

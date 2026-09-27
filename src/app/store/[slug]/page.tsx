@@ -24,19 +24,27 @@ export default async function StorePage({ params }: PageProps<"/store/[slug]">) 
 
   const { data: partner } = await supabase
     .from("storefront_partners")
-    .select("id, slug, business_name, category")
+    .select("id, slug, business_name, category, charges_vat")
     .eq("slug", slug)
     .maybeSingle<StorefrontPartner>();
 
   if (!partner) notFound();
 
-  const { data: products } = await supabase
+  const { data: rawProducts } = await supabase
     .from("storefront_products")
     .select(
       "id, partner_id, name, sku, category, sale_price, vat, stock, location, shipping_fee, pickup_enabled, image_url",
     )
     .eq("partner_id", partner.id)
     .returns<StorefrontProduct[]>();
+
+  // This merchant's VAT preference applies across their whole storefront -
+  // zeroing it here means the cart/checkout UI (which reads vat off each
+  // cart item) never shows or charges VAT for them, with no extra plumbing.
+  const products = rawProducts?.map((p) => ({
+    ...p,
+    vat: partner.charges_vat ? p.vat : 0,
+  }));
 
   return (
     <div className="container-page py-8">
