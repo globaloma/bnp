@@ -1,6 +1,11 @@
 import "server-only";
 import crypto from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getResend } from "@/lib/resend";
+import { naira } from "@/lib/format";
+
+const ORDER_ALERT_FROM =
+  process.env.APPLICATION_FROM_EMAIL ?? "BNP Fulfillment <onboarding@resend.dev>";
 
 const PAYSTACK_BASE = "https://api.paystack.co";
 
@@ -83,12 +88,61 @@ export function verifyWebhookSignature(
 
 type OrderPaymentRow = {
   id: string;
+  partner_id: string;
+  order_ref: string;
+  customer_name: string;
+  product_name: string;
   product_id: string | null;
   quantity: number;
   unit_price: number;
   total: number;
   payment_status: "pending" | "paid" | "failed";
 };
+
+async function sendNewOrderAlert(orderRows: OrderPaymentRow[]) {
+  const partnerId = orderRows[0]?.partner_id;
+  if (!partnerId) return;
+
+  const resend = getResend();
+  if (!resend) return;
+
+  const admin = createAdminClient();
+  const { data: partner } = await admin
+    .from("partners")
+    .select("business_name, email")
+    .eq("id", partnerId)
+    .maybeSingle();
+  if (!partner?.email) return;
+
+  const orderRef = orderRows[0].order_ref;
+  const customerName = orderRows[0].customer_name;
+  const grandTotal = orderRows.reduce((sum, r) => sum + r.total, 0);
+  const itemRows = orderRows
+    .map(
+      (r) =>
+        `<tr><td style="padding:6px 12px 6px 0;color:#455568;font-size:13px;">${r.product_name} × ${r.quantity}</td><td style="padding:6px 0;color:#0f2a44;font-size:13px;font-weight:600;text-align:right;">${naira(r.total)}</td></tr>`,
+    )
+    .join("");
+
+  try {
+    const { error } = await resend.emails.send({
+      from: ORDER_ALERT_FROM,
+      to: [partner.email],
+      subject: `New order ${orderRef} - ${naira(grandTotal)}`,
+      html: `
+        <div style="font-family:system-ui,Segoe UI,sans-serif;max-width:560px;">
+          <h2 style="color:#0f2a44;font-size:18px;margin:0 0 4px;">You've got a new order</h2>
+          <p style="color:#455568;font-size:13px;margin:0 0 16px;">${customerName} just paid for order ${orderRef} on your storefront.</p>
+          <table style="border-collapse:collapse;width:100%;">${itemRows}</table>
+          <p style="color:#0f2a44;font-size:14px;font-weight:700;margin:12px 0 0;">Total: ${naira(grandTotal)}</p>
+        </div>
+      `,
+    });
+    if (error) console.error("[order-alert] Resend error:", error);
+  } catch (err) {
+    console.error("[order-alert] Unexpected error:", err);
+  }
+}
 
 export async function confirmPayment(
   reference: string,
@@ -97,7 +151,9 @@ export async function confirmPayment(
 
   const { data: rows, error } = await admin
     .from("orders")
-    .select("id, product_id, quantity, unit_price, total, payment_status")
+    .select(
+      "id, partner_id, order_ref, customer_name, product_name, product_id, quantity, unit_price, total, payment_status",
+    )
     .eq("payment_ref", reference);
 
   if (error) return { ok: false, error: error.message };
@@ -152,6 +208,8 @@ export async function confirmPayment(
     .from("orders")
     .update({ payment_status: "paid" })
     .eq("payment_ref", reference);
+
+  await sendNewOrderAlert(orderRows);
 
   return { ok: true, alreadyProcessed: false };
 }
