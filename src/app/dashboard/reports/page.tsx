@@ -5,6 +5,7 @@ import { naira } from "@/lib/format";
 import { LOCATIONS, LOW_STOCK_THRESHOLD, ORDER_STATUSES } from "@/types/db";
 import { PageHeader, Panel, StatCard } from "@/components/dashboard/ui";
 import { ExportButtons } from "./export-buttons";
+import { MonthlyInvoice } from "./monthly-invoice";
 
 export const metadata: Metadata = { title: "Reports" };
 
@@ -42,6 +43,15 @@ export default async function ReportsPage() {
         />
         <p className="mt-2.5 text-xs text-mist">
           Exports are CSV files, compatible with Excel and Google Sheets.
+        </p>
+      </Panel>
+
+      <Panel className="mb-5">
+        <h2 className="mb-3 text-sm font-semibold text-navy">Monthly invoice</h2>
+        <MonthlyInvoice orders={orders} businessName={auth.partner.business_name} />
+        <p className="mt-2.5 text-xs text-mist">
+          Covers delivered orders only, and only for months that have fully
+          ended.
         </p>
       </Panel>
 

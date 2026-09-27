@@ -6,7 +6,7 @@ import { AdminPartnersClient } from "@/components/admin/partners-client";
 export const metadata: Metadata = { title: "Partners" };
 
 export default async function AdminPartnersPage() {
-  const { partners } = await getAdminData();
+  const { partners, statusLogByPartner, stockEvents } = await getAdminData();
 
   return (
     <div>
@@ -14,7 +14,11 @@ export default async function AdminPartnersPage() {
         title="Partners"
         description="Approve new signups, suspend or reactivate accounts."
       />
-      <AdminPartnersClient partners={partners} />
+      <AdminPartnersClient
+        partners={partners}
+        statusLogByPartner={statusLogByPartner}
+        stockEvents={stockEvents}
+      />
     </div>
   );
 }

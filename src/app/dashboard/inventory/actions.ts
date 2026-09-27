@@ -115,6 +115,13 @@ export async function editProduct(
   }
 
   const d = parsed.data;
+
+  const { data: existing } = await supabase
+    .from("products")
+    .select("stock")
+    .eq("id", productId)
+    .single();
+
   const { error } = await supabase
     .from("products")
     .update({
@@ -134,6 +141,15 @@ export async function editProduct(
 
   if (error) {
     return { ok: false, error: error.message };
+  }
+
+  if (existing && d.stock > existing.stock) {
+    await supabase.from("stock_events").insert({
+      partner_id: user.id,
+      product_id: productId,
+      product_name: d.name,
+      quantity_added: d.stock - existing.stock,
+    });
   }
 
   revalidatePath("/dashboard/inventory");

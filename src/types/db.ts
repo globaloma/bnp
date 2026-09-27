@@ -137,6 +137,24 @@ export type RewardEvent = {
   created_at: string;
 };
 
+export type PartnerStatusLog = {
+  id: string;
+  partner_id: string;
+  status: PartnerStatus;
+  reason: string | null;
+  changed_by: string | null;
+  created_at: string;
+};
+
+export type StockEvent = {
+  id: string;
+  partner_id: string;
+  product_id: string | null;
+  product_name: string;
+  quantity_added: number;
+  created_at: string;
+};
+
 export const LOCATIONS: WarehouseLocation[] = ["Abuja", "Lagos", "USA"];
 export const ORDER_STATUSES: OrderStatus[] = [
   "Packaging",

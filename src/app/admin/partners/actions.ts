@@ -9,11 +9,13 @@ type ActionResult = { ok: true } | { ok: false; error: string };
 export async function setPartnerStatus(
   partnerId: string,
   status: PartnerStatus,
+  reason?: string,
 ): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("admin_set_partner_status", {
     p_partner_id: partnerId,
     p_status: status,
+    p_reason: reason || null,
   });
 
   if (error) return { ok: false, error: error.message };
