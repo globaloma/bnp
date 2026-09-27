@@ -1,11 +1,8 @@
 import "server-only";
 import crypto from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getResend } from "@/lib/resend";
 import { naira } from "@/lib/format";
-
-const ORDER_ALERT_FROM =
-  process.env.APPLICATION_FROM_EMAIL ?? "BNP Fulfillment <onboarding@resend.dev>";
+import { getFulfillmentCenterEmails, sendAlertEmail } from "@/lib/notifications";
 
 const PAYSTACK_BASE = "https://api.paystack.co";
 
@@ -99,12 +96,18 @@ type OrderPaymentRow = {
   payment_status: "pending" | "paid" | "failed";
 };
 
+function orderItemRows(orderRows: OrderPaymentRow[]): string {
+  return orderRows
+    .map(
+      (r) =>
+        `<tr><td style="padding:6px 12px 6px 0;color:#455568;font-size:13px;">${r.product_name} × ${r.quantity}</td><td style="padding:6px 0;color:#0f2a44;font-size:13px;font-weight:600;text-align:right;">${naira(r.total)}</td></tr>`,
+    )
+    .join("");
+}
+
 async function sendNewOrderAlert(orderRows: OrderPaymentRow[]) {
   const partnerId = orderRows[0]?.partner_id;
   if (!partnerId) return;
-
-  const resend = getResend();
-  if (!resend) return;
 
   const admin = createAdminClient();
   const { data: partner } = await admin
@@ -112,21 +115,14 @@ async function sendNewOrderAlert(orderRows: OrderPaymentRow[]) {
     .select("business_name, email")
     .eq("id", partnerId)
     .maybeSingle();
-  if (!partner?.email) return;
 
   const orderRef = orderRows[0].order_ref;
   const customerName = orderRows[0].customer_name;
   const grandTotal = orderRows.reduce((sum, r) => sum + r.total, 0);
-  const itemRows = orderRows
-    .map(
-      (r) =>
-        `<tr><td style="padding:6px 12px 6px 0;color:#455568;font-size:13px;">${r.product_name} × ${r.quantity}</td><td style="padding:6px 0;color:#0f2a44;font-size:13px;font-weight:600;text-align:right;">${naira(r.total)}</td></tr>`,
-    )
-    .join("");
+  const itemRows = orderItemRows(orderRows);
 
-  try {
-    const { error } = await resend.emails.send({
-      from: ORDER_ALERT_FROM,
+  if (partner?.email) {
+    await sendAlertEmail({
       to: [partner.email],
       subject: `New order ${orderRef} - ${naira(grandTotal)}`,
       html: `
@@ -138,9 +134,22 @@ async function sendNewOrderAlert(orderRows: OrderPaymentRow[]) {
         </div>
       `,
     });
-    if (error) console.error("[order-alert] Resend error:", error);
-  } catch (err) {
-    console.error("[order-alert] Unexpected error:", err);
+  }
+
+  const fcEmails = await getFulfillmentCenterEmails();
+  if (fcEmails.length > 0) {
+    await sendAlertEmail({
+      to: fcEmails,
+      subject: `New order to fulfill: ${orderRef} - ${naira(grandTotal)}`,
+      html: `
+        <div style="font-family:system-ui,Segoe UI,sans-serif;max-width:560px;">
+          <h2 style="color:#0f2a44;font-size:18px;margin:0 0 4px;">New order ready for fulfillment</h2>
+          <p style="color:#455568;font-size:13px;margin:0 0 16px;">${partner?.business_name ?? "A merchant"} has a new paid order (${orderRef}) for ${customerName}.</p>
+          <table style="border-collapse:collapse;width:100%;">${itemRows}</table>
+          <p style="color:#0f2a44;font-size:14px;font-weight:700;margin:12px 0 0;">Total: ${naira(grandTotal)}</p>
+        </div>
+      `,
+    });
   }
 }
 

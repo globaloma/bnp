@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { productSchema, type ActionResult } from "@/lib/schemas/product";
 import type { WarehouseLocation } from "@/types/db";
 import { LOCATIONS } from "@/types/db";
+import { getFulfillmentCenterEmails, sendAlertEmail } from "@/lib/notifications";
 
 export type ProductCsvRow = {
   sku: string;
@@ -144,12 +145,36 @@ export async function editProduct(
   }
 
   if (existing && d.stock > existing.stock) {
+    const quantityAdded = d.stock - existing.stock;
     await supabase.from("stock_events").insert({
       partner_id: user.id,
       product_id: productId,
       product_name: d.name,
-      quantity_added: d.stock - existing.stock,
+      quantity_added: quantityAdded,
     });
+
+    const fcEmails = await getFulfillmentCenterEmails();
+    if (fcEmails.length > 0) {
+      const { data: merchant } = await supabase
+        .from("partners")
+        .select("business_name")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      await sendAlertEmail({
+        to: fcEmails,
+        subject: `Restock: ${d.name} (+${quantityAdded})`,
+        html: `
+          <div style="font-family:system-ui,Segoe UI,sans-serif;max-width:560px;">
+            <h2 style="color:#0f2a44;font-size:18px;margin:0 0 4px;">A merchant just restocked</h2>
+            <p style="color:#455568;font-size:13px;margin:0 0 16px;">
+              ${merchant?.business_name ?? "A merchant"} added ${quantityAdded} unit${quantityAdded === 1 ? "" : "s"} of
+              <strong style="color:#0f2a44;">${d.name}</strong> in ${d.location}, now at ${d.stock} in stock.
+            </p>
+          </div>
+        `,
+      });
+    }
   }
 
   revalidatePath("/dashboard/inventory");

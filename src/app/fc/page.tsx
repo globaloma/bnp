@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { AlertTriangle, PackageSearch } from "lucide-react";
+import { AlertTriangle, Boxes, PackageSearch, ShoppingBag } from "lucide-react";
 import {
   getAuthedFulfillmentCenter,
   getFcNetworkData,
+  getFcRestockEvents,
+  type OrderWithMerchant,
 } from "@/lib/data/fulfillment-center";
 import {
   deliveredToday,
@@ -12,6 +14,7 @@ import {
   pendingReview,
   revenueInFlight,
 } from "@/lib/fc-metrics";
+import { groupOrdersByRef } from "@/lib/orders";
 import { naira, formatDate } from "@/lib/format";
 import {
   EmptyState,
@@ -31,16 +34,38 @@ import {
 
 export const metadata: Metadata = { title: "Fulfillment center overview" };
 
+const NEW_ORDER_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function recentPaidStorefrontOrders(orders: OrderWithMerchant[]) {
+  const now = Date.now();
+  return [...groupOrdersByRef(orders).entries()]
+    .map(([orderRef, rows]) => ({
+      orderRef,
+      first: rows[0] as OrderWithMerchant,
+      itemCount: rows.length,
+      total: rows.reduce((sum, r) => sum + r.total, 0),
+    }))
+    .filter(
+      ({ first }) =>
+        first.channel === "storefront" &&
+        first.payment_status === "paid" &&
+        now - new Date(first.placed_at).getTime() < NEW_ORDER_WINDOW_MS,
+    )
+    .sort((a, b) => new Date(b.first.placed_at).getTime() - new Date(a.first.placed_at).getTime());
+}
+
 export default async function FcOverviewPage() {
   const auth = await getAuthedFulfillmentCenter();
   if (!auth?.fc) redirect("/login");
 
   const { products, orders } = await getFcNetworkData();
+  const restockEvents = await getFcRestockEvents();
 
   const today = ordersToday(orders);
   const delivered = deliveredToday(orders);
   const flagged = pendingReview(orders);
   const lowStock = lowStockMerchants(products);
+  const newOrders = recentPaidStorefrontOrders(orders);
 
   return (
     <div>
@@ -48,6 +73,62 @@ export default async function FcOverviewPage() {
         title="Overview"
         description={`Good to see you, ${auth.fc.contact_name || auth.fc.business_name}. Here's what's happening across every merchant.`}
       />
+
+      <Panel accent="teal" className="mb-5">
+        <h2 className="mb-3 text-sm font-semibold text-navy">New orders (last 24h)</h2>
+        {newOrders.length === 0 ? (
+          <EmptyState
+            icon={<ShoppingBag className="size-8" />}
+            title="No new storefront orders"
+            body="Paid orders from any merchant's storefront will show up here as they come in."
+          />
+        ) : (
+          <ul className="flex flex-col">
+            {newOrders.map(({ orderRef, first, itemCount, total }) => (
+              <li key={orderRef} className="border-b border-stone py-2.5 last:border-b-0">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold text-navy">
+                    {orderRef} · {first.merchant_name}
+                  </div>
+                  <div className="text-sm font-semibold text-navy">{naira(total)}</div>
+                </div>
+                <div className="mt-0.5 text-xs text-mist">
+                  {first.customer_name} · {itemCount} item{itemCount === 1 ? "" : "s"} ·{" "}
+                  {first.location} · placed {formatDate(first.placed_at)}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+
+      <Panel className="mb-5">
+        <h2 className="mb-3 text-sm font-semibold text-navy">Recent restocks</h2>
+        {restockEvents.length === 0 ? (
+          <EmptyState
+            icon={<Boxes className="size-8" />}
+            title="No restocks yet"
+            body="When a merchant increases a product's stock, it'll show up here."
+          />
+        ) : (
+          <div className="flex flex-col divide-y divide-stone">
+            {restockEvents.map((event) => (
+              <div
+                key={event.id}
+                className="flex items-center justify-between py-2.5 text-sm first:pt-0 last:pb-0"
+              >
+                <div>
+                  <div className="font-medium text-navy">{event.merchant_name}</div>
+                  <div className="text-xs text-mist">
+                    {event.product_name} · {formatDate(event.created_at)}
+                  </div>
+                </div>
+                <span className="font-semibold text-success">+{event.quantity_added}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Panel>
 
       {lowStock.length > 0 ? (
         <Panel accent="gold" className="mb-5 bg-gold/5">

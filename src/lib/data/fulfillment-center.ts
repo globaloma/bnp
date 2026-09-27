@@ -1,9 +1,10 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import type { Order, Partner, Product } from "@/types/db";
+import type { Order, Partner, Product, StockEvent } from "@/types/db";
 
 export type OrderWithMerchant = Order & { merchant_name: string };
 export type ProductWithMerchant = Product & { merchant_name: string };
+export type StockEventWithMerchant = StockEvent & { merchant_name: string };
 
 export async function getAuthedFulfillmentCenter(): Promise<{
   userId: string;
@@ -50,4 +51,19 @@ export async function getFcNetworkData() {
       return { ...rest, merchant_name: merchant?.business_name ?? "Unknown merchant" };
     }) as OrderWithMerchant[],
   };
+}
+
+export async function getFcRestockEvents(): Promise<StockEventWithMerchant[]> {
+  const supabase = await createClient();
+
+  const { data } = await supabase
+    .from("stock_events")
+    .select("*, merchant:partners(business_name)")
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  return (data ?? []).map((row) => {
+    const { merchant, ...rest } = row as StockEvent & { merchant: MerchantJoin };
+    return { ...rest, merchant_name: merchant?.business_name ?? "Unknown merchant" };
+  });
 }
