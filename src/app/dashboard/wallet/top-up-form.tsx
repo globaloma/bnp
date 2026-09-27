@@ -1,10 +1,9 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { toast } from "sonner";
 import { naira } from "@/lib/format";
 import { Button } from "@/components/ui/button";
-import { topUpWallet } from "./actions";
+import { startWalletTopup } from "./actions";
 import type { ActionResult } from "@/lib/schemas/wallet";
 
 const PRESETS = [5000, 20000, 50000, 100000];
@@ -12,14 +11,7 @@ const PRESETS = [5000, 20000, 50000, 100000];
 export function TopUpForm() {
   const [amount, setAmount] = useState("");
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
-    async (prev, formData) => {
-      const result = await topUpWallet(prev, formData);
-      if (result.ok) {
-        toast.success("Wallet topped up");
-        setAmount("");
-      }
-      return result;
-    },
+    startWalletTopup,
     null,
   );
 
@@ -37,7 +29,7 @@ export function TopUpForm() {
           className="h-10 flex-1 min-w-[180px] rounded-md border border-stone bg-white px-3 text-sm text-navy outline-none focus-visible:border-teal focus-visible:ring-2 focus-visible:ring-teal/25"
         />
         <Button type="submit" size="lg" disabled={pending}>
-          {pending ? "Adding" : "Add funds"}
+          {pending ? "Redirecting to payment" : "Add funds"}
         </Button>
       </div>
       <div className="mt-2.5 flex flex-wrap gap-2">

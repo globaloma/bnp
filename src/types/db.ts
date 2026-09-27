@@ -28,6 +28,10 @@ export type Partner = {
   charges_vat: boolean;
   wallet_balance: number;
   wallet_buffer: number;
+  bank_code: string | null;
+  bank_account_number: string | null;
+  bank_account_name: string | null;
+  paystack_recipient_code: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -153,6 +157,34 @@ export type StockEvent = {
   product_name: string;
   quantity_added: number;
   created_at: string;
+};
+
+export type WalletTopupStatus = "pending" | "paid" | "failed";
+
+export type WalletTopup = {
+  id: string;
+  partner_id: string;
+  amount: number;
+  reference: string;
+  status: WalletTopupStatus;
+  created_at: string;
+};
+
+export type WalletWithdrawalStatus = "pending" | "processing" | "success" | "failed";
+
+export type WalletWithdrawal = {
+  id: string;
+  partner_id: string;
+  amount: number;
+  bank_account_name: string | null;
+  bank_account_number: string | null;
+  bank_code: string | null;
+  status: WalletWithdrawalStatus;
+  paystack_transfer_code: string | null;
+  paystack_reference: string | null;
+  failure_reason: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export const LOCATIONS: WarehouseLocation[] = ["Abuja", "Lagos", "USA"];

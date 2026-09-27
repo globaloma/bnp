@@ -1,4 +1,4 @@
-import { confirmPayment, verifyWebhookSignature } from "@/lib/paystack";
+import { confirmPayment, confirmTransfer, confirmWalletTopup, verifyWebhookSignature } from "@/lib/paystack";
 
 export async function POST(req: Request) {
   const rawBody = await req.text();
@@ -16,9 +16,27 @@ export async function POST(req: Request) {
   }
 
   if (event.event === "charge.success" && event.data?.reference) {
-    const result = await confirmPayment(event.data.reference);
+    const reference = event.data.reference;
+    // Wallet top-up references are always prefixed "WTU-"; anything else
+    // is a storefront order reference.
+    const result = reference.startsWith("WTU-")
+      ? await confirmWalletTopup(reference)
+      : await confirmPayment(reference);
     if (!result.ok) {
-      console.error("[paystack webhook] confirmPayment failed:", result.error);
+      console.error("[paystack webhook] payment confirmation failed:", result.error);
+    }
+  }
+
+  if (event.event?.startsWith("transfer.") && event.data?.reference) {
+    const outcome =
+      event.event === "transfer.success"
+        ? "success"
+        : event.event === "transfer.reversed"
+          ? "reversed"
+          : "failed";
+    const result = await confirmTransfer(event.data.reference, outcome);
+    if (!result.ok) {
+      console.error("[paystack webhook] confirmTransfer failed:", result.error);
     }
   }
 

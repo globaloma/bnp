@@ -155,3 +155,188 @@ export async function confirmPayment(
 
   return { ok: true, alreadyProcessed: false };
 }
+
+export async function listBanks(): Promise<{ name: string; code: string }[]> {
+  const res = await fetch(`${PAYSTACK_BASE}/bank?country=nigeria`, {
+    headers: { Authorization: `Bearer ${secretKey()}` },
+  });
+
+  const json = await res.json();
+  if (!res.ok || !json.status) {
+    throw new Error(json.message || "Could not load the list of banks");
+  }
+
+  return (json.data as { name: string; code: string }[]).map((b) => ({
+    name: b.name,
+    code: b.code,
+  }));
+}
+
+export async function resolveAccount(
+  accountNumber: string,
+  bankCode: string,
+): Promise<{ accountName: string }> {
+  const res = await fetch(
+    `${PAYSTACK_BASE}/bank/resolve?account_number=${encodeURIComponent(accountNumber)}&bank_code=${encodeURIComponent(bankCode)}`,
+    { headers: { Authorization: `Bearer ${secretKey()}` } },
+  );
+
+  const json = await res.json();
+  if (!res.ok || !json.status) {
+    throw new Error(json.message || "Could not verify that account number");
+  }
+
+  return { accountName: json.data.account_name };
+}
+
+export async function createTransferRecipient(params: {
+  accountName: string;
+  accountNumber: string;
+  bankCode: string;
+}): Promise<{ recipientCode: string }> {
+  const res = await fetch(`${PAYSTACK_BASE}/transferrecipient`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secretKey()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      type: "nuban",
+      name: params.accountName,
+      account_number: params.accountNumber,
+      bank_code: params.bankCode,
+      currency: "NGN",
+    }),
+  });
+
+  const json = await res.json();
+  if (!res.ok || !json.status) {
+    throw new Error(json.message || "Could not save that bank account with Paystack");
+  }
+
+  return { recipientCode: json.data.recipient_code };
+}
+
+export async function initiateTransfer(params: {
+  amountKobo: number;
+  recipientCode: string;
+  reference: string;
+  reason?: string;
+}): Promise<{ transferCode: string; status: string }> {
+  const res = await fetch(`${PAYSTACK_BASE}/transfer`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secretKey()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      source: "balance",
+      amount: params.amountKobo,
+      recipient: params.recipientCode,
+      reference: params.reference,
+      reason: params.reason,
+    }),
+  });
+
+  const json = await res.json();
+  if (!res.ok || !json.status) {
+    throw new Error(json.message || "Could not start the transfer with Paystack");
+  }
+
+  return { transferCode: json.data.transfer_code, status: json.data.status };
+}
+
+export async function confirmWalletTopup(
+  reference: string,
+): Promise<{ ok: true; alreadyProcessed: boolean } | { ok: false; error: string }> {
+  const admin = createAdminClient();
+
+  const { data: topup, error } = await admin
+    .from("wallet_topups")
+    .select("id, partner_id, amount, status")
+    .eq("reference", reference)
+    .maybeSingle();
+
+  if (error) return { ok: false, error: error.message };
+  if (!topup) return { ok: false, error: "No top-up found for this payment reference." };
+  if (topup.status !== "pending") {
+    return { ok: true, alreadyProcessed: true };
+  }
+
+  let verified;
+  try {
+    verified = await verifyTransaction(reference);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Verification failed" };
+  }
+
+  if (verified.status !== "success") {
+    await admin.from("wallet_topups").update({ status: "failed" }).eq("reference", reference);
+    return { ok: false, error: "Payment was not successful." };
+  }
+
+  const expectedKobo = Math.round(topup.amount * 100);
+  if (verified.amountKobo !== expectedKobo) {
+    await admin.from("wallet_topups").update({ status: "failed" }).eq("reference", reference);
+    return { ok: false, error: "Paid amount did not match the top-up amount." };
+  }
+
+  await admin.rpc("wallet_credit", {
+    p_partner_id: topup.partner_id,
+    p_amount: topup.amount,
+    p_type: "Top-up",
+    p_note: "Wallet top-up via Paystack",
+  });
+
+  await admin.from("wallet_topups").update({ status: "paid" }).eq("reference", reference);
+
+  return { ok: true, alreadyProcessed: false };
+}
+
+export async function confirmTransfer(
+  reference: string,
+  outcome: "success" | "failed" | "reversed",
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const admin = createAdminClient();
+
+  const { data: withdrawal, error } = await admin
+    .from("wallet_withdrawals")
+    .select("id, partner_id, amount, status")
+    .eq("paystack_reference", reference)
+    .maybeSingle();
+
+  if (error) return { ok: false, error: error.message };
+  if (!withdrawal) return { ok: false, error: "No withdrawal found for this transfer reference." };
+  if (withdrawal.status === "success" || withdrawal.status === "failed") {
+    return { ok: true };
+  }
+
+  if (outcome === "success") {
+    await admin
+      .from("wallet_withdrawals")
+      .update({ status: "success", updated_at: new Date().toISOString() })
+      .eq("paystack_reference", reference);
+    return { ok: true };
+  }
+
+  // Failed or reversed - refund the reserved balance back. Logged as a
+  // Top-up (money coming back in), not a Deduction, so the transaction
+  // history doesn't show a positive amount labeled "Deduction".
+  await admin.rpc("wallet_credit", {
+    p_partner_id: withdrawal.partner_id,
+    p_amount: withdrawal.amount,
+    p_type: "Top-up",
+    p_note: `Withdrawal ${outcome}, refunded`,
+  });
+
+  await admin
+    .from("wallet_withdrawals")
+    .update({
+      status: "failed",
+      failure_reason: outcome,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("paystack_reference", reference);
+
+  return { ok: true };
+}

@@ -6,6 +6,9 @@ import { naira, formatDate } from "@/lib/format";
 import { PageHeader, Panel, EmptyState } from "@/components/dashboard/ui";
 import { Receipt } from "lucide-react";
 import { TopUpForm } from "./top-up-form";
+import { BankAccountForm } from "./bank-account-form";
+import { WithdrawForm } from "./withdraw-form";
+import { listBanks } from "@/lib/paystack";
 
 export const metadata: Metadata = { title: "Wallet" };
 
@@ -17,6 +20,19 @@ export default async function WalletPage() {
   const { walletTransactions } = await getDashboardData(partner.id);
   const restricted = isFulfillmentRestricted(partner);
   const low = isWalletLow(partner);
+  const available = walletAvailable(partner);
+  const hasBankAccount = Boolean(partner.paystack_recipient_code);
+
+  let banks: { name: string; code: string }[] = [];
+  let banksError: string | undefined;
+  if (!hasBankAccount) {
+    try {
+      banks = await listBanks();
+    } catch (err) {
+      banksError =
+        err instanceof Error ? err.message : "Could not load the list of banks right now.";
+    }
+  }
 
   return (
     <div>
@@ -57,6 +73,19 @@ export default async function WalletPage() {
       <Panel className="mb-5">
         <h2 className="mb-3 text-sm font-semibold text-navy">Top up wallet</h2>
         <TopUpForm />
+      </Panel>
+
+      <Panel className="mb-5">
+        <h2 className="mb-3 text-sm font-semibold text-navy">Withdraw</h2>
+        {hasBankAccount && partner.bank_account_name && partner.bank_account_number ? (
+          <WithdrawForm
+            available={available}
+            bankAccountName={partner.bank_account_name}
+            bankAccountNumber={partner.bank_account_number}
+          />
+        ) : (
+          <BankAccountForm banks={banks} banksError={banksError} />
+        )}
       </Panel>
 
       <Panel>
