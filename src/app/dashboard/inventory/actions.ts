@@ -221,11 +221,72 @@ export async function importProducts(
     published: r.published ?? true,
   }));
 
+  const skus = payload.map((p) => p.sku).filter(Boolean);
+  const { data: existingProducts } = await supabase
+    .from("products")
+    .select("id, sku, stock")
+    .eq("partner_id", user.id)
+    .in("sku", skus);
+  const existingBySku = new Map((existingProducts ?? []).map((p) => [p.sku, p]));
+
   const { error } = await supabase
     .from("products")
     .upsert(payload, { onConflict: "partner_id,sku" });
 
   if (error) return { ok: false, error: error.message };
+
+  const restocks = payload
+    .map((p) => {
+      const existing = existingBySku.get(p.sku);
+      if (!existing || p.stock <= existing.stock) return null;
+      return {
+        productId: existing.id as string,
+        name: p.name,
+        quantityAdded: p.stock - existing.stock,
+      };
+    })
+    .filter((r): r is { productId: string; name: string; quantityAdded: number } => r !== null);
+
+  if (restocks.length > 0) {
+    await supabase.from("stock_events").insert(
+      restocks.map((r) => ({
+        partner_id: user.id,
+        product_id: r.productId,
+        product_name: r.name,
+        quantity_added: r.quantityAdded,
+      })),
+    );
+
+    const fcEmails = await getFulfillmentCenterEmails();
+    if (fcEmails.length > 0) {
+      const { data: merchant } = await supabase
+        .from("partners")
+        .select("business_name")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      const itemRows = restocks
+        .map(
+          (r) =>
+            `<li style="color:#0f2a44;font-size:13px;margin:2px 0;"><strong>${r.name}</strong> +${r.quantityAdded}</li>`,
+        )
+        .join("");
+
+      await sendAlertEmail({
+        to: fcEmails,
+        subject: `Restock via CSV: ${restocks.length} product${restocks.length === 1 ? "" : "s"} updated`,
+        html: `
+          <div style="font-family:system-ui,Segoe UI,sans-serif;max-width:560px;">
+            <h2 style="color:#0f2a44;font-size:18px;margin:0 0 4px;">A merchant just restocked via CSV import</h2>
+            <p style="color:#455568;font-size:13px;margin:0 0 12px;">
+              ${merchant?.business_name ?? "A merchant"} increased stock on ${restocks.length} product${restocks.length === 1 ? "" : "s"}:
+            </p>
+            <ul style="margin:0;padding-left:18px;">${itemRows}</ul>
+          </div>
+        `,
+      });
+    }
+  }
 
   revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard");
