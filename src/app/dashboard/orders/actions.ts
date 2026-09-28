@@ -6,6 +6,73 @@ import { computeOrderTotals, generateOrderRef } from "@/lib/orders";
 import { orderSchema, orderEditSchema, type ActionResult } from "@/lib/schemas/order";
 import type { OrderStatus } from "@/types/db";
 import { ORDER_STATUSES } from "@/types/db";
+import { initializeTransaction } from "@/lib/paystack";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bnpfulfillment.com";
+
+export async function getOrderPaymentLink(
+  orderRef: string,
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Your session expired, sign in again." };
+
+  const { data: rows } = await supabase
+    .from("orders")
+    .select("total, customer_email, payment_status, channel")
+    .eq("partner_id", user.id)
+    .eq("order_ref", orderRef);
+
+  if (!rows || rows.length === 0) {
+    return { ok: false, error: "Order not found." };
+  }
+
+  const first = rows[0];
+  if (first.channel !== "storefront" || first.payment_status !== "pending") {
+    return { ok: false, error: "This order isn't awaiting online payment." };
+  }
+
+  const { data: partner } = await supabase
+    .from("partners")
+    .select("slug")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (!partner) return { ok: false, error: "Could not find your store." };
+
+  const grandTotal = rows.reduce((sum, r) => sum + r.total, 0);
+  const reference = `${user.id.slice(0, 8)}-${orderRef}-R${Date.now()}`;
+  const email = first.customer_email || `guest+${orderRef.toLowerCase()}@bnpfulfillment.com`;
+
+  let authorizationUrl: string;
+  try {
+    const result = await initializeTransaction({
+      email,
+      amountKobo: Math.round(grandTotal * 100),
+      reference,
+      callbackUrl: `${SITE_URL}/store/${partner.slug}/confirm`,
+      metadata: { partnerId: user.id, orderRef },
+    });
+    authorizationUrl = result.authorizationUrl;
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Could not start payment. Please try again.",
+    };
+  }
+
+  // Reusing the old payment_ref would collide with Paystack's duplicate-
+  // reference check on an abandoned first attempt, so retries get a fresh
+  // one and the order rows are repointed at it.
+  await supabase
+    .from("orders")
+    .update({ payment_ref: reference })
+    .eq("partner_id", user.id)
+    .eq("order_ref", orderRef);
+
+  return { ok: true, url: authorizationUrl };
+}
 
 export async function createOrder(
   _prev: ActionResult | null,

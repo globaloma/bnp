@@ -2,19 +2,36 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { jsPDF } from "jspdf";
+import JsBarcode from "jsbarcode";
 import { toast } from "sonner";
-import { Download, MessageCircle, Mail, Pencil, Trash2 } from "lucide-react";
+import { Download, MessageCircle, Mail, Pencil, Trash2, CreditCard } from "lucide-react";
 import type { Order, OrderStatus } from "@/types/db";
 import { ORDER_STATUSES } from "@/types/db";
 import { naira, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { company } from "@/lib/site-content";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { OrderStatusBadge } from "@/components/dashboard/ui";
 import { buildReceiptText, normalizeNigerianPhone } from "@/lib/receipt";
 import { computeOrderTotals } from "@/lib/orders";
-import { editOrder, deleteOrderLine, deleteOrderGroup } from "./actions";
+import { editOrder, deleteOrderLine, deleteOrderGroup, getOrderPaymentLink } from "./actions";
 import type { ActionResult } from "@/lib/schemas/order";
+
+const NAVY: [number, number, number] = [15, 42, 68];
+const GRAPHITE: [number, number, number] = [69, 85, 104];
+const MIST: [number, number, number] = [138, 151, 168];
+const STONE: [number, number, number] = [234, 228, 216];
+const GOLD: [number, number, number] = [232, 160, 32];
+const SUCCESS: [number, number, number] = [34, 160, 90];
+const DESTRUCTIVE: [number, number, number] = [214, 59, 59];
+
+// jsPDF's built-in fonts only cover WinAnsi and have no Naira glyph - it
+// renders as a broken box. "NGN" reads clearly on a printed/PDF receipt
+// without pulling in a custom embedded font just for one character.
+function nairaPdf(amount: number): string {
+  return `NGN ${Math.round(amount).toLocaleString("en-NG")}`;
+}
 
 const fieldClass =
   "h-9 w-full rounded-md border border-stone bg-white px-2.5 text-xs text-navy outline-none transition-colors focus-visible:border-teal focus-visible:ring-2 focus-visible:ring-teal/25";
@@ -36,6 +53,8 @@ export function OrderDetail({
   const [confirmDeleteLine, setConfirmDeleteLine] = useState<string | null>(null);
   const [confirmDeleteGroup, setConfirmDeleteGroup] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [downloading, setDownloading] = useState(false);
+  const [payingOnline, setPayingOnline] = useState(false);
 
   const first = lines[0];
   const subtotal = lines.reduce((sum, l) => sum + l.subtotal, 0);
@@ -69,59 +88,204 @@ export function OrderDetail({
     });
   }
 
-  function handleDownloadPdf() {
+  async function handlePayOnline() {
+    setPayingOnline(true);
+    const result = await getOrderPaymentLink(orderRef);
+    setPayingOnline(false);
+    if (result.ok) {
+      window.open(result.url, "_blank");
+    } else {
+      toast.error(result.error);
+    }
+  }
+
+  async function handleDownloadPdf() {
+    setDownloading(true);
+
+    let payUrl: string | null = null;
+    if (first.channel === "storefront" && first.payment_status === "pending") {
+      const result = await getOrderPaymentLink(orderRef);
+      if (result.ok) payUrl = result.url;
+    }
+
     const doc = new jsPDF();
-    let y = 15;
-    doc.setFontSize(14);
-    doc.text(`Receipt - ${orderRef}`, 14, y);
-    y += 8;
+    const left = 14;
+    const right = 196;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(...NAVY);
+    doc.text(company.name, left, 20);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(...GRAPHITE);
+    doc.text(company.website, left, 26);
+    doc.text(company.email, left, 30.5);
+    doc.text(company.phoneDisplay, left, 35);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(...NAVY);
+    doc.text("Invoice", right, 20, { align: "right" });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(...GRAPHITE);
+    doc.text("Headquarters", right, 26, { align: "right" });
+    doc.text(company.primaryHub.area, right, 30.5, { align: "right" });
+    doc.text(company.primaryHub.city, right, 35, { align: "right" });
+
+    doc.setDrawColor(...STONE);
+    doc.line(left, 40, right, 40);
+
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.text(`Date: ${formatDate(first.placed_at)}`, 14, y);
-    y += 6;
-    doc.text(`Customer: ${first.customer_name}`, 14, y);
-    y += 6;
-    if (first.customer_phone) {
-      doc.text(`Phone: ${first.customer_phone}`, 14, y);
-      y += 6;
-    }
+    doc.setTextColor(...NAVY);
+    doc.text(`Order number: ${orderRef}`, right, 47, { align: "right" });
+
+    const canvas = document.createElement("canvas");
+    JsBarcode(canvas, orderRef, { format: "CODE128", displayValue: false, height: 40, margin: 0 });
+    const barcodeWidth = 55;
+    const barcodeHeight = 11;
+    doc.addImage(
+      canvas.toDataURL("image/png"),
+      "PNG",
+      right - barcodeWidth,
+      50,
+      barcodeWidth,
+      barcodeHeight,
+    );
+
+    let y = 70;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...MIST);
+    doc.text("SHIPPED TO", left, y);
+    doc.text("DATE CREATED", 90, y);
+    doc.text("TOTAL TO PAY", right, y, { align: "right" });
+    y += 5.5;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...NAVY);
+    doc.text(first.customer_name, left, y);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(...GRAPHITE);
+    doc.text(formatDate(first.placed_at), 90, y);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(15);
+    doc.setTextColor(...NAVY);
+    doc.text(nairaPdf(total), right, y, { align: "right" });
+
+    let leftY = y + 5;
     if (first.delivery_address) {
-      doc.text(`Address: ${first.delivery_address}`, 14, y);
-      y += 6;
+      const addressLines = doc.splitTextToSize(first.delivery_address, 70);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      doc.setTextColor(...GRAPHITE);
+      doc.text(addressLines, left, leftY);
+      leftY += addressLines.length * 4;
     }
-    y += 4;
-    doc.setFontSize(11);
-    doc.text("Items", 14, y);
+    if (first.customer_phone) {
+      doc.text(first.customer_phone, left, leftY);
+      leftY += 4;
+    }
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...MIST);
+    doc.text("STATUS", 90, y + 5);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(...(first.payment_status === "paid" ? SUCCESS : DESTRUCTIVE));
+    doc.text(
+      first.payment_status === "paid" ? "Paid" : first.payment_status === "failed" ? "Payment failed" : "Unpaid",
+      90,
+      y + 9.5,
+    );
+
+    let rightY = y + 6;
+    if (payUrl) {
+      const btnWidth = 32;
+      const btnHeight = 7;
+      doc.setFillColor(...GOLD);
+      doc.roundedRect(right - btnWidth, rightY, btnWidth, btnHeight, 1.5, 1.5, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(255, 255, 255);
+      doc.text("Pay online", right - btnWidth / 2, rightY + 4.7, { align: "center" });
+      doc.link(right - btnWidth, rightY, btnWidth, btnHeight, { url: payUrl });
+      rightY += btnHeight + 4;
+    }
+
+    y = Math.max(leftY, y + 14, rightY) + 4;
+    doc.setDrawColor(...STONE);
+    doc.line(left, y, right, y);
+    y += 7;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...MIST);
+    doc.text("ITEM DETAIL", left, y);
+    doc.text("QTY", 130, y, { align: "center" });
+    doc.text("RATE", 163, y, { align: "right" });
+    doc.text("AMOUNT", right, y, { align: "right" });
+    y += 3;
+    doc.setDrawColor(...STONE);
+    doc.line(left, y, right, y);
     y += 6;
-    doc.setFontSize(10);
+
     for (const line of lines) {
-      doc.text(`${line.product_name} x${line.quantity}`, 14, y);
-      doc.text(naira(line.total), 180, y, { align: "right" });
-      y += 6;
+      const nameLines = doc.splitTextToSize(line.product_name, 95);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(...NAVY);
+      doc.text(nameLines, left, y);
+      doc.setTextColor(...GRAPHITE);
+      doc.text(String(line.quantity), 130, y, { align: "center" });
+      doc.text(nairaPdf(line.unit_price), 163, y, { align: "right" });
+      doc.setTextColor(...NAVY);
+      doc.text(nairaPdf(line.total), right, y, { align: "right" });
+      y += Math.max(nameLines.length, 1) * 5 + 2;
     }
-    y += 4;
-    doc.text("Subtotal", 14, y);
-    doc.text(naira(subtotal), 180, y, { align: "right" });
-    y += 6;
-    if (discount > 0) {
-      doc.text("Discount", 14, y);
-      doc.text(`-${naira(discount)}`, 180, y, { align: "right" });
-      y += 6;
-    }
-    if (vat > 0) {
-      doc.text("VAT", 14, y);
-      doc.text(naira(vat), 180, y, { align: "right" });
-      y += 6;
-    }
-    if (delivery > 0) {
-      doc.text("Delivery", 14, y);
-      doc.text(naira(delivery), 180, y, { align: "right" });
-      y += 6;
-    }
-    doc.setFontSize(12);
-    doc.text("Total", 14, y);
-    doc.text(naira(total), 180, y, { align: "right" });
+
+    doc.setDrawColor(...STONE);
+    doc.line(left, y, right, y);
+    y += 7;
+
+    const totalsRow = (label: string, value: string, bold = false) => {
+      doc.setFont("helvetica", bold ? "bold" : "normal");
+      doc.setFontSize(bold ? 12 : 9.5);
+      doc.setTextColor(...(bold ? NAVY : GRAPHITE));
+      doc.text(label, 140, y);
+      doc.text(value, right, y, { align: "right" });
+      y += bold ? 7 : 6;
+    };
+
+    totalsRow("Subtotal", nairaPdf(subtotal));
+    if (discount > 0) totalsRow("Discount", `-${nairaPdf(discount)}`);
+    if (vat > 0) totalsRow(`Tax : VAT (${first.vat_rate}%)`, nairaPdf(vat));
+    if (delivery > 0) totalsRow("Shipping Fee", nairaPdf(delivery));
+    doc.setDrawColor(...STONE);
+    doc.line(140, y - 4, right, y - 4);
+    totalsRow("Total", nairaPdf(total), true);
+
+    const pageHeight = doc.internal.pageSize.getHeight();
+    doc.setDrawColor(...STONE);
+    doc.line(left, pageHeight - 22, right, pageHeight - 22);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(...GRAPHITE);
+    doc.text("Thank you for doing business with us", 105, pageHeight - 15, { align: "center" });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...MIST);
+    doc.text(company.website, 105, pageHeight - 10, { align: "center" });
 
     doc.save(`${orderRef}.pdf`);
+    setDownloading(false);
   }
 
   function handleShareWhatsApp() {
@@ -235,9 +399,9 @@ export function OrderDetail({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={handleDownloadPdf}>
+        <Button type="button" variant="outline" size="sm" disabled={downloading} onClick={handleDownloadPdf}>
           <Download className="size-3.5" />
-          PDF
+          {downloading ? "Preparing..." : "PDF"}
         </Button>
         <Button type="button" variant="outline" size="sm" onClick={handleShareWhatsApp}>
           <MessageCircle className="size-3.5" />
@@ -247,6 +411,12 @@ export function OrderDetail({
           <Mail className="size-3.5" />
           Email
         </Button>
+        {first.channel === "storefront" && first.payment_status === "pending" ? (
+          <Button type="button" variant="outline" size="sm" disabled={payingOnline} onClick={handlePayOnline}>
+            <CreditCard className="size-3.5" />
+            {payingOnline ? "Preparing..." : "Pay online"}
+          </Button>
+        ) : null}
         <Button
           type="button"
           variant="destructive"
