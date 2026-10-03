@@ -8,6 +8,9 @@ export type CartItem = {
   price: number;
   vat: number;
   shippingFee: number;
+  // Optional so carts saved in localStorage before these existed still load.
+  pickupEnabled?: boolean;
+  location?: string;
   imageUrl: string | null;
   stock: number;
   quantity: number;

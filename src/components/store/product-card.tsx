@@ -20,6 +20,8 @@ export function ProductCard({ product }: { product: StorefrontProduct }) {
         price: product.sale_price,
         vat: product.vat,
         shippingFee: product.shipping_fee,
+        pickupEnabled: product.pickup_enabled,
+        location: product.location,
         imageUrl: product.image_url,
         stock: product.stock,
       },

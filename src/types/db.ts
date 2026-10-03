@@ -110,6 +110,13 @@ export type StorefrontProduct = {
   image_url: string | null;
 };
 
+export type DeliveryZone = {
+  id: string;
+  partner_id: string;
+  name: string;
+  fee: number;
+};
+
 export type WalletTransaction = {
   id: string;
   partner_id: string;

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { productSchema, type ActionResult } from "@/lib/schemas/product";
 import type { WarehouseLocation } from "@/types/db";
@@ -323,5 +324,72 @@ export async function setChargesVat(chargesVat: boolean): Promise<ActionResult> 
 
   revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard/orders");
+  return { ok: true };
+}
+
+const deliveryZonesSchema = z
+  .array(
+    z.object({
+      id: z.string().uuid().optional(),
+      name: z.string().trim().min(1, "Every zone needs a name").max(80),
+      fee: z.coerce.number().min(0, "Delivery fee can't be negative"),
+    }),
+  )
+  .max(50, "That's a lot of zones, keep it to 50 or fewer");
+
+/**
+ * Replaces the merchant's whole zone list with what the editor submitted:
+ * rows missing from the list are deleted, rows with an id are updated, and
+ * rows without one are inserted.
+ */
+export async function saveDeliveryZones(input: unknown): Promise<ActionResult> {
+  const parsed = deliveryZonesSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Check your zones." };
+  }
+  const zones = parsed.data;
+
+  const names = zones.map((zone) => zone.name.toLowerCase());
+  if (new Set(names).size !== names.length) {
+    return { ok: false, error: "Two zones have the same name." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Your session expired, sign in again." };
+
+  const { data: existing, error: readError } = await supabase
+    .from("delivery_zones")
+    .select("id")
+    .eq("partner_id", user.id);
+  if (readError) return { ok: false, error: readError.message };
+
+  const keepIds = new Set(zones.flatMap((zone) => (zone.id ? [zone.id] : [])));
+  const removeIds = (existing ?? []).map((row) => row.id).filter((id) => !keepIds.has(id));
+
+  if (removeIds.length) {
+    const { error } = await supabase.from("delivery_zones").delete().in("id", removeIds);
+    if (error) return { ok: false, error: error.message };
+  }
+
+  for (const zone of zones.filter((zone) => zone.id)) {
+    const { error } = await supabase
+      .from("delivery_zones")
+      .update({ name: zone.name, fee: zone.fee })
+      .eq("id", zone.id!);
+    if (error) return { ok: false, error: error.message };
+  }
+
+  const inserts = zones
+    .filter((zone) => !zone.id)
+    .map((zone) => ({ partner_id: user.id, name: zone.name, fee: zone.fee }));
+  if (inserts.length) {
+    const { error } = await supabase.from("delivery_zones").insert(inserts);
+    if (error) return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/dashboard/inventory");
   return { ok: true };
 }

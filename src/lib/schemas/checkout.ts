@@ -14,7 +14,9 @@ export const checkoutSchema = z.object({
     .email("Enter a valid email address")
     .optional()
     .or(z.literal("")),
-  deliveryAddress: z.string().trim().min(5, "Enter a delivery address").max(500),
+  fulfillment: z.enum(["delivery", "pickup"]).default("delivery"),
+  deliveryZoneId: z.string().uuid().optional().or(z.literal("")),
+  deliveryAddress: z.string().trim().max(500).optional().default(""),
   items: z
     .array(
       z.object({
@@ -23,7 +25,12 @@ export const checkoutSchema = z.object({
       }),
     )
     .min(1, "Your cart is empty"),
-});
+})
+  // Pickup customers don't need to give an address; delivery customers do.
+  .refine((d) => d.fulfillment === "pickup" || d.deliveryAddress.length >= 5, {
+    path: ["deliveryAddress"],
+    message: "Enter a delivery address",
+  });
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
 
