@@ -7,7 +7,7 @@ import type { Order, OrderPaymentStatus, OrderStatus, Product } from "@/types/db
 import { ORDER_STATUSES, LOCATIONS } from "@/types/db";
 import { naira, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { computeOrderTotals } from "@/lib/orders";
+import { computeMultiLineTotals } from "@/lib/orders";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -57,12 +57,18 @@ export function OrdersClient({
       (o) =>
         (statusFilter === "All" || o.status === statusFilter) &&
         (paymentFilter === "All" || o.payment_status === paymentFilter) &&
-        (locFilter === "All" || o.location === locFilter) &&
-        (q === "" ||
-          o.customer_name.toLowerCase().includes(q) ||
-          o.order_ref.toLowerCase().includes(q)),
+        (locFilter === "All" || o.location === locFilter),
     );
-    return Array.from(groupOrdersByRef(filtered).entries()).sort(
+    // Search matches per order, not per line: if any product in a multi-item
+    // order matches, the whole order shows, with all of its items.
+    const grouped = Array.from(groupOrdersByRef(filtered).entries()).filter(
+      ([orderRef, lines]) =>
+        q === "" ||
+        orderRef.toLowerCase().includes(q) ||
+        lines[0].customer_name.toLowerCase().includes(q) ||
+        lines.some((l) => l.product_name.toLowerCase().includes(q)),
+    );
+    return grouped.sort(
       (a, b) =>
         new Date(b[1][0].placed_at).getTime() - new Date(a[1][0].placed_at).getTime(),
     );
@@ -122,7 +128,7 @@ export function OrdersClient({
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search customer or order ref"
+              placeholder="Search customer, product or order ref"
               className="h-9 w-56 rounded-md border border-stone bg-white pl-8 pr-2.5 text-xs text-navy placeholder:text-mist"
             />
           </div>
@@ -365,8 +371,9 @@ function CreateOrderForm({
   chargesVat: boolean;
   onDone: () => void;
 }) {
-  const [productId, setProductId] = useState("");
-  const [quantity, setQuantity] = useState(1);
+  const [lines, setLines] = useState<{ key: string; productId: string; quantity: number }[]>(
+    () => [{ key: crypto.randomUUID(), productId: "", quantity: 1 }],
+  );
   const [rider, setRider] = useState("BNP Fleet");
   const [discountType, setDiscountType] = useState<"" | "fixed" | "percentage">("");
   const [discountValue, setDiscountValue] = useState(0);
@@ -385,19 +392,29 @@ function CreateOrderForm({
   );
 
   const errors = state && !state.ok ? state.fieldErrors : undefined;
-  const selectedProduct = products.find((p) => p.id === productId);
   const isOwnRider = rider === "Own Rider";
 
-  const totals = selectedProduct
-    ? computeOrderTotals({
-        unitPrice: selectedProduct.sale_price,
-        quantity,
-        vatRate: chargesVat ? selectedProduct.vat : 0,
+  const chosen = lines.flatMap((l) => {
+    const product = products.find((p) => p.id === l.productId);
+    return product ? [{ product, quantity: l.quantity }] : [];
+  });
+
+  const totals = chosen.length
+    ? computeMultiLineTotals({
+        lines: chosen.map(({ product, quantity }) => ({
+          unitPrice: product.sale_price,
+          quantity,
+          vatRate: chargesVat ? product.vat : 0,
+        })),
         discountType: discountType || undefined,
         discountValue,
         deliveryFee: isOwnRider ? deliveryFee : 0,
       })
     : null;
+
+  function updateLine(key: string, patch: Partial<{ productId: string; quantity: number }>) {
+    setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+  }
 
   if (products.length === 0) {
     return (
@@ -428,39 +445,77 @@ function CreateOrderForm({
         </div>
       </div>
 
+      <input
+        type="hidden"
+        name="items"
+        value={JSON.stringify(
+          lines
+            .filter((l) => l.productId)
+            .map((l) => ({ productId: l.productId, quantity: l.quantity })),
+        )}
+      />
+
       <div>
-        <label className={labelClass}>Product *</label>
-        <select
-          name="productId"
-          required
-          value={productId}
-          onChange={(e) => setProductId(e.target.value)}
-          className={cn(fieldClass, "appearance-none")}
-        >
-          <option value="">Select a product</option>
-          {products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}, {naira(p.sale_price)} ({p.location})
-            </option>
+        <div className="grid grid-cols-[1fr_5rem_2.25rem] gap-2">
+          <label className={labelClass}>Products *</label>
+          <label className={labelClass}>Qty</label>
+        </div>
+        <div className="flex flex-col gap-2">
+          {lines.map((line) => (
+            <div key={line.key} className="grid grid-cols-[1fr_5rem_2.25rem] items-center gap-2">
+              <select
+                required
+                value={line.productId}
+                onChange={(e) => updateLine(line.key, { productId: e.target.value })}
+                className={cn(fieldClass, "appearance-none")}
+              >
+                <option value="">Select a product</option>
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}, {naira(p.sale_price)} ({p.location})
+                  </option>
+                ))}
+              </select>
+              <input
+                type="number"
+                min="1"
+                value={line.quantity}
+                onChange={(e) =>
+                  updateLine(line.key, {
+                    quantity: Math.max(1, parseInt(e.target.value, 10) || 1),
+                  })
+                }
+                aria-label="Quantity"
+                className={fieldClass}
+              />
+              <button
+                type="button"
+                onClick={() => setLines((prev) => prev.filter((l) => l.key !== line.key))}
+                disabled={lines.length === 1}
+                aria-label="Remove product"
+                className="flex size-9 items-center justify-center rounded-md text-mist transition-colors hover:bg-stone hover:text-destructive disabled:pointer-events-none disabled:opacity-30"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            </div>
           ))}
-        </select>
-        {errors?.productId ? (
-          <p className="mt-1 text-xs text-destructive">{errors.productId[0]}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() =>
+            setLines((prev) => [...prev, { key: crypto.randomUUID(), productId: "", quantity: 1 }])
+          }
+          className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-teal-700 hover:underline"
+        >
+          <Plus className="size-3.5" />
+          Add another product
+        </button>
+        {errors?.items ? (
+          <p className="mt-1 text-xs text-destructive">{errors.items[0]}</p>
         ) : null}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className={labelClass}>Quantity</label>
-          <input
-            name="quantity"
-            type="number"
-            min="1"
-            value={quantity}
-            onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
-            className={fieldClass}
-          />
-        </div>
         <div>
           <label className={labelClass}>Rider / delivery</label>
           <select
@@ -474,27 +529,27 @@ function CreateOrderForm({
             <option>Pickup</option>
           </select>
         </div>
-      </div>
 
-      {isOwnRider ? (
-        <div>
-          <label className={labelClass}>Delivery price (₦)</label>
-          <input
-            name="deliveryFee"
-            type="number"
-            min="0"
-            step="0.01"
-            value={deliveryFee}
-            onChange={(e) => setDeliveryFee(Math.max(0, Number(e.target.value) || 0))}
-            className={fieldClass}
-            placeholder="What you're charging for the rider"
-          />
-        </div>
-      ) : null}
+        {isOwnRider ? (
+          <div>
+            <label className={labelClass}>Delivery price (₦)</label>
+            <input
+              name="deliveryFee"
+              type="number"
+              min="0"
+              step="0.01"
+              value={deliveryFee}
+              onChange={(e) => setDeliveryFee(Math.max(0, Number(e.target.value) || 0))}
+              className={fieldClass}
+              placeholder="What you're charging for the rider"
+            />
+          </div>
+        ) : null}
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className={labelClass}>Discount</label>
+          <label className={labelClass}>Discount (whole order)</label>
           <select
             name="discountType"
             value={discountType}

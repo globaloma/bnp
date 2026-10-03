@@ -48,7 +48,7 @@ export function WithdrawForm({
         </Button>
       </div>
       <p className="text-xs text-mist">
-        Up to {naira(available)} available right now, after your reserved buffer.
+        Up to {naira(available)} available right now.
       </p>
       {state && !state.ok ? (
         <p className="text-xs text-destructive">{state.error}</p>

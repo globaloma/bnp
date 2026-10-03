@@ -175,7 +175,7 @@ export async function requestWithdrawal(
   }
 
   // Reserve the funds immediately, before Paystack is even contacted - the
-  // RPC also independently re-checks the buffer server-side.
+  // RPC also independently re-checks the balance server-side.
   const { error: debitError } = await supabase.rpc("wallet_debit", {
     p_amount: parsed.data.amount,
     p_note: "Withdrawal requested",

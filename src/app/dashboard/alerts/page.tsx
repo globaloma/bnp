@@ -82,8 +82,8 @@ export default async function AlertsPage() {
           </div>
           <p className="text-xs text-graphite">
             Available balance is {naira(walletAvailable(partner))}, below{" "}
-            {naira(10000)}. Top up to avoid fulfillment suspension when the
-            buffer is breached.
+            {naira(10000)}. Top up to avoid fulfillment suspension when it
+            runs out.
           </p>
         </Panel>
       ) : null}

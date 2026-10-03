@@ -13,7 +13,8 @@ import { company } from "@/lib/site-content";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { OrderStatusBadge } from "@/components/dashboard/ui";
-import { buildReceiptText, normalizeNigerianPhone } from "@/lib/receipt";
+import { buildReceiptShareMessage, normalizeNigerianPhone } from "@/lib/receipt";
+import { createClient } from "@/lib/supabase/client";
 import { computeOrderTotals } from "@/lib/orders";
 import { editOrder, deleteOrderLine, deleteOrderGroup, getOrderPaymentLink } from "./actions";
 import type { ActionResult } from "@/lib/schemas/order";
@@ -32,6 +33,10 @@ const DESTRUCTIVE: [number, number, number] = [214, 59, 59];
 function nairaPdf(amount: number): string {
   return `NGN ${Math.round(amount).toLocaleString("en-NG")}`;
 }
+
+// Shared receipt links stay valid for a year, long enough for any customer
+// to come back to a receipt, without being permanent public URLs.
+const RECEIPT_LINK_SECONDS = 60 * 60 * 24 * 365;
 
 const fieldClass =
   "h-9 w-full rounded-md border border-stone bg-white px-2.5 text-xs text-navy outline-none transition-colors focus-visible:border-teal focus-visible:ring-2 focus-visible:ring-teal/25";
@@ -54,6 +59,7 @@ export function OrderDetail({
   const [confirmDeleteGroup, setConfirmDeleteGroup] = useState(false);
   const [pending, startTransition] = useTransition();
   const [downloading, setDownloading] = useState(false);
+  const [sharing, setSharing] = useState<"whatsapp" | "email" | null>(null);
   const [payingOnline, setPayingOnline] = useState(false);
 
   const first = lines[0];
@@ -99,9 +105,7 @@ export function OrderDetail({
     }
   }
 
-  async function handleDownloadPdf() {
-    setDownloading(true);
-
+  async function buildReceiptPdf(): Promise<jsPDF> {
     let payUrl: string | null = null;
     if (first.channel === "storefront" && first.payment_status === "pending") {
       const result = await getOrderPaymentLink(orderRef);
@@ -273,6 +277,23 @@ export function OrderDetail({
     totalsRow("Total", nairaPdf(total), true);
 
     const pageHeight = doc.internal.pageSize.getHeight();
+    if (company.bankAccount) {
+      // Sits just above the footer. A receipt long enough to reach it
+      // leaves the section off rather than overlapping the totals.
+      const bankY = Math.max(y + 6, pageHeight - 46);
+      if (bankY + 16 < pageHeight - 22) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(...MIST);
+        doc.text("PAYMENT DETAILS", left, bankY);
+        doc.setFontSize(9);
+        doc.setTextColor(...GRAPHITE);
+        doc.text(`Bank: ${company.bankAccount.bankName}`, left, bankY + 5.5);
+        doc.text(`Account number: ${company.bankAccount.accountNumber}`, left, bankY + 10.5);
+        doc.text(`Account name: ${company.bankAccount.accountName}`, left, bankY + 15.5);
+      }
+    }
+
     doc.setDrawColor(...STONE);
     doc.line(left, pageHeight - 22, right, pageHeight - 22);
     doc.setFont("helvetica", "bold");
@@ -284,22 +305,83 @@ export function OrderDetail({
     doc.setTextColor(...MIST);
     doc.text(company.website, 105, pageHeight - 10, { align: "center" });
 
-    doc.save(`${orderRef}.pdf`);
-    setDownloading(false);
+    return doc;
   }
 
-  function handleShareWhatsApp() {
-    const text = buildReceiptText(orderRef, lines);
-    const phone = normalizeNigerianPhone(first.customer_phone);
-    const url = `https://wa.me/${phone ?? ""}?text=${encodeURIComponent(text)}`;
-    window.open(url, "_blank");
+  async function handleDownloadPdf() {
+    setDownloading(true);
+    try {
+      const doc = await buildReceiptPdf();
+      doc.save(`${orderRef}.pdf`);
+    } finally {
+      setDownloading(false);
+    }
   }
 
-  function handleShareEmail() {
-    const text = buildReceiptText(orderRef, lines);
-    const subject = `Your receipt ${orderRef}`;
-    const url = `mailto:${first.customer_email ?? ""}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
-    window.location.href = url;
+  /**
+   * Sends the receipt as a PDF, never as pasted text. On phones the PDF file
+   * itself goes through the share sheet (pick WhatsApp or Gmail there). On
+   * computers, where WhatsApp and mail links can't carry attachments, the PDF
+   * is uploaded and the message carries a private link to it, with the
+   * customer's number or email already filled in.
+   */
+  async function handleShare(channel: "whatsapp" | "email") {
+    setSharing(channel);
+    // Opened before any await so the browser doesn't block it as a popup.
+    const isPhone = window.matchMedia("(pointer: coarse)").matches;
+    const popup = channel === "whatsapp" && !isPhone ? window.open("", "_blank") : null;
+    try {
+      const doc = await buildReceiptPdf();
+      const blob = doc.output("blob");
+      const file = new File([blob], `${orderRef}.pdf`, { type: "application/pdf" });
+      const subject = `Your receipt ${orderRef}`;
+
+      if (isPhone && navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: subject,
+            text: buildReceiptShareMessage(orderRef, lines),
+          });
+          return;
+        } catch (err) {
+          // Closing the share sheet without picking an app isn't an error.
+          if (err instanceof DOMException && err.name === "AbortError") return;
+          // NotAllowedError means building the PDF took long enough that the
+          // browser no longer counts this as a tap; fall back to a link.
+          if (!(err instanceof DOMException && err.name === "NotAllowedError")) throw err;
+        }
+      }
+
+      const supabase = createClient();
+      const path = `${first.partner_id}/${orderRef}-${crypto.randomUUID()}.pdf`;
+      const { error: uploadError } = await supabase.storage
+        .from("receipts")
+        .upload(path, blob, { contentType: "application/pdf" });
+      if (uploadError) throw uploadError;
+
+      const { data: signed, error: signError } = await supabase.storage
+        .from("receipts")
+        .createSignedUrl(path, RECEIPT_LINK_SECONDS);
+      if (signError || !signed) throw signError ?? new Error("Could not create the receipt link");
+
+      const message = buildReceiptShareMessage(orderRef, lines, signed.signedUrl);
+      if (channel === "whatsapp") {
+        const phone = normalizeNigerianPhone(first.customer_phone);
+        const url = `https://wa.me/${phone ?? ""}?text=${encodeURIComponent(message)}`;
+        if (popup) popup.location.replace(url);
+        else window.open(url, "_blank");
+      } else {
+        window.location.assign(
+          `mailto:${first.customer_email ?? ""}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`,
+        );
+      }
+    } catch (err) {
+      popup?.close();
+      toast.error(err instanceof Error ? err.message : "Could not share the receipt");
+    } finally {
+      setSharing(null);
+    }
   }
 
   return (
@@ -403,13 +485,25 @@ export function OrderDetail({
           <Download className="size-3.5" />
           {downloading ? "Preparing..." : "PDF"}
         </Button>
-        <Button type="button" variant="outline" size="sm" onClick={handleShareWhatsApp}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={sharing !== null}
+          onClick={() => handleShare("whatsapp")}
+        >
           <MessageCircle className="size-3.5" />
-          WhatsApp
+          {sharing === "whatsapp" ? "Preparing..." : "WhatsApp"}
         </Button>
-        <Button type="button" variant="outline" size="sm" onClick={handleShareEmail}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={sharing !== null}
+          onClick={() => handleShare("email")}
+        >
           <Mail className="size-3.5" />
-          Email
+          {sharing === "email" ? "Preparing..." : "Email"}
         </Button>
         {first.channel === "storefront" && first.payment_status === "pending" ? (
           <Button type="button" variant="outline" size="sm" disabled={payingOnline} onClick={handlePayOnline}>

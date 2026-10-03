@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { computeOrderTotals, generateOrderRef } from "@/lib/orders";
+import { computeMultiLineTotals, computeOrderTotals, generateOrderRef } from "@/lib/orders";
 import { orderSchema, orderEditSchema, type ActionResult } from "@/lib/schemas/order";
 import type { OrderStatus } from "@/types/db";
 import { ORDER_STATUSES } from "@/types/db";
@@ -84,13 +84,19 @@ export async function createOrder(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Your session expired, sign in again." };
 
+  let itemsInput: unknown;
+  try {
+    itemsInput = JSON.parse(String(formData.get("items") ?? "[]"));
+  } catch {
+    return { ok: false, error: "The product list could not be read. Please try again." };
+  }
+
   const parsed = orderSchema.safeParse({
     customerName: formData.get("customerName"),
     customerPhone: formData.get("customerPhone") || undefined,
     deliveryAddress: formData.get("deliveryAddress") || undefined,
     notes: formData.get("notes") || undefined,
-    productId: formData.get("productId"),
-    quantity: formData.get("quantity") || 1,
+    items: itemsInput,
     rider: formData.get("rider") || "BNP Fleet",
     discountType: formData.get("discountType") || undefined,
     discountValue: formData.get("discountValue") || 0,
@@ -107,75 +113,98 @@ export async function createOrder(
 
   const d = parsed.data;
 
+  // The same product picked twice becomes one line with the combined quantity.
+  const quantities = new Map<string, number>();
+  for (const item of d.items) {
+    quantities.set(item.productId, (quantities.get(item.productId) ?? 0) + item.quantity);
+  }
+
   const { data: partner } = await supabase
     .from("partners")
     .select("charges_vat")
     .eq("id", user.id)
     .single();
 
-  const { data: product, error: productError } = await supabase
+  const { data: products, error: productError } = await supabase
     .from("products")
     .select("id, name, sale_price, vat, stock, location")
-    .eq("id", d.productId)
-    .single();
+    .in("id", [...quantities.keys()]);
 
-  if (productError || !product) {
-    return { ok: false, error: "That product could not be found." };
+  if (productError || !products || products.length !== quantities.size) {
+    return { ok: false, error: "One of those products could not be found." };
   }
 
-  if (product.stock < d.quantity) {
-    return {
-      ok: false,
-      error: `Only ${product.stock} units of ${product.name} are in stock.`,
-    };
+  const byId = new Map(products.map((p) => [p.id, p]));
+  const lines = [...quantities].map(([productId, quantity]) => ({
+    product: byId.get(productId)!,
+    quantity,
+  }));
+
+  for (const { product, quantity } of lines) {
+    if (product.stock < quantity) {
+      return {
+        ok: false,
+        error: `Only ${product.stock} units of ${product.name} are in stock.`,
+      };
+    }
   }
 
   const deliveryFee = d.rider === "Own Rider" ? d.deliveryFee : 0;
-  const vatRate = partner?.charges_vat ? product.vat : 0;
+  const vatRates = lines.map(({ product }) => (partner?.charges_vat ? product.vat : 0));
   const orderRef = await generateOrderRef(supabase, user.id);
-  const totals = computeOrderTotals({
-    unitPrice: product.sale_price,
-    quantity: d.quantity,
-    vatRate,
+  const totals = computeMultiLineTotals({
+    lines: lines.map(({ product, quantity }, i) => ({
+      unitPrice: product.sale_price,
+      quantity,
+      vatRate: vatRates[i],
+    })),
     discountType: d.discountType,
     discountValue: d.discountValue,
     deliveryFee,
   });
 
-  const { error: insertError } = await supabase.from("orders").insert({
-    partner_id: user.id,
-    order_ref: orderRef,
-    customer_name: d.customerName,
-    customer_phone: d.customerPhone || null,
-    delivery_address: d.deliveryAddress || null,
-    notes: d.notes || null,
-    product_id: product.id,
-    product_name: product.name,
-    quantity: d.quantity,
-    unit_price: product.sale_price,
-    subtotal: totals.subtotal,
-    discount_type: d.discountType ?? null,
-    discount_value: d.discountValue,
-    discount_amount: totals.discountAmount,
-    vat_rate: vatRate,
-    vat_amount: totals.vatAmount,
-    delivery_fee: deliveryFee,
-    total: totals.total,
-    location: product.location,
-    rider: d.rider,
-    status: "Packaging",
-    channel: "dashboard",
-    payment_status: "paid",
-  });
+  const { error: insertError } = await supabase.from("orders").insert(
+    lines.map(({ product, quantity }, i) => {
+      const t = totals.perLine[i];
+      return {
+        partner_id: user.id,
+        order_ref: orderRef,
+        customer_name: d.customerName,
+        customer_phone: d.customerPhone || null,
+        delivery_address: d.deliveryAddress || null,
+        notes: d.notes || null,
+        product_id: product.id,
+        product_name: product.name,
+        quantity,
+        unit_price: product.sale_price,
+        subtotal: t.subtotal,
+        discount_type: d.discountType ?? null,
+        discount_value: t.discountValue,
+        discount_amount: t.discountAmount,
+        vat_rate: vatRates[i],
+        vat_amount: t.vatAmount,
+        delivery_fee: t.deliveryFee,
+        total: t.total,
+        location: product.location,
+        rider: d.rider,
+        status: "Packaging" as const,
+        channel: "dashboard" as const,
+        payment_status: "paid" as const,
+      };
+    }),
+  );
 
   if (insertError) {
     return { ok: false, error: insertError.message };
   }
 
-  await supabase
-    .from("products")
-    .update({ stock: product.stock - d.quantity, last_moved_at: new Date().toISOString() })
-    .eq("id", product.id);
+  const movedAt = new Date().toISOString();
+  for (const { product, quantity } of lines) {
+    await supabase
+      .from("products")
+      .update({ stock: product.stock - quantity, last_moved_at: movedAt })
+      .eq("id", product.id);
+  }
 
   revalidatePath("/dashboard/orders");
   revalidatePath("/dashboard/inventory");

@@ -13,8 +13,14 @@ export const orderSchema = z.object({
     .or(z.literal("")),
   deliveryAddress: z.string().trim().max(500).optional().or(z.literal("")),
   notes: z.string().trim().max(500).optional().or(z.literal("")),
-  productId: z.string().uuid("Select a product"),
-  quantity: z.coerce.number().int().min(1, "Quantity must be at least 1"),
+  items: z
+    .array(
+      z.object({
+        productId: z.string().uuid("Select a product"),
+        quantity: z.coerce.number().int().min(1, "Quantity must be at least 1"),
+      }),
+    )
+    .min(1, "Add at least one product"),
   rider: z.enum(["BNP Fleet", "Own Rider", "Pickup"]),
   discountType: z.enum(["fixed", "percentage"]).optional(),
   discountValue: z.coerce.number().min(0).default(0),

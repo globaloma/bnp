@@ -28,8 +28,7 @@ export default async function OrdersPage() {
 
       {restricted ? (
         <div className="mb-5 rounded-lg bg-destructive px-4 py-3 text-sm font-semibold text-white">
-          Fulfillment suspended, wallet is below the {naira(partner.wallet_buffer)}{" "}
-          buffer. Top up to create new orders.
+          Fulfillment suspended, your wallet is empty. Top up to create new orders.
         </div>
       ) : null}
 

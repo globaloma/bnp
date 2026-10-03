@@ -47,25 +47,9 @@ export default async function WalletPage() {
         >
           {naira(partner.wallet_balance)}
         </div>
-        <div className="mt-4 flex flex-wrap gap-8">
-          <div>
-            <div className="text-[10px] text-mist">Available (after buffer)</div>
-            <div
-              className={`text-base font-semibold ${low ? "text-destructive" : "text-gold"}`}
-            >
-              {naira(walletAvailable(partner))}
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] text-mist">Locked buffer</div>
-            <div className="text-base font-semibold text-mist">
-              {naira(partner.wallet_buffer)}
-            </div>
-          </div>
-        </div>
         {restricted ? (
           <p className="mt-3 text-xs font-semibold text-destructive">
-            Fulfillment access suspended until you top up above the buffer.
+            Fulfillment access suspended until you top up.
           </p>
         ) : null}
       </div>

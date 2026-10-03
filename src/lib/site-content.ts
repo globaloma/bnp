@@ -18,6 +18,9 @@ export const company = {
     city: "Abuja, Nigeria",
     area: "Jabi, heart of the FCT",
   },
+  // Shown on receipt PDFs under "Payment details". Null until the account
+  // details are confirmed; the section stays hidden while it is.
+  bankAccount: null as { bankName: string; accountNumber: string; accountName: string } | null,
 } as const;
 
 export const hero = {
