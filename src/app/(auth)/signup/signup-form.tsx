@@ -2,8 +2,9 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Mail } from "lucide-react";
 import { signUp } from "../actions";
+import { ResendConfirmation } from "../resend-confirmation";
 import type { AuthResult } from "@/lib/schemas/auth";
 import { apply } from "@/lib/site-content";
 import { cn } from "@/lib/utils";
@@ -67,7 +68,28 @@ export function SignupForm({ initialRole = "merchant" }: { initialRole?: Role })
         </div>
       ) : null}
 
-      {awaitingConfirmation ? (
+      {awaitingConfirmation && state.pendingEmail ? (
+        <div className="mt-6 rounded-lg border border-teal/30 bg-teal/5 p-5 text-sm text-navy">
+          <div className="flex items-center gap-2">
+            <Mail className="size-5 shrink-0 text-teal" />
+            <p className="text-base font-semibold">Check your inbox</p>
+          </div>
+          <p className="mt-2 text-graphite">
+            Your account has been created. We sent a confirmation link to{" "}
+            <span className="font-semibold text-navy">{state.pendingEmail}</span>.
+          </p>
+          <ol className="mt-3 list-decimal space-y-1 pl-5 text-graphite">
+            <li>Open the email from BNP Fulfillment.</li>
+            <li>Click the confirmation link.</li>
+            <li>Come back and sign in.</li>
+          </ol>
+          <p className="mt-3 text-xs text-mist">
+            You won&apos;t be able to sign in until your email is confirmed.
+            Didn&apos;t get it? Check your spam or promotions folder.
+          </p>
+          <ResendConfirmation email={state.pendingEmail} />
+        </div>
+      ) : awaitingConfirmation ? (
         <div className="mt-6 flex items-start gap-3 rounded-lg border border-success/30 bg-success/10 p-4 text-sm text-success">
           <CheckCircle2 className="mt-0.5 size-5 shrink-0" />
           <p>{state.message ?? "Account created."}</p>

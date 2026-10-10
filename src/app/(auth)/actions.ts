@@ -28,6 +28,14 @@ export async function signIn(
     await supabase.auth.signInWithPassword(parsed.data);
 
   if (error) {
+    if (error.code === "email_not_confirmed") {
+      return {
+        ok: false,
+        error:
+          "Please confirm your email address before signing in. We sent a confirmation link to your inbox when you signed up.",
+        unconfirmedEmail: parsed.data.email,
+      };
+    }
     return {
       ok: false,
       error:
@@ -109,11 +117,39 @@ export async function signUp(
       ok: true,
       message:
         "Check your email to confirm your account before signing in.",
+      pendingEmail: email,
     };
   }
 
   revalidatePath(home, "layout");
   redirect(home);
+}
+
+export async function resendConfirmation(
+  email: string,
+): Promise<{ ok: boolean; message: string }> {
+  const parsed = signInSchema.shape.email.safeParse(email);
+  if (!parsed.success) {
+    return { ok: false, message: "Enter a valid email address." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email: parsed.data,
+  });
+
+  if (error) {
+    return {
+      ok: false,
+      message:
+        error.code === "over_email_send_rate_limit" || error.status === 429
+          ? "Too many emails sent. Please wait a few minutes and try again."
+          : error.message,
+    };
+  }
+
+  return { ok: true, message: "Confirmation email sent. Check your inbox." };
 }
 
 export async function signOut() {

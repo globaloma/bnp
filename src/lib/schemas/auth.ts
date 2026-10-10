@@ -24,5 +24,10 @@ export const signUpSchema = z.object({
 });
 
 export type AuthResult =
-  | { ok: true; message?: string }
-  | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
+  | { ok: true; message?: string; pendingEmail?: string }
+  | {
+      ok: false;
+      error: string;
+      fieldErrors?: Record<string, string[]>;
+      unconfirmedEmail?: string;
+    };

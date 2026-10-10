@@ -2,7 +2,9 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
+import { MailWarning } from "lucide-react";
 import { signIn } from "../actions";
+import { ResendConfirmation } from "../resend-confirmation";
 import type { AuthResult } from "@/lib/schemas/auth";
 import { Button } from "@/components/ui/button";
 
@@ -24,7 +26,23 @@ export function LoginForm({ next }: { next?: string }) {
         Sign in to your BNP dashboard to manage inventory, orders and more.
       </p>
 
-      {state && !state.ok ? (
+      {state && !state.ok && state.unconfirmedEmail ? (
+        <div className="mt-4 flex items-start gap-3 rounded-lg border border-gold/40 bg-gold/10 p-4 text-sm text-navy">
+          <MailWarning className="mt-0.5 size-5 shrink-0 text-gold" />
+          <div>
+            <p className="font-semibold">Confirm your email address</p>
+            <p className="mt-1 text-graphite">
+              We sent a confirmation link to{" "}
+              <span className="font-semibold text-navy">
+                {state.unconfirmedEmail}
+              </span>
+              . Click the link in that email, then sign in again. Can&apos;t find
+              it? Check your spam or promotions folder.
+            </p>
+            <ResendConfirmation email={state.unconfirmedEmail} />
+          </div>
+        </div>
+      ) : state && !state.ok ? (
         <p className="mt-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
           {state.error}
         </p>
