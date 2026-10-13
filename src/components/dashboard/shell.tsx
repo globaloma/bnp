@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Menu, LogOut } from "lucide-react";
+import Link from "next/link";
+import { Menu, LogOut, Settings } from "lucide-react";
 import { naira } from "@/lib/format";
 import { signOut } from "@/app/(auth)/actions";
 import { Logo } from "@/components/marketing/logo";
@@ -23,6 +24,7 @@ export function DashboardShell({
   alertCount,
   alertHref,
   navVariant = "merchant",
+  settingsHref,
   sidebarFooter,
   children,
 }: {
@@ -32,6 +34,8 @@ export function DashboardShell({
   alertCount?: number;
   alertHref?: string;
   navVariant?: DashboardNavVariant;
+  /** Where the account settings page lives; shows a settings link when set. */
+  settingsHref?: string;
   sidebarFooter?: ReactNode;
   children: React.ReactNode;
 }) {
@@ -84,9 +88,30 @@ export function DashboardShell({
               </div>
             </div>
           ) : null}
-          <span className="hidden h-8 items-center rounded-full bg-white/5 px-3 text-xs font-medium text-mist sm:flex">
-            {businessName}
-          </span>
+          {settingsHref ? (
+            <Link
+              href={settingsHref}
+              title="Account settings"
+              className="hidden h-8 items-center rounded-full bg-white/5 px-3 text-xs font-medium text-mist transition-colors hover:bg-white/10 hover:text-white sm:flex"
+            >
+              {businessName}
+            </Link>
+          ) : (
+            <span className="hidden h-8 items-center rounded-full bg-white/5 px-3 text-xs font-medium text-mist sm:flex">
+              {businessName}
+            </span>
+          )}
+          {settingsHref ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-mist hover:bg-white/10 hover:text-white"
+              aria-label="Account settings"
+              render={<Link href={settingsHref} />}
+            >
+              <Settings className="size-4" />
+            </Button>
+          ) : null}
           <form action={signOut}>
             <Button
               type="submit"

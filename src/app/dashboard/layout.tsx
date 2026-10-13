@@ -47,6 +47,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/">) {
       walletLow={isWalletLow(partner)}
       alertCount={alerts}
       alertHref="/dashboard/alerts"
+      settingsHref="/dashboard/settings"
       sidebarFooter={
         <>
           {partner.is_admin ? <AdminLink /> : null}

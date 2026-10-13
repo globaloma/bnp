@@ -121,7 +121,12 @@ export async function saveBankAccount(
     };
   }
 
-  const { error } = await supabase
+  // Payout fields aren't writable by partners directly (0017), otherwise a
+  // partner could point paystack_recipient_code anywhere via the REST API.
+  // Written here with the service role, only after Paystack accepted the
+  // account above.
+  const admin = createAdminClient();
+  const { error } = await admin
     .from("partners")
     .update({
       bank_code: bankCode,

@@ -11,11 +11,14 @@ export function ImageUploadField({
   name,
   className,
   initialUrl,
+  removable,
 }: {
-  bucket: "product-images" | "claim-images";
+  bucket: "product-images" | "claim-images" | "partner-logos";
   name: string;
   className?: string;
   initialUrl?: string;
+  /** Show a "Remove" link under the image once one is set. */
+  removable?: boolean;
 }) {
   const [preview, setPreview] = useState<string | null>(initialUrl ?? null);
   const [url, setUrl] = useState(initialUrl ?? "");
@@ -62,7 +65,7 @@ export function ImageUploadField({
   }
 
   return (
-    <div className={cn("flex justify-center", className)}>
+    <div className={cn("flex flex-col items-center gap-1.5", className)}>
       <input type="hidden" name={name} value={url} />
       <button
         type="button"
@@ -81,6 +84,19 @@ export function ImageUploadField({
           </span>
         ) : null}
       </button>
+      {removable && preview && !uploading ? (
+        <button
+          type="button"
+          onClick={() => {
+            setPreview(null);
+            setUrl("");
+            if (inputRef.current) inputRef.current.value = "";
+          }}
+          className="text-xs font-semibold text-destructive hover:underline"
+        >
+          Remove
+        </button>
+      ) : null}
       <input
         ref={inputRef}
         type="file"

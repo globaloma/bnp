@@ -31,6 +31,7 @@ export default async function FulfillmentCenterLayout({
     <DashboardShell
       businessName={fc.business_name}
       navVariant="fc"
+      settingsHref="/fc/settings"
       sidebarFooter={fc.is_admin ? <AdminLink /> : undefined}
     >
       {children}
