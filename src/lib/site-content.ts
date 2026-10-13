@@ -29,7 +29,7 @@ export const hero = {
   subtitle:
     "BNP Fulfillment is your Abuja operations partner. We store your inventory, fulfil your orders and deliver to your customers, so you stay focused on growing your business.",
   primaryCta: { label: "Sign up free", href: "/signup" },
-  secondaryCta: { label: "See how it works", href: "#how" },
+  secondaryCta: { label: "See how it works", href: "/#how" },
   stats: [
     { value: 2400, suffix: "+", label: "Orders fulfilled" },
     { value: 80, suffix: "+", label: "Active partners" },
@@ -394,11 +394,11 @@ export const faq = {
 
 export const nav = {
   links: [
-    { label: "Services", href: "#services" },
-    { label: "How it works", href: "#how" },
-    { label: "Pricing", href: "#pricing" },
-    { label: "Our hub", href: "#hub" },
-    { label: "FAQ", href: "#faq" },
+    { label: "Services", href: "/#services" },
+    { label: "How it works", href: "/#how" },
+    { label: "Pricing", href: "/#pricing" },
+    { label: "Our hub", href: "/#hub" },
+    { label: "FAQ", href: "/#faq" },
   ],
   signIn: { label: "Sign in", href: "/login" },
   cta: { label: "Sign up", href: "/signup" },
@@ -411,19 +411,19 @@ export const footer = {
     {
       title: "Services",
       links: [
-        { label: "Warehousing", href: "#services" },
-        { label: "Pick and pack", href: "#services" },
-        { label: "Last mile delivery", href: "#services" },
-        { label: "Returns and claims", href: "#services" },
+        { label: "Warehousing", href: "/#services" },
+        { label: "Pick and pack", href: "/#services" },
+        { label: "Last mile delivery", href: "/#services" },
+        { label: "Returns and claims", href: "/#services" },
       ],
     },
     {
       title: "Company",
       links: [
-        { label: "How it works", href: "#how" },
-        { label: "Pricing", href: "#pricing" },
-        { label: "Our hub in Jabi", href: "#hub" },
-        { label: "Talk to us", href: "#apply" },
+        { label: "How it works", href: "/#how" },
+        { label: "Pricing", href: "/#pricing" },
+        { label: "Our hub in Jabi", href: "/#hub" },
+        { label: "Talk to us", href: "/#apply" },
       ],
     },
   ],

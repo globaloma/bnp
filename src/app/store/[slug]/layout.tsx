@@ -49,6 +49,14 @@ export default async function StoreLayout({
           <Link href="/" className="font-semibold text-teal-700 hover:underline">
             BNP Fulfillment
           </Link>
+          <span className="mx-2">·</span>
+          <Link href="/terms" className="hover:underline">
+            Terms
+          </Link>
+          <span className="mx-2">·</span>
+          <Link href="/privacy" className="hover:underline">
+            Privacy
+          </Link>
         </footer>
       </div>
     </CartProvider>

@@ -200,6 +200,17 @@ export function CheckoutForm({ slug, zones }: { slug: string; zones: DeliveryZon
       <Button type="submit" size="lg" disabled={pending} className="w-full">
         {pending ? "Redirecting to payment" : "Pay now"}
       </Button>
+      <p className="text-center text-xs text-mist">
+        By paying you agree to the{" "}
+        <a href="/terms" target="_blank" className="text-teal-700 hover:underline">
+          Terms of Service
+        </a>{" "}
+        and{" "}
+        <a href="/privacy" target="_blank" className="text-teal-700 hover:underline">
+          Privacy Policy
+        </a>
+        .
+      </p>
     </form>
   );
 }

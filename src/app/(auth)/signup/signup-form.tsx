@@ -207,6 +207,17 @@ export function SignupForm({ initialRole = "merchant" }: { initialRole?: Role })
             <Button type="submit" size="xl" disabled={pending} className="mt-1 w-full">
               {pending ? "Creating account" : "Create account"}
             </Button>
+            <p className="text-center text-xs text-mist">
+              By creating an account you agree to our{" "}
+              <Link href="/terms" target="_blank" className="text-teal-700 hover:underline">
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy" target="_blank" className="text-teal-700 hover:underline">
+                Privacy Policy
+              </Link>
+              .
+            </p>
           </form>
         </>
       )}

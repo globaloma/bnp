@@ -99,7 +99,13 @@ export function SiteFooter() {
           <p className="text-xs text-mist">
             {year} {company.legalName}. All rights reserved.
           </p>
-          <div className="flex flex-wrap gap-4 text-xs text-mist">
+          <div className="flex flex-wrap items-center gap-4 text-xs text-mist">
+            <Link href="/terms" className="transition-colors hover:text-teal-300">
+              Terms
+            </Link>
+            <Link href="/privacy" className="transition-colors hover:text-teal-300">
+              Privacy
+            </Link>
             {company.locations.map((loc) => (
               <span key={loc} className="flex items-center gap-1.5">
                 <span className="size-1.5 rounded-full bg-teal-300" />

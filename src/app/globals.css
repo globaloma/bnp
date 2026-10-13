@@ -169,3 +169,27 @@
   max-width: 76rem;
   padding-inline: 1.5rem;
 }
+
+/* Paragraphs and lists inside the Terms and Privacy pages. */
+@utility legal-prose {
+  & p + p,
+  & p + ul,
+  & ul + p {
+    margin-top: 0.75rem;
+  }
+  & ul {
+    list-style: disc;
+    padding-left: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  & strong {
+    color: var(--color-navy);
+    font-weight: 600;
+  }
+  & a {
+    color: var(--color-teal-700);
+    text-decoration: underline;
+  }
+}
