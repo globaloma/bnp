@@ -26,13 +26,28 @@ export async function generateMetadata({
     partner.store_description ??
     `Shop ${partner.business_name}${partner.category ? `, ${partner.category.toLowerCase()}` : ""}, delivered by BNP Fulfillment.`;
 
+  // A page that sets its own openGraph loses the root default image, so
+  // fall back to it explicitly when the store has no logo.
+  const images = partner.logo_url
+    ? [{ url: partner.logo_url }]
+    : [{ url: "/opengraph-image", width: 1200, height: 630 }];
+
   return {
     title: partner.business_name,
     description,
+    alternates: { canonical: `/store/${slug}` },
     openGraph: {
       title: partner.business_name,
       description,
-      ...(partner.logo_url ? { images: [{ url: partner.logo_url }] } : {}),
+      url: `/store/${slug}`,
+      images,
+    },
+    twitter: {
+      // A square logo reads better as a small card than stretched wide.
+      card: partner.logo_url ? "summary" : "summary_large_image",
+      title: partner.business_name,
+      description,
+      images,
     },
   };
 }

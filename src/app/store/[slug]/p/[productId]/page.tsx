@@ -53,13 +53,28 @@ export async function generateMetadata({
     product.description?.slice(0, 160) ??
     `${product.name} from ${partner.business_name}, ${naira(product.sale_price)}.`;
 
+  // Falls back to the site default, which a page-level openGraph would
+  // otherwise drop.
+  const images = product.image_url
+    ? [{ url: product.image_url }]
+    : [{ url: "/opengraph-image", width: 1200, height: 630 }];
+  const path = `/store/${partner.slug}/p/${product.id}`;
+
   return {
     title: `${product.name} · ${partner.business_name}`,
     description,
+    alternates: { canonical: path },
     openGraph: {
       title: `${product.name} · ${naira(product.sale_price)}`,
       description,
-      ...(product.image_url ? { images: [{ url: product.image_url }] } : {}),
+      url: path,
+      images,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${product.name} · ${naira(product.sale_price)}`,
+      description,
+      images,
     },
   };
 }
@@ -92,8 +107,36 @@ export default async function ProductPage({
 
   const productUrl = `${SITE_URL}/store/${partner.slug}/p/${product.id}`;
 
+  // schema.org Product data, so search engines can show price and stock.
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    ...(product.description ? { description: product.description } : {}),
+    ...(product.image_url ? { image: [product.image_url] } : {}),
+    ...(product.sku ? { sku: product.sku } : {}),
+    ...(product.category ? { category: product.category } : {}),
+    brand: { "@type": "Brand", name: partner.business_name },
+    offers: {
+      "@type": "Offer",
+      url: productUrl,
+      priceCurrency: "NGN",
+      price: product.sale_price.toFixed(2),
+      availability:
+        product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      seller: { "@type": "Organization", name: partner.business_name },
+    },
+  };
+
   return (
     <div className="container-page py-6 sm:py-8">
+      <script
+        type="application/ld+json"
+        // JSON.stringify output with "<" escaped, so product text can't close the tag.
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(structuredData).replace(/</g, "\\u003c"),
+        }}
+      />
       <Link
         href={`/store/${partner.slug}`}
         className="inline-flex items-center gap-1.5 text-sm font-medium text-graphite hover:text-teal-700"
