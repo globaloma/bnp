@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { reportError } from "@/lib/report-error";
 import Link from "next/link";
 import { StatusPage } from "@/components/status-page";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ export default function Error({
   retry: () => void;
 }) {
   useEffect(() => {
-    console.error(error);
+    reportError(error);
   }, [error]);
 
   return (

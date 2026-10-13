@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { reportError } from "@/lib/report-error";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { StatusPanel } from "@/components/status-page";
@@ -16,7 +17,7 @@ export default function StoreError({
   const { slug } = useParams<{ slug: string }>();
 
   useEffect(() => {
-    console.error(error);
+    reportError(error);
   }, [error]);
 
   return (

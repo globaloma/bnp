@@ -96,7 +96,7 @@ const sections: LegalSection[] = [
           <li>
             <strong>Service providers</strong> that run parts of the platform for us: Supabase
             (database and accounts), Vercel (website hosting), Paystack (payments and bank
-            transfers), Resend (email) and Twilio (WhatsApp messages).
+            transfers), Resend (email), Twilio (WhatsApp messages) and Sentry (error reports, which record what went wrong and on which page, without your personal details).
           </li>
           <li>
             <strong>Authorities</strong>, when the law requires it or to protect people from harm
