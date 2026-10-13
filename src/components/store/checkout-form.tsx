@@ -75,7 +75,7 @@ export function CheckoutForm({ slug, zones }: { slug: string; zones: DeliveryZon
           ) : null}
         </div>
         <div>
-          <label className={labelClass}>Email (optional)</label>
+          <label className={labelClass}>Email (for your order confirmation)</label>
           <input name="customerEmail" type="email" className={fieldClass} placeholder="you@example.com" />
         </div>
       </div>

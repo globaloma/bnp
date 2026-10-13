@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { naira } from "@/lib/format";
 import { getFulfillmentCenterEmails, sendAlertEmail } from "@/lib/notifications";
+import { sendCustomerOrderEmail } from "@/lib/customer-email";
 
 const PAYSTACK_BASE = "https://api.paystack.co";
 
@@ -88,6 +89,10 @@ type OrderPaymentRow = {
   partner_id: string;
   order_ref: string;
   customer_name: string;
+  customer_email: string | null;
+  delivery_address: string | null;
+  rider: string | null;
+  location: string | null;
   product_name: string;
   product_id: string | null;
   quantity: number;
@@ -103,6 +108,21 @@ function orderItemRows(orderRows: OrderPaymentRow[]): string {
         `<tr><td style="padding:6px 12px 6px 0;color:#455568;font-size:13px;">${r.product_name} × ${r.quantity}</td><td style="padding:6px 0;color:#0f2a44;font-size:13px;font-weight:600;text-align:right;">${naira(r.total)}</td></tr>`,
     )
     .join("");
+}
+
+async function sendCustomerConfirmation(orderRows: OrderPaymentRow[]) {
+  const partnerId = orderRows[0]?.partner_id;
+  if (!partnerId || !orderRows[0].customer_email) return;
+
+  const admin = createAdminClient();
+  const { data: merchant } = await admin
+    .from("partners")
+    .select("business_name, email, phone, logo_url")
+    .eq("id", partnerId)
+    .maybeSingle();
+  if (!merchant) return;
+
+  await sendCustomerOrderEmail(orderRows, merchant);
 }
 
 async function sendNewOrderAlert(orderRows: OrderPaymentRow[]) {
@@ -161,7 +181,7 @@ export async function confirmPayment(
   const { data: rows, error } = await admin
     .from("orders")
     .select(
-      "id, partner_id, order_ref, customer_name, product_name, product_id, quantity, unit_price, total, payment_status",
+      "id, partner_id, order_ref, customer_name, customer_email, delivery_address, rider, location, product_name, product_id, quantity, unit_price, total, payment_status",
     )
     .eq("payment_ref", reference);
 
@@ -201,6 +221,22 @@ export async function confirmPayment(
     return { ok: false, error: "Paid amount did not match the order total." };
   }
 
+  // Claim the order before touching stock or sending anything. The webhook
+  // and the customer's return to /confirm usually call this at the same
+  // time, and both can pass the "still pending" check above; only the one
+  // whose conditional update actually flips the rows carries on.
+  const { data: claimed, error: claimError } = await admin
+    .from("orders")
+    .update({ payment_status: "paid" })
+    .eq("payment_ref", reference)
+    .eq("payment_status", "pending")
+    .select("id");
+
+  if (claimError) return { ok: false, error: claimError.message };
+  if (!claimed || claimed.length === 0) {
+    return { ok: true, alreadyProcessed: true };
+  }
+
   for (const row of orderRows) {
     if (!row.product_id) continue;
     await admin.rpc("decrement_stock", {
@@ -213,12 +249,7 @@ export async function confirmPayment(
     // and needs to follow up. No reservation/holds system in v1.
   }
 
-  await admin
-    .from("orders")
-    .update({ payment_status: "paid" })
-    .eq("payment_ref", reference);
-
-  await sendNewOrderAlert(orderRows);
+  await Promise.all([sendNewOrderAlert(orderRows), sendCustomerConfirmation(orderRows)]);
 
   return { ok: true, alreadyProcessed: false };
 }

@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getResend } from "@/lib/resend";
 
 export const ALERT_FROM =
-  process.env.APPLICATION_FROM_EMAIL ?? "BNP Fulfillment <onboarding@resend.dev>";
+  process.env.APPLICATION_FROM_EMAIL || "BNP Fulfillment <onboarding@resend.dev>";
 
 export async function getFulfillmentCenterEmails(): Promise<string[]> {
   const admin = createAdminClient();
@@ -20,6 +20,8 @@ export async function sendAlertEmail(params: {
   to: string[];
   subject: string;
   html: string;
+  from?: string;
+  replyTo?: string;
 }) {
   if (params.to.length === 0) return;
 
@@ -28,10 +30,11 @@ export async function sendAlertEmail(params: {
 
   try {
     const { error } = await resend.emails.send({
-      from: ALERT_FROM,
+      from: params.from ?? ALERT_FROM,
       to: params.to,
       subject: params.subject,
       html: params.html,
+      ...(params.replyTo ? { replyTo: params.replyTo } : {}),
     });
     if (error) console.error("[alert-email] Resend error:", error);
   } catch (err) {
