@@ -27,7 +27,15 @@ export default async function StoreLayout({
             <Link href={`/store/${slug}`} className="text-sm font-semibold text-navy">
               {partner.business_name}
             </Link>
-            <CartSheet slug={slug} />
+            <div className="flex items-center gap-4">
+              <Link
+                href={`/store/${slug}/track`}
+                className="text-xs font-semibold text-graphite hover:text-teal-700"
+              >
+                Track order
+              </Link>
+              <CartSheet slug={slug} />
+            </div>
           </div>
         </header>
         <main className="flex-1">{children}</main>

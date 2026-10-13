@@ -117,7 +117,7 @@ async function sendCustomerConfirmation(orderRows: OrderPaymentRow[]) {
   const admin = createAdminClient();
   const { data: merchant } = await admin
     .from("partners")
-    .select("business_name, email, phone, logo_url")
+    .select("slug, business_name, email, phone, logo_url")
     .eq("id", partnerId)
     .maybeSingle();
   if (!merchant) return;

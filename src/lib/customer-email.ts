@@ -20,11 +20,14 @@ export type CustomerOrderLine = {
 };
 
 export type CustomerEmailMerchant = {
+  slug: string;
   business_name: string;
   email: string | null;
   phone: string | null;
   logo_url: string | null;
 };
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bnpfulfillment.com";
 
 function escapeHtml(value: string): string {
   return value
@@ -77,6 +80,10 @@ export function buildCustomerOrderEmail(
     .filter(Boolean)
     .join(" or ");
 
+  const trackUrl = escapeHtml(
+    `${SITE_URL}/store/${encodeURIComponent(merchant.slug)}/track?ref=${encodeURIComponent(first.order_ref)}`,
+  );
+
   const logo = merchant.logo_url
     ? `<img src="${escapeHtml(merchant.logo_url)}" alt="" width="48" height="48" style="display:block;width:48px;height:48px;border-radius:8px;object-fit:cover;margin:0 0 12px;" />`
     : "";
@@ -102,6 +109,8 @@ export function buildCustomerOrderEmail(
       </table>
 
       <div style="margin:20px 0 0;">${fulfilment}</div>
+
+      <a href="${trackUrl}" style="display:inline-block;margin:24px 0 0;background:#e8a020;color:#0f2a44;font-size:14px;font-weight:700;text-decoration:none;padding:12px 20px;border-radius:8px;">Track your order</a>
 
       <p style="margin:24px 0 0;color:#455568;font-size:13px;">Questions about your order? ${contact ? `${contact.charAt(0).toUpperCase()}${contact.slice(1)}` : `Contact ${shop}`} and mention order <span style="white-space:nowrap;">${escapeHtml(first.order_ref)}</span>.</p>
     </div>

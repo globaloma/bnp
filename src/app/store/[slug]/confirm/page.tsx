@@ -11,6 +11,9 @@ export default async function ConfirmPage({
   const search = await searchParams;
   const reference = typeof search.reference === "string" ? search.reference : undefined;
 
+  // Storefront payment refs are "<partner id prefix>-<order ref>".
+  const orderRef = reference?.split("-").slice(1).join("-") || undefined;
+
   const result = reference
     ? await confirmPayment(reference)
     : { ok: false as const, error: "No payment reference was provided." };
@@ -25,6 +28,12 @@ export default async function ConfirmPage({
             Thanks for your order. The seller has been notified and your order is now
             being prepared for delivery.
           </p>
+          {orderRef ? (
+            <p className="mt-4 rounded-lg bg-white px-4 py-2 text-sm text-graphite">
+              Your order number is{" "}
+              <span className="font-semibold text-navy">{orderRef}</span>
+            </p>
+          ) : null}
         </>
       ) : (
         <>
@@ -33,9 +42,21 @@ export default async function ConfirmPage({
           <p className="mt-2 text-sm text-graphite">{result.error}</p>
         </>
       )}
-      <Button render={<Link href={`/store/${slug}`} />} className="mt-6">
-        Back to store
-      </Button>
+      <div className="mt-6 flex flex-wrap justify-center gap-3">
+        {result.ok ? (
+          <Button
+            render={
+              <Link
+                href={`/store/${slug}/track${orderRef ? `?ref=${encodeURIComponent(orderRef)}` : ""}`}
+              />
+            }
+            variant="outline"
+          >
+            Track your order
+          </Button>
+        ) : null}
+        <Button render={<Link href={`/store/${slug}`} />}>Back to store</Button>
+      </div>
     </div>
   );
 }
