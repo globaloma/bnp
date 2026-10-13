@@ -143,7 +143,12 @@ export async function startCheckout(
   const itemsTotal = lineItems.reduce((sum, i) => sum + i.total, 0);
   const grandTotal = itemsTotal + shippingFee;
 
-  const orderRef = await generateOrderRef(admin, partner.id);
+  let orderRef: string;
+  try {
+    orderRef = await generateOrderRef(admin, partner.id);
+  } catch {
+    return { ok: false, error: "Could not start your order. Please try again." };
+  }
   const reference = `${partner.id.slice(0, 8)}-${orderRef}`;
   const email = d.customerEmail || `guest+${orderRef.toLowerCase()}@bnpfulfillment.com`;
 

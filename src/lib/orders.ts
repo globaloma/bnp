@@ -107,14 +107,45 @@ export function groupOrdersByRef(orders: Order[]): Map<string, Order[]> {
   return groups;
 }
 
+// No 0/O, 1/I/L: order numbers get read out over the phone and typed into
+// the tracking page, so every character has to be unambiguous.
+const REF_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+const REF_LENGTH = 6; // 31^6 ≈ 890 million per merchant
+
+function randomRefCode(): string {
+  let code = "";
+  const bytes = new Uint8Array(16);
+  while (code.length < REF_LENGTH) {
+    crypto.getRandomValues(bytes);
+    for (const b of bytes) {
+      // Skip the top of the byte range so every character is equally
+      // likely (256 isn't a multiple of 31).
+      if (b >= REF_ALPHABET.length * 8) continue;
+      code += REF_ALPHABET[b % REF_ALPHABET.length];
+      if (code.length === REF_LENGTH) break;
+    }
+  }
+  return code;
+}
+
+/**
+ * A random order number like ORD-7K3M9P that this merchant hasn't used.
+ * Random rather than sequential so refs never repeat after an order is
+ * deleted, can't collide between two simultaneous checkouts, and don't
+ * reveal a merchant's order volume or let anyone guess other orders.
+ */
 export async function generateOrderRef(
   supabase: SupabaseClient,
   partnerId: string,
 ): Promise<string> {
-  const { count } = await supabase
-    .from("orders")
-    .select("id", { count: "exact", head: true })
-    .eq("partner_id", partnerId);
-
-  return `ORD-${String((count ?? 0) + 41).padStart(4, "0")}`;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const ref = `ORD-${randomRefCode()}`;
+    const { count, error } = await supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("partner_id", partnerId)
+      .eq("order_ref", ref);
+    if (!error && count === 0) return ref;
+  }
+  throw new Error("Could not generate a unique order number. Please try again.");
 }

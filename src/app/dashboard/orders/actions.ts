@@ -151,7 +151,12 @@ export async function createOrder(
 
   const deliveryFee = d.rider === "Own Rider" ? d.deliveryFee : 0;
   const vatRates = lines.map(({ product }) => (partner?.charges_vat ? product.vat : 0));
-  const orderRef = await generateOrderRef(supabase, user.id);
+  let orderRef: string;
+  try {
+    orderRef = await generateOrderRef(supabase, user.id);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Could not create the order." };
+  }
   const totals = computeMultiLineTotals({
     lines: lines.map(({ product, quantity }, i) => ({
       unitPrice: product.sale_price,
