@@ -5,12 +5,13 @@ import { createClient } from "@/lib/supabase/server";
 import {
   changePasswordSchema,
   profileSchema,
+  storefrontSchema,
   type SettingsResult,
 } from "@/lib/schemas/settings";
 
 // Shared by the merchant (/dashboard/settings) and fulfillment center
 // (/fc/settings) pages. Both edit the signed-in partner's own row, and the
-// columns written here are exactly the ones 0017 grants UPDATE on.
+// columns written here are exactly the ones 0017/0018 grant UPDATE on.
 
 export async function updateProfile(
   _prev: SettingsResult | null,
@@ -62,7 +63,52 @@ export async function updateProfile(
 
   revalidatePath("/dashboard", "layout");
   revalidatePath("/fc", "layout");
+  // Name and logo also show on the public storefront.
+  revalidatePath("/store/[slug]", "layout");
   return { ok: true, message: "Your details have been saved." };
+}
+
+export async function updateStorefront(
+  _prev: SettingsResult | null,
+  formData: FormData,
+): Promise<SettingsResult> {
+  const parsed = storefrontSchema.safeParse({
+    description: formData.get("description") ?? "",
+    whatsapp: formData.get("whatsapp") ?? "",
+    instagram: formData.get("instagram") ?? "",
+  });
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: "Check the highlighted fields.",
+      fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
+    };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Your session expired, sign in again." };
+
+  const { description, whatsapp, instagram } = parsed.data;
+  const { data: partner, error } = await supabase
+    .from("partners")
+    .update({
+      store_description: description || null,
+      store_whatsapp: whatsapp || null,
+      store_instagram: instagram || null,
+    })
+    .eq("id", user.id)
+    .select("slug")
+    .single();
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/dashboard/settings");
+  revalidatePath(`/store/${partner.slug}`, "layout");
+  return { ok: true, message: "Your storefront details have been saved." };
 }
 
 export async function changePassword(

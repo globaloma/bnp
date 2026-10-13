@@ -33,6 +33,9 @@ export type Partner = {
   bank_account_name: string | null;
   paystack_recipient_code: string | null;
   logo_url: string | null;
+  store_description: string | null;
+  store_whatsapp: string | null;
+  store_instagram: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -95,6 +98,9 @@ export type StorefrontPartner = {
   category: string | null;
   charges_vat: boolean;
   logo_url: string | null;
+  store_description: string | null;
+  store_whatsapp: string | null;
+  store_instagram: string | null;
 };
 
 export type StorefrontProduct = {

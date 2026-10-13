@@ -2,7 +2,7 @@
 
 import { startTransition, useActionState, useEffect, useRef, type FormEvent } from "react";
 import { toast } from "sonner";
-import { changePassword, updateProfile } from "@/app/actions/settings";
+import { changePassword, updateProfile, updateStorefront } from "@/app/actions/settings";
 import type { SettingsResult } from "@/lib/schemas/settings";
 import type { Partner } from "@/types/db";
 import { apply } from "@/lib/site-content";
@@ -170,6 +170,95 @@ export function ProfileForm({
         <div>
           <Button type="submit" disabled={pending}>
             {pending ? "Saving" : "Save changes"}
+          </Button>
+        </div>
+      </form>
+    </Panel>
+  );
+}
+
+export function StorefrontForm({
+  partner,
+  storefrontUrl,
+}: {
+  partner: Partner;
+  storefrontUrl: string;
+}) {
+  const [state, formAction, pending] = useActionState<SettingsResult | null, FormData>(
+    updateStorefront,
+    null,
+  );
+  useResultToast(state);
+  const errors = state && !state.ok ? state.fieldErrors : undefined;
+
+  return (
+    <Panel accent="success">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-navy">Storefront</h2>
+          <p className="mt-1 text-sm text-graphite">
+            What customers see about your business on your store. Leave a field
+            empty to hide it.
+          </p>
+        </div>
+        <a
+          href={storefrontUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="text-xs font-semibold text-teal hover:text-teal-700"
+        >
+          View your store ↗
+        </a>
+      </div>
+
+      <form onSubmit={submitWithoutReset(formAction)} className="mt-5 flex flex-col gap-4">
+        <div>
+          <label className={labelClass} htmlFor="description">
+            About your store
+          </label>
+          <textarea
+            id="description"
+            name="description"
+            rows={3}
+            maxLength={500}
+            defaultValue={partner.store_description ?? ""}
+            placeholder="e.g. Handmade skincare from Lagos. Natural ingredients, delivered nationwide."
+            className={cn(fieldClass, "h-auto py-2")}
+          />
+          <FieldError messages={errors?.description} />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className={labelClass} htmlFor="whatsapp">
+              WhatsApp for customers
+            </label>
+            <input
+              id="whatsapp"
+              name="whatsapp"
+              type="tel"
+              defaultValue={partner.store_whatsapp ?? ""}
+              placeholder="0801 234 5678"
+              className={fieldClass}
+            />
+            <FieldError messages={errors?.whatsapp} />
+          </div>
+          <div>
+            <label className={labelClass} htmlFor="instagram">
+              Instagram
+            </label>
+            <input
+              id="instagram"
+              name="instagram"
+              defaultValue={partner.store_instagram ? `@${partner.store_instagram}` : ""}
+              placeholder="@yourstore"
+              className={fieldClass}
+            />
+            <FieldError messages={errors?.instagram} />
+          </div>
+        </div>
+        <div>
+          <Button type="submit" disabled={pending}>
+            {pending ? "Saving" : "Save storefront"}
           </Button>
         </div>
       </form>

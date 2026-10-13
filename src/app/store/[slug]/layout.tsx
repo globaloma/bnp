@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/public";
 import { CartProvider } from "@/components/store/cart-context";
 import { CartSheet } from "@/components/store/cart-sheet";
+import { StoreAvatar } from "@/components/store/store-avatar";
 import type { StorefrontPartner } from "@/types/db";
 
 export default async function StoreLayout({
@@ -13,7 +14,7 @@ export default async function StoreLayout({
   const supabase = createClient();
   const { data: partner } = await supabase
     .from("storefront_partners")
-    .select("id, slug, business_name, category")
+    .select("id, slug, business_name, category, logo_url")
     .eq("slug", slug)
     .maybeSingle<StorefrontPartner>();
 
@@ -24,8 +25,12 @@ export default async function StoreLayout({
       <div className="flex min-h-dvh flex-col bg-cream">
         <header className="border-b border-stone bg-white">
           <div className="container-page flex h-16 items-center justify-between">
-            <Link href={`/store/${slug}`} className="text-sm font-semibold text-navy">
-              {partner.business_name}
+            <Link
+              href={`/store/${slug}`}
+              className="flex min-w-0 items-center gap-2.5 text-sm font-semibold text-navy"
+            >
+              <StoreAvatar name={partner.business_name} logoUrl={partner.logo_url} size="sm" />
+              <span className="truncate">{partner.business_name}</span>
             </Link>
             <div className="flex items-center gap-4">
               <Link
