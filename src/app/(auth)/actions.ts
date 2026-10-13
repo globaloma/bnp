@@ -3,8 +3,16 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { signInSchema, signUpSchema, type AuthResult } from "@/lib/schemas/auth";
+import {
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  signInSchema,
+  signUpSchema,
+  type AuthResult,
+} from "@/lib/schemas/auth";
 import { roleHome } from "@/lib/roles";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bnpfulfillment.com";
 
 export async function signIn(
   _prev: AuthResult | null,
@@ -150,6 +158,98 @@ export async function resendConfirmation(
   }
 
   return { ok: true, message: "Confirmation email sent. Check your inbox." };
+}
+
+export async function requestPasswordReset(
+  _prev: AuthResult | null,
+  formData: FormData,
+): Promise<AuthResult> {
+  const parsed = forgotPasswordSchema.safeParse({
+    email: formData.get("email"),
+  });
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: "Check the highlighted fields.",
+      fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
+    };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
+    redirectTo: `${SITE_URL}/auth/callback?next=/reset-password`,
+  });
+
+  if (error && (error.code === "over_email_send_rate_limit" || error.status === 429)) {
+    return {
+      ok: false,
+      error: "Too many emails sent. Please wait a few minutes and try again.",
+    };
+  }
+
+  // Same message whether or not the account exists, so this form can't be
+  // used to find out which emails are registered.
+  return {
+    ok: true,
+    message:
+      "If an account exists for that email, we've sent a link to reset your password.",
+    pendingEmail: parsed.data.email,
+  };
+}
+
+export async function updatePassword(
+  _prev: AuthResult | null,
+  formData: FormData,
+): Promise<AuthResult> {
+  const parsed = resetPasswordSchema.safeParse({
+    password: formData.get("password"),
+    confirmPassword: formData.get("confirmPassword"),
+  });
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: "Check the highlighted fields.",
+      fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
+    };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      ok: false,
+      error: "Your reset link has expired. Request a new one and try again.",
+    };
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password: parsed.data.password,
+  });
+
+  if (error) {
+    return {
+      ok: false,
+      error:
+        error.code === "same_password"
+          ? "Your new password must be different from your old one."
+          : error.message,
+    };
+  }
+
+  const { data: partnerRow } = await supabase
+    .from("partners")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+  const home = roleHome(partnerRow?.role);
+
+  revalidatePath(home, "layout");
+  redirect(home);
 }
 
 export async function signOut() {

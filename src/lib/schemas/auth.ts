@@ -23,6 +23,23 @@ export const signUpSchema = z.object({
     .max(72, "Use fewer than 72 characters"),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().email("Enter a valid email address"),
+});
+
+export const resetPasswordSchema = z
+  .object({
+    password: z
+      .string()
+      .min(8, "Use at least 8 characters")
+      .max(72, "Use fewer than 72 characters"),
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
+
 export type AuthResult =
   | { ok: true; message?: string; pendingEmail?: string }
   | {
