@@ -410,6 +410,21 @@ function ProductForm({ product, onDone }: { product?: Product; onDone: () => voi
         </div>
       </div>
 
+      <div>
+        <label className={labelClass}>Description (shown on your store)</label>
+        <textarea
+          name="description"
+          rows={3}
+          maxLength={2000}
+          defaultValue={product?.description ?? ""}
+          placeholder="What it is, size or weight, what it's made of, how to use it..."
+          className={cn(fieldClass, "h-auto py-2")}
+        />
+        {errors?.description ? (
+          <p className="mt-1 text-xs text-destructive">{errors.description[0]}</p>
+        ) : null}
+      </div>
+
       <label className="flex items-center gap-2 text-xs font-medium text-graphite">
         <input
           type="checkbox"
@@ -444,9 +459,9 @@ function ProductForm({ product, onDone }: { product?: Product; onDone: () => voi
 }
 
 const CSV_TEMPLATE_HEADER =
-  "sku,name,category,cost_price,sale_price,vat,stock,location,shipping_fee,pickup_enabled,image_url";
+  "sku,name,category,cost_price,sale_price,vat,stock,location,shipping_fee,pickup_enabled,image_url,description";
 const CSV_TEMPLATE_EXAMPLE =
-  "ATB-001,Ankara Tote,Bags,4000,7500,7.5,20,Abuja,1200,false,";
+  "ATB-001,Ankara Tote,Bags,4000,7500,7.5,20,Abuja,1200,false,,Hand-sewn Ankara print tote with inner pocket";
 
 function downloadCsvTemplate() {
   const blob = new Blob([`${CSV_TEMPLATE_HEADER}\n${CSV_TEMPLATE_EXAMPLE}\n`], {
@@ -503,6 +518,9 @@ function parseCsvRows(rows: Record<string, string>[]): {
       shipping_fee: row.shipping_fee ? Number(row.shipping_fee) : undefined,
       pickup_enabled: ["true", "1", "yes"].includes(row.pickup_enabled?.trim().toLowerCase() ?? ""),
       image_url: row.image_url?.trim() || undefined,
+      // Kept as "" (not undefined) when the column exists but is blank, so the
+      // import knows the file has a description column.
+      description: row.description !== undefined ? row.description.trim() : undefined,
     });
   });
 

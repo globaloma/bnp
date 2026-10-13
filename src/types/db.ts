@@ -54,6 +54,7 @@ export type Product = {
   shipping_fee: number;
   pickup_enabled: boolean;
   image_url: string | null;
+  description: string | null;
   published: boolean;
   last_moved_at: string;
   created_at: string;
@@ -116,6 +117,7 @@ export type StorefrontProduct = {
   shipping_fee: number;
   pickup_enabled: boolean;
   image_url: string | null;
+  description: string | null;
 };
 
 export type DeliveryZone = {

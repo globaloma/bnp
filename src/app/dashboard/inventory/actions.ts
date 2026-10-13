@@ -20,6 +20,7 @@ export type ProductCsvRow = {
   shipping_fee?: number;
   pickup_enabled?: boolean;
   image_url?: string;
+  description?: string;
   published?: boolean;
 };
 
@@ -45,6 +46,7 @@ export async function addProduct(
     shippingFee: formData.get("shippingFee") || 0,
     pickupEnabled: formData.get("pickupEnabled") === "on",
     imageUrl: formData.get("imageUrl") || undefined,
+    description: formData.get("description") ?? undefined,
     published: formData.get("published") === "on",
   });
 
@@ -70,6 +72,7 @@ export async function addProduct(
     shipping_fee: d.shippingFee,
     pickup_enabled: d.pickupEnabled,
     image_url: d.imageUrl || null,
+    description: d.description || null,
     published: d.published,
   });
 
@@ -105,6 +108,7 @@ export async function editProduct(
     shippingFee: formData.get("shippingFee") || 0,
     pickupEnabled: formData.get("pickupEnabled") === "on",
     imageUrl: formData.get("imageUrl") || undefined,
+    description: formData.get("description") ?? undefined,
     published: formData.get("published") === "on",
   });
 
@@ -138,6 +142,7 @@ export async function editProduct(
       shipping_fee: d.shippingFee,
       pickup_enabled: d.pickupEnabled,
       image_url: d.imageUrl || null,
+      description: d.description || null,
     })
     .eq("id", productId);
 
@@ -206,6 +211,11 @@ export async function importProducts(
     return { ok: false, error: "Import is limited to 500 rows at a time." };
   }
 
+  // Only touch descriptions when the file has a description column, so
+  // re-importing a stock sheet without one doesn't wipe descriptions
+  // merchants typed in by hand.
+  const hasDescription = rows.some((r) => r.description !== undefined);
+
   const payload = rows.map((r) => ({
     partner_id: user.id,
     sku: r.sku,
@@ -219,6 +229,7 @@ export async function importProducts(
     shipping_fee: r.shipping_fee ?? 0,
     pickup_enabled: r.pickup_enabled ?? false,
     image_url: r.image_url || null,
+    ...(hasDescription ? { description: r.description?.trim().slice(0, 2000) || null } : {}),
     published: r.published ?? true,
   }));
 

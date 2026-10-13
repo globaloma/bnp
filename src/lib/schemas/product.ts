@@ -12,6 +12,7 @@ export const productSchema = z.object({
   shippingFee: z.coerce.number().min(0).default(0),
   pickupEnabled: z.coerce.boolean().default(false),
   imageUrl: z.string().trim().max(600).optional(),
+  description: z.string().trim().max(2000, "Keep the description under 2,000 characters").optional(),
   published: z.coerce.boolean().default(true),
 });
 
