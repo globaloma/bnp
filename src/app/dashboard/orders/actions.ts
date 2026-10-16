@@ -9,6 +9,7 @@ import { ORDER_STATUSES } from "@/types/db";
 import { initializeTransaction } from "@/lib/paystack";
 import { after } from "next/server";
 import { requestDeliveryConfirmation } from "@/lib/delivery-feedback";
+import { alertFulfillmentCenters } from "@/lib/notifications";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bnpfulfillment.com";
 
@@ -123,7 +124,7 @@ export async function createOrder(
 
   const { data: partner } = await supabase
     .from("partners")
-    .select("charges_vat")
+    .select("charges_vat, business_name")
     .eq("id", user.id)
     .single();
 
@@ -212,6 +213,22 @@ export async function createOrder(
       .update({ stock: product.stock - quantity, last_moved_at: movedAt })
       .eq("id", product.id);
   }
+
+  // Fulfillment centers hear about dashboard orders too, not just storefront
+  // sales, so they can start packing. Sent after the response.
+  after(() =>
+    alertFulfillmentCenters({
+      merchantName: partner?.business_name ?? "A merchant",
+      orderRef,
+      customerName: d.customerName,
+      lines: lines.map(({ product, quantity }, i) => ({
+        product_name: product.name,
+        quantity,
+        total: totals.perLine[i].total,
+      })),
+      source: "dashboard",
+    }),
+  );
 
   revalidatePath("/dashboard/orders");
   revalidatePath("/dashboard/inventory");

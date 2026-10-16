@@ -2,7 +2,8 @@ import "server-only";
 import crypto from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { naira } from "@/lib/format";
-import { getFulfillmentCenterEmails, sendAlertEmail } from "@/lib/notifications";
+import { alertFulfillmentCenters, orderItemRowsHtml, sendAlertEmail } from "@/lib/notifications";
+import { escapeHtml } from "@/lib/spam-guard";
 import { sendCustomerOrderEmail } from "@/lib/customer-email";
 
 const PAYSTACK_BASE = "https://api.paystack.co";
@@ -101,15 +102,6 @@ type OrderPaymentRow = {
   payment_status: "pending" | "paid" | "failed";
 };
 
-function orderItemRows(orderRows: OrderPaymentRow[]): string {
-  return orderRows
-    .map(
-      (r) =>
-        `<tr><td style="padding:6px 12px 6px 0;color:#455568;font-size:13px;">${r.product_name} × ${r.quantity}</td><td style="padding:6px 0;color:#0f2a44;font-size:13px;font-weight:600;text-align:right;">${naira(r.total)}</td></tr>`,
-    )
-    .join("");
-}
-
 async function sendCustomerConfirmation(orderRows: OrderPaymentRow[]) {
   const partnerId = orderRows[0]?.partner_id;
   if (!partnerId || !orderRows[0].customer_email) return;
@@ -139,7 +131,7 @@ async function sendNewOrderAlert(orderRows: OrderPaymentRow[]) {
   const orderRef = orderRows[0].order_ref;
   const customerName = orderRows[0].customer_name;
   const grandTotal = orderRows.reduce((sum, r) => sum + r.total, 0);
-  const itemRows = orderItemRows(orderRows);
+  const itemRows = orderItemRowsHtml(orderRows);
 
   if (partner?.email) {
     await sendAlertEmail({
@@ -148,7 +140,7 @@ async function sendNewOrderAlert(orderRows: OrderPaymentRow[]) {
       html: `
         <div style="font-family:system-ui,Segoe UI,sans-serif;max-width:560px;">
           <h2 style="color:#0f2a44;font-size:18px;margin:0 0 4px;">You've got a new order</h2>
-          <p style="color:#455568;font-size:13px;margin:0 0 16px;">${customerName} just paid for order ${orderRef} on your storefront.</p>
+          <p style="color:#455568;font-size:13px;margin:0 0 16px;">${escapeHtml(customerName)} just paid for order ${escapeHtml(orderRef)} on your storefront.</p>
           <table style="border-collapse:collapse;width:100%;">${itemRows}</table>
           <p style="color:#0f2a44;font-size:14px;font-weight:700;margin:12px 0 0;">Total: ${naira(grandTotal)}</p>
         </div>
@@ -156,21 +148,13 @@ async function sendNewOrderAlert(orderRows: OrderPaymentRow[]) {
     });
   }
 
-  const fcEmails = await getFulfillmentCenterEmails();
-  if (fcEmails.length > 0) {
-    await sendAlertEmail({
-      to: fcEmails,
-      subject: `New order to fulfill: ${orderRef} - ${naira(grandTotal)}`,
-      html: `
-        <div style="font-family:system-ui,Segoe UI,sans-serif;max-width:560px;">
-          <h2 style="color:#0f2a44;font-size:18px;margin:0 0 4px;">New order ready for fulfillment</h2>
-          <p style="color:#455568;font-size:13px;margin:0 0 16px;">${partner?.business_name ?? "A merchant"} has a new paid order (${orderRef}) for ${customerName}.</p>
-          <table style="border-collapse:collapse;width:100%;">${itemRows}</table>
-          <p style="color:#0f2a44;font-size:14px;font-weight:700;margin:12px 0 0;">Total: ${naira(grandTotal)}</p>
-        </div>
-      `,
-    });
-  }
+  await alertFulfillmentCenters({
+    merchantName: partner?.business_name ?? "A merchant",
+    orderRef,
+    customerName,
+    lines: orderRows,
+    source: "storefront",
+  });
 }
 
 export async function confirmPayment(

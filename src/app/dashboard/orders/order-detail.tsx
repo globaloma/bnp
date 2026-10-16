@@ -10,7 +10,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { OrderStatusBadge } from "@/components/dashboard/ui";
-import { buildReceiptPdf, shareReceipt } from "@/lib/receipt-pdf";
+import { buildReceiptPdf, shareReceiptOnWhatsApp } from "@/lib/receipt-pdf";
+import { EmailReceiptForm } from "@/components/dashboard/email-receipt-form";
 import { computeOrderTotals } from "@/lib/orders";
 import { editOrder, deleteOrderLine, deleteOrderGroup, getOrderPaymentLink } from "./actions";
 import type { ActionResult } from "@/lib/schemas/order";
@@ -36,7 +37,8 @@ export function OrderDetail({
   const [confirmDeleteGroup, setConfirmDeleteGroup] = useState(false);
   const [pending, startTransition] = useTransition();
   const [downloading, setDownloading] = useState(false);
-  const [sharing, setSharing] = useState<"whatsapp" | "email" | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const [emailing, setEmailing] = useState(false);
   const [payingOnline, setPayingOnline] = useState(false);
 
   const first = lines[0];
@@ -101,14 +103,17 @@ export function OrderDetail({
     }
   }
 
-  async function handleShare(channel: "whatsapp" | "email") {
-    setSharing(channel);
+  async function handleWhatsApp() {
+    setSharing(true);
     try {
-      await shareReceipt({ channel, orderRef, lines, makePdf: makeReceiptPdf });
+      const outcome = await shareReceiptOnWhatsApp({ orderRef, lines, makePdf: makeReceiptPdf });
+      if (outcome === "downloaded") {
+        toast.success("Receipt downloaded. Drag the PDF into the WhatsApp chat that just opened.");
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not share the receipt");
     } finally {
-      setSharing(null);
+      setSharing(false);
     }
   }
 
@@ -217,21 +222,21 @@ export function OrderDetail({
           type="button"
           variant="outline"
           size="sm"
-          disabled={sharing !== null}
-          onClick={() => handleShare("whatsapp")}
+          disabled={sharing}
+          onClick={handleWhatsApp}
         >
           <MessageCircle className="size-3.5" />
-          {sharing === "whatsapp" ? "Preparing..." : "WhatsApp"}
+          {sharing ? "Preparing..." : "WhatsApp"}
         </Button>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          disabled={sharing !== null}
-          onClick={() => handleShare("email")}
+          disabled={emailing}
+          onClick={() => setEmailing(true)}
         >
           <Mail className="size-3.5" />
-          {sharing === "email" ? "Preparing..." : "Email"}
+          Email
         </Button>
         {first.channel === "storefront" && first.payment_status === "pending" ? (
           <Button type="button" variant="outline" size="sm" disabled={payingOnline} onClick={handlePayOnline}>
@@ -251,6 +256,19 @@ export function OrderDetail({
           Delete order
         </Button>
       </div>
+
+      {emailing ? (
+        <div className="rounded-lg border border-stone bg-card p-3">
+          <p className="mb-2 text-xs font-semibold text-navy">Email the receipt PDF to</p>
+          <EmailReceiptForm
+            partnerId={first.partner_id}
+            orderRef={orderRef}
+            defaultEmail={first.customer_email}
+            makePdf={makeReceiptPdf}
+            onDone={() => setEmailing(false)}
+          />
+        </div>
+      ) : null}
 
       <Dialog open={confirmDeleteLine !== null} onOpenChange={(v) => !v && setConfirmDeleteLine(null)}>
         <DialogContent className="max-w-sm">

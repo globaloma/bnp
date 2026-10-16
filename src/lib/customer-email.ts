@@ -1,5 +1,5 @@
 import "server-only";
-import { ALERT_FROM, sendAlertEmail } from "@/lib/notifications";
+import { fromAs, sendAlertEmail } from "@/lib/notifications";
 import { naira } from "@/lib/format";
 
 // The order confirmation a storefront customer gets once Paystack confirms
@@ -36,13 +36,6 @@ function escapeHtml(value: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
-}
-
-/** "Ada's Shop via BNP Fulfillment <orders@...>" from ALERT_FROM's address. */
-function fromAs(businessName: string): string {
-  const address = ALERT_FROM.match(/<([^>]+)>/)?.[1] ?? ALERT_FROM;
-  const name = businessName.replace(/[<>",]/g, "").trim() || "Your order";
-  return `${name} via BNP Fulfillment <${address}>`;
 }
 
 export function buildCustomerOrderEmail(

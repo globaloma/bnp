@@ -10,7 +10,8 @@ import { cn } from "@/lib/utils";
 import { EmptyState, OrderStatusBadge, Panel } from "@/components/dashboard/ui";
 import { updateOrderStatusAsFc } from "./actions";
 import type { OrderWithMerchant } from "@/lib/data/fulfillment-center";
-import { buildReceiptPdf, shareReceipt } from "@/lib/receipt-pdf";
+import { buildReceiptPdf, shareReceiptOnWhatsApp } from "@/lib/receipt-pdf";
+import { EmailReceiptForm } from "@/components/dashboard/email-receipt-form";
 
 export function FcOrdersClient({ orders }: { orders: OrderWithMerchant[] }) {
   const [statusFilter, setStatusFilter] = useState<"All" | OrderStatus>("All");
@@ -130,7 +131,8 @@ function OrderRow({
   orderLines: OrderWithMerchant[];
 }) {
   const [isPending, startTransition] = useTransition();
-  const [receiptBusy, setReceiptBusy] = useState<"pdf" | "whatsapp" | "email" | null>(null);
+  const [receiptBusy, setReceiptBusy] = useState<"pdf" | "whatsapp" | null>(null);
+  const [emailing, setEmailing] = useState(false);
 
   const makePdf = () =>
     buildReceiptPdf({
@@ -150,10 +152,13 @@ function OrderRow({
     }
   }
 
-  async function sendReceipt(channel: "whatsapp" | "email") {
-    setReceiptBusy(channel);
+  async function sendOnWhatsApp() {
+    setReceiptBusy("whatsapp");
     try {
-      await shareReceipt({ channel, orderRef: order.order_ref, lines: orderLines, makePdf });
+      const outcome = await shareReceiptOnWhatsApp({ orderRef: order.order_ref, lines: orderLines, makePdf });
+      if (outcome === "downloaded") {
+        toast.success("Receipt downloaded. Drag the PDF into the WhatsApp chat that just opened.");
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not share the receipt");
     } finally {
@@ -213,14 +218,25 @@ function OrderRow({
           <Download className="size-3.5" />
           {receiptBusy === "pdf" ? "Creating" : "Download PDF"}
         </button>
-        <button type="button" onClick={() => sendReceipt("whatsapp")} disabled={receiptBusy !== null} className={receiptButton}>
+        <button type="button" onClick={sendOnWhatsApp} disabled={receiptBusy !== null} className={receiptButton}>
           <MessageCircle className="size-3.5" />
           {receiptBusy === "whatsapp" ? "Preparing" : "WhatsApp"}
         </button>
-        <button type="button" onClick={() => sendReceipt("email")} disabled={receiptBusy !== null} className={receiptButton}>
+        <button type="button" onClick={() => setEmailing(true)} disabled={emailing} className={receiptButton}>
           <Mail className="size-3.5" />
-          {receiptBusy === "email" ? "Preparing" : "Email"}
+          Email
         </button>
+        {emailing ? (
+          <div className="mt-1 w-full">
+            <EmailReceiptForm
+              partnerId={order.partner_id}
+              orderRef={order.order_ref}
+              defaultEmail={orderLines.find((l) => l.customer_email)?.customer_email ?? null}
+              makePdf={makePdf}
+              onDone={() => setEmailing(false)}
+            />
+          </div>
+        ) : null}
       </div>
     </Panel>
   );

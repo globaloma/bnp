@@ -36,7 +36,7 @@ export const metadata: Metadata = { title: "Fulfillment center overview" };
 
 const NEW_ORDER_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-function recentPaidStorefrontOrders(orders: OrderWithMerchant[]) {
+function recentPaidOrders(orders: OrderWithMerchant[]) {
   const now = Date.now();
   return [...groupOrdersByRef(orders).entries()]
     .map(([orderRef, rows]) => ({
@@ -45,9 +45,10 @@ function recentPaidStorefrontOrders(orders: OrderWithMerchant[]) {
       itemCount: rows.length,
       total: rows.reduce((sum, r) => sum + r.total, 0),
     }))
+    // Paid storefront orders and orders merchants create in their dashboard
+    // (which are recorded as paid). Unpaid storefront checkouts stay out.
     .filter(
       ({ first }) =>
-        first.channel === "storefront" &&
         first.payment_status === "paid" &&
         now - new Date(first.placed_at).getTime() < NEW_ORDER_WINDOW_MS,
     )
@@ -65,7 +66,7 @@ export default async function FcOverviewPage() {
   const delivered = deliveredToday(orders);
   const flagged = pendingReview(orders);
   const lowStock = lowStockMerchants(products);
-  const newOrders = recentPaidStorefrontOrders(orders);
+  const newOrders = recentPaidOrders(orders);
 
   return (
     <div>

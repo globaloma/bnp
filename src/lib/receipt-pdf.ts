@@ -259,47 +259,46 @@ export function buildReceiptPdf({
 }
 
 /**
- * Sends the receipt as a PDF, never as pasted text. On phones the PDF file
- * itself goes through the share sheet (pick WhatsApp or Gmail there). On
- * computers, where WhatsApp and mail links can't carry attachments, the PDF
- * is uploaded to the sender's own folder in the private receipts bucket and
- * the message carries a signed link to it, with the customer's number or
- * email already filled in.
+ * Sends the receipt PDF on WhatsApp.
+ *
+ * On phones the PDF file itself goes through the share sheet, so it arrives
+ * as a document in the chat. On computers WhatsApp has no way for a website
+ * to attach a file, so the PDF is downloaded and the customer's chat opens
+ * with a short message, ready for the downloaded file to be dragged in. The
+ * message also carries a private link to the PDF (uploaded to the sender's
+ * own folder in the receipts bucket) in case the file isn't added.
  *
  * Must be called straight from a click: the WhatsApp tab is opened before
  * any await so the browser doesn't block it as a popup.
  */
-export async function shareReceipt({
-  channel,
+export async function shareReceiptOnWhatsApp({
   orderRef,
   lines,
   makePdf,
 }: {
-  channel: "whatsapp" | "email";
   orderRef: string;
   lines: Order[];
   makePdf: () => Promise<jsPDF> | jsPDF;
-}): Promise<void> {
+}): Promise<"shared" | "downloaded" | "cancelled"> {
   const first = lines[0];
   const isPhone = window.matchMedia("(pointer: coarse)").matches;
-  const popup = channel === "whatsapp" && !isPhone ? window.open("", "_blank") : null;
+  const popup = isPhone ? null : window.open("", "_blank");
   try {
     const doc = await makePdf();
     const blob = doc.output("blob");
     const file = new File([blob], `${orderRef}.pdf`, { type: "application/pdf" });
-    const subject = `Your receipt ${orderRef}`;
 
     if (isPhone && navigator.canShare?.({ files: [file] })) {
       try {
         await navigator.share({
           files: [file],
-          title: subject,
+          title: `Your receipt ${orderRef}`,
           text: buildReceiptShareMessage(orderRef, lines),
         });
-        return;
+        return "shared";
       } catch (err) {
         // Closing the share sheet without picking an app isn't an error.
-        if (err instanceof DOMException && err.name === "AbortError") return;
+        if (err instanceof DOMException && err.name === "AbortError") return "cancelled";
         // NotAllowedError means building the PDF took long enough that the
         // browser no longer counts this as a tap; fall back to a link.
         if (!(err instanceof DOMException && err.name === "NotAllowedError")) throw err;
@@ -324,17 +323,14 @@ export async function shareReceipt({
       .createSignedUrl(path, RECEIPT_LINK_SECONDS);
     if (signError || !signed) throw signError ?? new Error("Could not create the receipt link");
 
+    if (!isPhone) doc.save(`${orderRef}.pdf`);
+
     const message = buildReceiptShareMessage(orderRef, lines, signed.signedUrl);
-    if (channel === "whatsapp") {
-      const phone = normalizeNigerianPhone(first.customer_phone);
-      const url = `https://wa.me/${phone ?? ""}?text=${encodeURIComponent(message)}`;
-      if (popup) popup.location.replace(url);
-      else window.open(url, "_blank");
-    } else {
-      window.location.assign(
-        `mailto:${first.customer_email ?? ""}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`,
-      );
-    }
+    const phone = normalizeNigerianPhone(first.customer_phone);
+    const url = `https://wa.me/${phone ?? ""}?text=${encodeURIComponent(message)}`;
+    if (popup) popup.location.replace(url);
+    else window.open(url, "_blank");
+    return isPhone ? "shared" : "downloaded";
   } catch (err) {
     popup?.close();
     throw err;
