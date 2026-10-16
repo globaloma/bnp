@@ -195,7 +195,7 @@ export async function createOrder(
         total: t.total,
         location: product.location,
         rider: d.rider,
-        status: "Packaging" as const,
+        status: "Packaged" as const,
         channel: "dashboard" as const,
         payment_status: "paid" as const,
       };

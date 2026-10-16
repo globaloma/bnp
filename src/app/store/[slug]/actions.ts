@@ -173,7 +173,7 @@ export async function startCheckout(
     vat_rate: number;
     vat_amount: number;
     total: number;
-    status: "Packaging";
+    status: "Packaged";
     location: string;
     rider: "BNP Fleet" | "Pickup";
     channel: "storefront";
@@ -194,7 +194,7 @@ export async function startCheckout(
     vat_rate: item.vatRate,
     vat_amount: item.vatAmount,
     total: item.total,
-    status: "Packaging" as const,
+    status: "Packaged" as const,
     location: item.location,
     rider: isPickup ? ("Pickup" as const) : ("BNP Fleet" as const),
     channel: "storefront" as const,
@@ -218,7 +218,7 @@ export async function startCheckout(
       vat_rate: 0,
       vat_amount: 0,
       total: shippingFee,
-      status: "Packaging" as const,
+      status: "Packaged" as const,
       location: lineItems[0].location,
       rider: isPickup ? ("Pickup" as const) : ("BNP Fleet" as const),
       channel: "storefront" as const,

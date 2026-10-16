@@ -87,8 +87,8 @@ export function StatCard({
 }
 
 const ORDER_STATUS_COLOR: Record<OrderStatus, string> = {
-  Packaging: "bg-gold text-navy",
-  Shipping: "bg-teal text-white",
+  Packaged: "bg-gold text-navy",
+  Shipped: "bg-teal text-white",
   Delivered: "bg-navy text-white",
   Returned: "bg-destructive text-white",
   Damaged: "bg-destructive text-white",

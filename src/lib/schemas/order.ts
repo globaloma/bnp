@@ -43,7 +43,7 @@ export const orderEditSchema = z.object({
   notes: z.string().trim().max(500).optional().or(z.literal("")),
   quantity: z.coerce.number().int().min(1, "Quantity must be at least 1"),
   rider: z.enum(["BNP Fleet", "Own Rider", "Pickup"]),
-  status: z.enum(["Packaging", "Shipping", "Delivered", "Returned", "Damaged"]),
+  status: z.enum(["Packaged", "Shipped", "Delivered", "Returned", "Damaged"]),
   discountType: z.enum(["fixed", "percentage"]).optional(),
   discountValue: z.coerce.number().min(0).default(0),
   deliveryFee: z.coerce.number().min(0).default(0),

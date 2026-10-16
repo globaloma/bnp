@@ -2,8 +2,8 @@ export type WarehouseLocation = "Abuja" | "Lagos" | "USA";
 export type PartnerStatus = "pending" | "active" | "suspended";
 export type PartnerRole = "merchant" | "fulfillment_center";
 export type OrderStatus =
-  | "Packaging"
-  | "Shipping"
+  | "Packaged"
+  | "Shipped"
   | "Delivered"
   | "Returned"
   | "Damaged";
@@ -206,8 +206,8 @@ export type WalletWithdrawal = {
 
 export const LOCATIONS: WarehouseLocation[] = ["Abuja", "Lagos", "USA"];
 export const ORDER_STATUSES: OrderStatus[] = [
-  "Packaging",
-  "Shipping",
+  "Packaged",
+  "Shipped",
   "Delivered",
   "Returned",
   "Damaged",

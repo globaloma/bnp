@@ -7,7 +7,7 @@ import {
   type Product,
 } from "@/types/db";
 
-const IN_FLIGHT_STATUSES = ["Packaging", "Shipping"] as const;
+const IN_FLIGHT_STATUSES = ["Packaged", "Shipped"] as const;
 const NEEDS_REVIEW_STATUSES = ["Returned", "Damaged"] as const;
 
 export function ordersToday<T extends Pick<Order, "placed_at">>(orders: T[]): T[] {

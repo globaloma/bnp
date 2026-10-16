@@ -231,10 +231,10 @@ function OrderStatusCard({ order }: { order: TrackedOrder }) {
 
 function Timeline({ stage, isPickup }: { stage: TrackedOrder["stage"]; isPickup: boolean }) {
   const steps = [
-    { key: "Packaging", label: "Being prepared", icon: Package },
+    { key: "Packaged", label: "Packaged", icon: Package },
     isPickup
-      ? { key: "Shipping", label: "Ready for pickup", icon: Store }
-      : { key: "Shipping", label: "On the way", icon: Truck },
+      ? { key: "Shipped", label: "Ready for pickup", icon: Store }
+      : { key: "Shipped", label: "Shipped", icon: Truck },
     isPickup
       ? { key: "Delivered", label: "Collected", icon: Check }
       : { key: "Delivered", label: "Delivered", icon: Home },

@@ -41,7 +41,7 @@ export function phoneKey(phone: string): string {
   return phone.replace(/\D/g, "").slice(-10);
 }
 
-const PROGRESS: OrderStatus[] = ["Packaging", "Shipping", "Delivered"];
+const PROGRESS: OrderStatus[] = ["Packaged", "Shipped", "Delivered"];
 
 /** The order is only as far along as its least-advanced item. */
 function overallStage(statuses: OrderStatus[]): OrderStatus {

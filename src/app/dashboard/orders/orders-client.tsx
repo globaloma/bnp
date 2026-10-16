@@ -271,8 +271,8 @@ export function OrdersClient({
 }
 
 const ACCENT: Record<OrderStatus, "gold" | "teal" | "none" | "destructive"> = {
-  Packaging: "gold",
-  Shipping: "teal",
+  Packaged: "gold",
+  Shipped: "teal",
   Delivered: "none",
   Returned: "destructive",
   Damaged: "destructive",
