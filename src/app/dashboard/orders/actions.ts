@@ -7,6 +7,8 @@ import { orderSchema, orderEditSchema, type ActionResult } from "@/lib/schemas/o
 import type { OrderStatus } from "@/types/db";
 import { ORDER_STATUSES } from "@/types/db";
 import { initializeTransaction } from "@/lib/paystack";
+import { after } from "next/server";
+import { requestDeliveryConfirmation } from "@/lib/delivery-feedback";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bnpfulfillment.com";
 
@@ -225,12 +227,18 @@ export async function updateOrderStatus(
     return { ok: false, error: "Invalid status" };
   }
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("orders")
     .update({ status })
-    .eq("id", orderId);
+    .eq("id", orderId)
+    .select("partner_id, order_ref")
+    .maybeSingle();
 
   if (error) return { ok: false, error: error.message };
+
+  if (status === "Delivered" && updated) {
+    after(() => requestDeliveryConfirmation(updated.partner_id, updated.order_ref));
+  }
 
   revalidatePath("/dashboard/orders");
   revalidatePath("/dashboard");
@@ -250,7 +258,7 @@ export async function editOrder(
 
   const { data: order, error: fetchError } = await supabase
     .from("orders")
-    .select("id, product_id, quantity, unit_price, vat_rate")
+    .select("id, order_ref, product_id, quantity, unit_price, vat_rate")
     .eq("id", orderId)
     .single();
 
@@ -352,6 +360,10 @@ export async function editOrder(
     .eq("id", orderId);
 
   if (updateError) return { ok: false, error: updateError.message };
+
+  if (d.status === "Delivered") {
+    after(() => requestDeliveryConfirmation(user.id, order.order_ref));
+  }
 
   revalidatePath("/dashboard/orders");
   revalidatePath("/dashboard/inventory");

@@ -9,6 +9,7 @@ import {
   FileBarChart,
   Bell,
   Users,
+  MessageSquareWarning,
 } from "lucide-react";
 
 export type DashboardNavItem = {
@@ -37,6 +38,7 @@ export const fcDashboardNav: DashboardNavItem[] = [
 export const adminDashboardNav: DashboardNavItem[] = [
   { href: "/admin/partners", label: "Partners", icon: Users },
   { href: "/admin/rewards", label: "Rewards", icon: Award },
+  { href: "/admin/feedback", label: "Feedback", icon: MessageSquareWarning },
 ];
 
 // Nav items (and their icon components) can't cross the server/client

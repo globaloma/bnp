@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { requestDeliveryConfirmation } from "@/lib/delivery-feedback";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionResult } from "@/lib/schemas/order";
 import type { OrderStatus } from "@/types/db";
@@ -14,12 +16,18 @@ export async function updateOrderStatusAsFc(
     return { ok: false, error: "Invalid status" };
   }
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("orders")
     .update({ status })
-    .eq("id", orderId);
+    .eq("id", orderId)
+    .select("partner_id, order_ref")
+    .maybeSingle();
 
   if (error) return { ok: false, error: error.message };
+
+  if (status === "Delivered" && updated) {
+    after(() => requestDeliveryConfirmation(updated.partner_id, updated.order_ref));
+  }
 
   revalidatePath("/fc/orders");
   revalidatePath("/fc");

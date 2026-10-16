@@ -89,10 +89,24 @@ function tokenProblem(form: GuardedForm, token: unknown): "missing" | "fast" | n
  */
 export async function withinRateLimit(form: GuardedForm, extraKey?: string): Promise<boolean> {
   const { limit, windowSeconds } = LIMITS[form];
-  const visitor = sign(`ip:${await clientIp()}${extraKey ? `:${extraKey.toLowerCase()}` : ""}`);
+  const visitor = `ip:${await clientIp()}${extraKey ? `:${extraKey.toLowerCase()}` : ""}`;
+  return withinLimit(form, visitor, limit, windowSeconds);
+}
+
+/**
+ * Generic limiter for anything that isn't keyed by the visitor's IP, e.g.
+ * WhatsApp replies keyed by the sender's phone. The key is hashed before
+ * it's stored. Fails open, like withinRateLimit.
+ */
+export async function withinLimit(
+  scope: string,
+  key: string,
+  limit: number,
+  windowSeconds: number,
+): Promise<boolean> {
   try {
     const { data, error } = await createAdminClient().rpc("check_rate_limit", {
-      p_key: `${form}:${visitor.slice(0, 32)}`,
+      p_key: `${scope}:${sign(key).slice(0, 32)}`,
       p_limit: limit,
       p_window_seconds: windowSeconds,
     });
