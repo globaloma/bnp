@@ -1,6 +1,13 @@
 "use client";
 
-import { startTransition, useActionState, type FormEvent } from "react";
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import { AlertTriangle, Check, Clock, Package, Truck, Home, Store } from "lucide-react";
 import { trackOrder, type TrackResult } from "@/app/store/[slug]/track/actions";
 import type { TrackedOrder } from "@/lib/order-tracking";
@@ -13,6 +20,8 @@ const fieldClass =
 const labelClass =
   "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.08em] text-graphite";
 
+type SavedLookup = { orderRef: string; phone: string };
+
 export function TrackOrderForm({ slug, initialRef }: { slug: string; initialRef: string }) {
   const [state, formAction, pending] = useActionState<TrackResult | null, FormData>(
     trackOrder,
@@ -20,11 +29,73 @@ export function TrackOrderForm({ slug, initialRef }: { slug: string; initialRef:
   );
   const errors = state && !state.ok ? state.fieldErrors : undefined;
 
-  // onSubmit instead of `action` so a miss doesn't clear what was typed.
+  // The order number and phone are kept in this browser (per store), so a
+  // refresh or coming back later doesn't make the customer type them again.
+  const storageKey = `bnp-track:${slug}`;
+  const [orderRef, setOrderRef] = useState(initialRef);
+  const [phone, setPhone] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const autoLookedUp = useRef(false);
+
+  function lookup(ref: string, tel: string) {
+    const formData = new FormData();
+    formData.set("slug", slug);
+    formData.set("orderRef", ref);
+    formData.set("phone", tel);
+    startTransition(() => formAction(formData));
+  }
+
+  useEffect(() => {
+    let saved: SavedLookup | null = null;
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) saved = JSON.parse(raw) as SavedLookup;
+    } catch {
+      // Private browsing or storage blocked: just start empty.
+    }
+    // A link with ?ref= (from the confirmation email) wins over a saved
+    // number; the saved phone still fills in, since it's the same customer.
+    const ref = initialRef || saved?.orderRef || "";
+    const tel = saved?.phone ?? "";
+    // Restoring saved input once on mount, after hydration.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOrderRef(ref);
+    setPhone(tel);
+    setLoaded(true);
+
+    // Show the order straight away if we already have both details.
+    if (ref && tel && !autoLookedUp.current) {
+      autoLookedUp.current = true;
+      lookup(ref, tel);
+    }
+    // Runs once per store; lookup only depends on slug and formAction.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey, initialRef]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    try {
+      if (orderRef || phone) {
+        localStorage.setItem(storageKey, JSON.stringify({ orderRef, phone }));
+      } else {
+        localStorage.removeItem(storageKey);
+      }
+    } catch {
+      // Storage unavailable: the form still works, it just won't remember.
+    }
+  }, [loaded, orderRef, phone, storageKey]);
+
+  function clearSaved() {
+    setOrderRef("");
+    setPhone("");
+    try {
+      localStorage.removeItem(storageKey);
+    } catch {}
+  }
+
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    startTransition(() => formAction(formData));
+    lookup(orderRef, phone);
   }
 
   return (
@@ -42,8 +113,9 @@ export function TrackOrderForm({ slug, initialRef }: { slug: string; initialRef:
             id="orderRef"
             name="orderRef"
             required
-            defaultValue={initialRef}
-            placeholder="ORD-0041"
+            value={orderRef}
+            onChange={(e) => setOrderRef(e.target.value)}
+            placeholder="ORD-7K3M9P"
             autoCapitalize="characters"
             className={fieldClass}
           />
@@ -61,6 +133,8 @@ export function TrackOrderForm({ slug, initialRef }: { slug: string; initialRef:
             type="tel"
             required
             autoComplete="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
             placeholder="0801 234 5678"
             className={fieldClass}
           />
@@ -72,6 +146,19 @@ export function TrackOrderForm({ slug, initialRef }: { slug: string; initialRef:
           {pending ? "Checking" : "Track"}
         </Button>
       </form>
+
+      {orderRef || phone ? (
+        <p className="mt-2 text-xs text-mist">
+          Saved on this device so you don&apos;t have to type them again.{" "}
+          <button
+            type="button"
+            onClick={clearSaved}
+            className="font-semibold text-teal-700 hover:underline"
+          >
+            Clear
+          </button>
+        </p>
+      ) : null}
 
       {state && !state.ok && !state.fieldErrors ? (
         <p className="mt-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
