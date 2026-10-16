@@ -4,6 +4,8 @@ import { useActionState } from "react";
 import Link from "next/link";
 import { Mail } from "lucide-react";
 import { requestPasswordReset } from "../actions";
+import { submitWithoutReset } from "@/lib/submit-without-reset";
+import { FormGuard } from "@/components/form-guard";
 import type { AuthResult } from "@/lib/schemas/auth";
 import { Button } from "@/components/ui/button";
 
@@ -60,7 +62,8 @@ export function ForgotPasswordForm({ linkExpired }: { linkExpired: boolean }) {
             </p>
           ) : null}
 
-          <form action={formAction} className="mt-6 flex flex-col gap-4">
+          <form onSubmit={submitWithoutReset(formAction)} className="mt-6 flex flex-col gap-4">
+            <FormGuard form="forgot" />
             <div>
               <label className={labelClass} htmlFor="email">
                 Email

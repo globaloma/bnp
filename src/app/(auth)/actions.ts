@@ -11,6 +11,7 @@ import {
   type AuthResult,
 } from "@/lib/schemas/auth";
 import { roleHome } from "@/lib/roles";
+import { guardSubmission, withinRateLimit } from "@/lib/spam-guard";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bnpfulfillment.com";
 
@@ -28,6 +29,15 @@ export async function signIn(
       ok: false,
       error: "Check the highlighted fields.",
       fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
+    };
+  }
+
+  // Per visitor and email address. Supabase's own sign-in limit sees our
+  // server's address rather than the visitor's, so it can't do this.
+  if (!(await withinRateLimit("login", parsed.data.email))) {
+    return {
+      ok: false,
+      error: "Too many sign-in attempts. Please wait 15 minutes, or reset your password.",
     };
   }
 
@@ -72,6 +82,18 @@ export async function signUp(
   _prev: AuthResult | null,
   formData: FormData,
 ): Promise<AuthResult> {
+  const guard = await guardSubmission("signup", formData);
+  if (!guard.ok) {
+    // Bots get a convincing "check your inbox" so they don't adapt.
+    return guard.reason === "bot"
+      ? {
+          ok: true,
+          message: "Check your email to confirm your account before signing in.",
+          pendingEmail: String(formData.get("email") ?? ""),
+        }
+      : { ok: false, error: guard.message };
+  }
+
   const parsed = signUpSchema.safeParse({
     role: formData.get("role") || undefined,
     businessName: formData.get("businessName"),
@@ -141,6 +163,10 @@ export async function resendConfirmation(
     return { ok: false, message: "Enter a valid email address." };
   }
 
+  if (!(await withinRateLimit("resend"))) {
+    return { ok: false, message: "Too many emails sent. Please wait a while and try again." };
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.auth.resend({
     type: "signup",
@@ -164,6 +190,9 @@ export async function requestPasswordReset(
   _prev: AuthResult | null,
   formData: FormData,
 ): Promise<AuthResult> {
+  const guard = await guardSubmission("forgot", formData);
+  if (!guard.ok && guard.reason !== "bot") return { ok: false, error: guard.message };
+
   const parsed = forgotPasswordSchema.safeParse({
     email: formData.get("email"),
   });
@@ -173,6 +202,16 @@ export async function requestPasswordReset(
       ok: false,
       error: "Check the highlighted fields.",
       fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
+    };
+  }
+
+  // Same reply as a real request, so bots can't tell they were caught.
+  if (!guard.ok) {
+    return {
+      ok: true,
+      message:
+        "If an account exists for that email, we've sent a link to reset your password.",
+      pendingEmail: parsed.data.email,
     };
   }
 

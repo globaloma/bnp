@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { updatePassword } from "../actions";
+import { submitWithoutReset } from "@/lib/submit-without-reset";
 import type { AuthResult } from "@/lib/schemas/auth";
 import { Button } from "@/components/ui/button";
 
@@ -37,7 +38,7 @@ export function ResetPasswordForm({ email }: { email: string }) {
         </p>
       ) : null}
 
-      <form action={formAction} className="mt-6 flex flex-col gap-4">
+      <form onSubmit={submitWithoutReset(formAction)} className="mt-6 flex flex-col gap-4">
         <div>
           <label className={labelClass} htmlFor="password">
             New password

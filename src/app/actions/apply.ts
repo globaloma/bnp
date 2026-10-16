@@ -3,6 +3,7 @@
 import { applicationSchema, type ApplicationResult } from "@/lib/schemas/application";
 import { getResend } from "@/lib/resend";
 import { company } from "@/lib/site-content";
+import { escapeHtml, guardSubmission } from "@/lib/spam-guard";
 
 const FROM =
   process.env.APPLICATION_FROM_EMAIL ??
@@ -14,13 +15,18 @@ const TO =
 
 function row(label: string, value?: string) {
   if (!value) return "";
-  return `<tr><td style="padding:6px 12px 6px 0;color:#8a97a8;font-size:13px;">${label}</td><td style="padding:6px 0;color:#0f2a44;font-size:13px;font-weight:600;">${value}</td></tr>`;
+  return `<tr><td style="padding:6px 12px 6px 0;color:#8a97a8;font-size:13px;">${label}</td><td style="padding:6px 0;color:#0f2a44;font-size:13px;font-weight:600;">${escapeHtml(value)}</td></tr>`;
 }
 
 export async function submitApplication(
   _prev: ApplicationResult | null,
   formData: FormData,
 ): Promise<ApplicationResult> {
+  const guard = await guardSubmission("apply", formData);
+  if (!guard.ok) {
+    return guard.reason === "bot" ? { ok: true } : { ok: false, error: guard.message };
+  }
+
   const parsed = applicationSchema.safeParse({
     businessName: formData.get("businessName"),
     fullName: formData.get("fullName"),
@@ -60,7 +66,7 @@ export async function submitApplication(
       from: FROM,
       to: TO,
       replyTo: d.email,
-      subject: `Partner application: ${d.businessName}`,
+      subject: `Partner application: ${d.businessName.replace(/[\r\n]+/g, " ")}`,
       html: `
         <div style="font-family:system-ui,Segoe UI,sans-serif;max-width:560px;">
           <h2 style="color:#0f2a44;font-size:18px;margin:0 0 4px;">New partner application</h2>
@@ -76,7 +82,7 @@ export async function submitApplication(
           </table>
           ${
             d.note
-              ? `<p style="color:#0f2a44;font-size:13px;margin:16px 0 0;"><strong>Notes</strong><br/>${d.note.replace(/\n/g, "<br/>")}</p>`
+              ? `<p style="color:#0f2a44;font-size:13px;margin:16px 0 0;"><strong>Notes</strong><br/>${escapeHtml(d.note).replace(/\n/g, "<br/>")}</p>`
               : ""
           }
         </div>

@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { computeOrderTotals, generateOrderRef } from "@/lib/orders";
 import { initializeTransaction } from "@/lib/paystack";
 import { flatShippingFee, pickupAvailable } from "@/lib/delivery";
+import { withinRateLimit } from "@/lib/spam-guard";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bnpfulfillment.com";
 
@@ -14,6 +15,11 @@ export async function startCheckout(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
+  // Each checkout creates pending orders and a Paystack transaction.
+  if (!(await withinRateLimit("checkout"))) {
+    return { ok: false, error: "Too many checkout attempts. Please wait a few minutes and try again." };
+  }
+
   let itemsInput: unknown;
   try {
     itemsInput = JSON.parse(String(formData.get("items") ?? "[]"));

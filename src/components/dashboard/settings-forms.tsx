@@ -1,7 +1,8 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useRef, type FormEvent } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { toast } from "sonner";
+import { submitWithoutReset } from "@/lib/submit-without-reset";
 import { changePassword, updateProfile, updateStorefront } from "@/app/actions/settings";
 import type { SettingsResult } from "@/lib/schemas/settings";
 import type { Partner } from "@/types/db";
@@ -19,17 +20,6 @@ const labelClass =
 function FieldError({ messages }: { messages?: string[] }) {
   if (!messages?.length) return null;
   return <p className="mt-1 text-xs text-destructive">{messages[0]}</p>;
-}
-
-// Submitting through onSubmit instead of the form `action` prop stops
-// React resetting every field to its default after the action runs, so a
-// validation error doesn't throw away what the user typed.
-function submitWithoutReset(formAction: (fd: FormData) => void) {
-  return (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    startTransition(() => formAction(formData));
-  };
 }
 
 function useResultToast(state: SettingsResult | null) {

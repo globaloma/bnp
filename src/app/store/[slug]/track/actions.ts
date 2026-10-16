@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { findTrackedOrder, type TrackedOrder } from "@/lib/order-tracking";
+import { withinRateLimit } from "@/lib/spam-guard";
 
 const trackSchema = z.object({
   slug: z.string().min(1).max(120),
@@ -29,6 +30,11 @@ export async function trackOrder(
       error: "Check the highlighted fields.",
       fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
     };
+  }
+
+  // Order numbers and phone numbers could otherwise be guessed at speed.
+  if (!(await withinRateLimit("track"))) {
+    return { ok: false, error: "Too many lookups. Please wait a few minutes and try again." };
   }
 
   const { slug, orderRef, phone } = parsed.data;

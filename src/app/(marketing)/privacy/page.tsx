@@ -44,6 +44,8 @@ const sections: LegalSection[] = [
           <strong>Automatically.</strong> Sign-in cookies that keep you logged in, the contents of
           your storefront cart (stored only in your own browser), and standard server logs such as
           IP address and browser type, which we use to keep the platform secure and working.
+          To stop spam and password guessing, our forms also keep a scrambled code made from
+          your connection for up to an hour; it can&apos;t be turned back into your IP address.
         </p>
       </>
     ),

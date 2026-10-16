@@ -4,6 +4,8 @@ import { useActionState, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Mail } from "lucide-react";
 import { signUp } from "../actions";
+import { submitWithoutReset } from "@/lib/submit-without-reset";
+import { FormGuard } from "@/components/form-guard";
 import { ResendConfirmation } from "../resend-confirmation";
 import type { AuthResult } from "@/lib/schemas/auth";
 import { apply } from "@/lib/site-content";
@@ -102,8 +104,9 @@ export function SignupForm({ initialRole = "merchant" }: { initialRole?: Role })
             </p>
           ) : null}
 
-          <form action={formAction} className="mt-6 flex flex-col gap-4">
+          <form onSubmit={submitWithoutReset(formAction)} className="mt-6 flex flex-col gap-4">
             <input type="hidden" name="role" value={role} />
+            <FormGuard form="signup" />
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass} htmlFor="businessName">

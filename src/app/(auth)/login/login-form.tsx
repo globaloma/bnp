@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import Link from "next/link";
 import { MailWarning } from "lucide-react";
 import { signIn } from "../actions";
+import { submitWithoutReset } from "@/lib/submit-without-reset";
 import { ResendConfirmation } from "../resend-confirmation";
 import type { AuthResult } from "@/lib/schemas/auth";
 import { Button } from "@/components/ui/button";
@@ -48,7 +49,7 @@ export function LoginForm({ next }: { next?: string }) {
         </p>
       ) : null}
 
-      <form action={formAction} className="mt-6 flex flex-col gap-4">
+      <form onSubmit={submitWithoutReset(formAction)} className="mt-6 flex flex-col gap-4">
         {next ? <input type="hidden" name="next" value={next} /> : null}
         <div>
           <label className={labelClass} htmlFor="email">

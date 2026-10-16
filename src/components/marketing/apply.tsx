@@ -1,6 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useId, useRef } from "react";
+import { submitWithoutReset } from "@/lib/submit-without-reset";
+import { FormGuard } from "@/components/form-guard";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
@@ -102,7 +104,12 @@ export function Apply() {
               <p>{apply.form.success}</p>
             </div>
           ) : (
-            <form ref={formRef} action={formAction} className="mt-6 flex flex-col gap-4">
+            <form
+              ref={formRef}
+              onSubmit={submitWithoutReset(formAction)}
+              className="mt-6 flex flex-col gap-4"
+            >
+              <FormGuard form="apply" />
               <div
                 aria-hidden
                 className="pointer-events-none absolute -left-[9999px] h-0 w-0 overflow-hidden"
