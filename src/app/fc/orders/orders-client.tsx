@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { PackageSearch } from "lucide-react";
+import { Download, Mail, MessageCircle, PackageSearch } from "lucide-react";
 import { toast } from "sonner";
 import type { OrderStatus } from "@/types/db";
 import { ORDER_STATUSES, LOCATIONS } from "@/types/db";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { EmptyState, OrderStatusBadge, Panel } from "@/components/dashboard/ui";
 import { updateOrderStatusAsFc } from "./actions";
 import type { OrderWithMerchant } from "@/lib/data/fulfillment-center";
+import { buildReceiptPdf, shareReceipt } from "@/lib/receipt-pdf";
 
 export function FcOrdersClient({ orders }: { orders: OrderWithMerchant[] }) {
   const [statusFilter, setStatusFilter] = useState<"All" | OrderStatus>("All");
@@ -22,6 +23,17 @@ export function FcOrdersClient({ orders }: { orders: OrderWithMerchant[] }) {
     [orders],
   );
   const [merchantFilter, setMerchantFilter] = useState<"All" | string>("All");
+
+  // Every line of each order, so a receipt covers the whole order even when
+  // filters hide some of its lines. Order refs are per merchant.
+  const linesByOrder = useMemo(() => {
+    const map = new Map<string, OrderWithMerchant[]>();
+    for (const o of orders) {
+      const key = `${o.partner_id}:${o.order_ref}`;
+      map.set(key, [...(map.get(key) ?? []), o]);
+    }
+    return map;
+  }, [orders]);
 
   const visible = useMemo(() => {
     return orders.filter(
@@ -90,7 +102,11 @@ export function FcOrdersClient({ orders }: { orders: OrderWithMerchant[] }) {
       ) : (
         <div className="flex flex-col gap-3">
           {visible.map((order) => (
-            <OrderRow key={order.id} order={order} />
+            <OrderRow
+              key={order.id}
+              order={order}
+              orderLines={linesByOrder.get(`${order.partner_id}:${order.order_ref}`) ?? [order]}
+            />
           ))}
         </div>
       )}
@@ -106,8 +122,47 @@ const ACCENT: Record<OrderStatus, "gold" | "teal" | "none" | "destructive"> = {
   Damaged: "destructive",
 };
 
-function OrderRow({ order }: { order: OrderWithMerchant }) {
+function OrderRow({
+  order,
+  orderLines,
+}: {
+  order: OrderWithMerchant;
+  orderLines: OrderWithMerchant[];
+}) {
   const [isPending, startTransition] = useTransition();
+  const [receiptBusy, setReceiptBusy] = useState<"pdf" | "whatsapp" | "email" | null>(null);
+
+  const makePdf = () =>
+    buildReceiptPdf({
+      orderRef: order.order_ref,
+      lines: orderLines,
+      merchantName: order.merchant_name,
+    });
+
+  function downloadReceipt() {
+    setReceiptBusy("pdf");
+    try {
+      makePdf().save(`${order.order_ref}.pdf`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not create the receipt");
+    } finally {
+      setReceiptBusy(null);
+    }
+  }
+
+  async function sendReceipt(channel: "whatsapp" | "email") {
+    setReceiptBusy(channel);
+    try {
+      await shareReceipt({ channel, orderRef: order.order_ref, lines: orderLines, makePdf });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not share the receipt");
+    } finally {
+      setReceiptBusy(null);
+    }
+  }
+
+  const receiptButton =
+    "inline-flex h-7 items-center gap-1.5 rounded-md border border-stone bg-card px-2.5 text-[11px] font-semibold text-graphite transition-colors hover:border-teal/40 hover:text-teal-700 disabled:opacity-50";
 
   function onStatusChange(status: OrderStatus) {
     startTransition(async () => {
@@ -148,6 +203,24 @@ function OrderRow({ order }: { order: OrderWithMerchant }) {
             ))}
           </select>
         </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-stone pt-3">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-mist">
+          Receipt{orderLines.length > 1 ? ` (${orderLines.length} items)` : ""}
+        </span>
+        <button type="button" onClick={downloadReceipt} disabled={receiptBusy !== null} className={receiptButton}>
+          <Download className="size-3.5" />
+          {receiptBusy === "pdf" ? "Creating" : "Download PDF"}
+        </button>
+        <button type="button" onClick={() => sendReceipt("whatsapp")} disabled={receiptBusy !== null} className={receiptButton}>
+          <MessageCircle className="size-3.5" />
+          {receiptBusy === "whatsapp" ? "Preparing" : "WhatsApp"}
+        </button>
+        <button type="button" onClick={() => sendReceipt("email")} disabled={receiptBusy !== null} className={receiptButton}>
+          <Mail className="size-3.5" />
+          {receiptBusy === "email" ? "Preparing" : "Email"}
+        </button>
       </div>
     </Panel>
   );

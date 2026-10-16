@@ -89,6 +89,14 @@ export function CartProvider({ slug, children }: { slug: string; children: React
 
   function clear() {
     setItems([]);
+    // Remove the saved copy too: a child calling clear() on mount (e.g. the
+    // payment confirmed page) runs before this provider's restore effect,
+    // which would otherwise load the old cart straight back.
+    try {
+      localStorage.removeItem(storageKey);
+    } catch {
+      // Storage unavailable: nothing saved to remove.
+    }
   }
 
   const count = items.reduce((sum, i) => sum + i.quantity, 0);

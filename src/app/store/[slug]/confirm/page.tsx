@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { confirmPayment } from "@/lib/paystack";
 import { Button } from "@/components/ui/button";
+import { ClearCart } from "@/components/store/clear-cart";
 
 export default async function ConfirmPage({
   params,
@@ -22,6 +23,9 @@ export default async function ConfirmPage({
     <div className="container-page flex max-w-md flex-col items-center py-16 text-center">
       {result.ok ? (
         <>
+          {/* Paid, so the cart has done its job. Not cleared on a failed
+              payment, so the customer can try again without re-adding. */}
+          <ClearCart />
           <CheckCircle2 className="size-12 text-success" />
           <h1 className="mt-4 text-xl font-semibold text-navy">Payment confirmed</h1>
           <p className="mt-2 text-sm text-graphite">
