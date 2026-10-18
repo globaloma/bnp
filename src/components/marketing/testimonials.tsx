@@ -1,7 +1,8 @@
-import { Star } from "lucide-react";
+import { Quote } from "lucide-react";
 import { testimonials } from "@/lib/site-content";
-import { SectionHeading } from "./section-heading";
+import { cn } from "@/lib/utils";
 import { Reveal } from "./reveal";
+import { SectionHeading } from "./section-heading";
 
 function initials(name: string) {
   return name
@@ -13,38 +14,64 @@ function initials(name: string) {
 
 export function Testimonials() {
   return (
-    <section id="stories" className="bg-cream py-20 sm:py-28">
+    <section className="py-20 sm:py-28">
       <div className="container-page">
-        <SectionHeading label={testimonials.label} title={testimonials.title} />
+        <SectionHeading align="center" label={testimonials.label} title={testimonials.title} />
 
-        <div className="mt-14 grid gap-4 md:grid-cols-3">
-          {testimonials.items.map((item, i) => (
-            <Reveal
-              key={item.name}
-              delay={i * 0.06}
-              className="flex flex-col rounded-xl border border-stone bg-card p-6"
-            >
-              <div className="flex gap-0.5 text-gold">
-                {Array.from({ length: 5 }).map((_, s) => (
-                  <Star key={s} className="size-3.5 fill-current" />
-                ))}
-              </div>
-              <p className="mt-4 flex-1 text-sm leading-relaxed text-navy">
-                {item.quote}
-              </p>
-              <div className="mt-5 flex items-center gap-3">
-                <span className="flex size-10 items-center justify-center rounded-full bg-teal text-sm font-semibold text-white">
-                  {initials(item.name)}
-                </span>
-                <div>
-                  <div className="text-sm font-semibold text-navy">
-                    {item.name}
-                  </div>
-                  <div className="text-xs text-mist">{item.business}</div>
+        <div className="mt-14 grid gap-6 lg:grid-cols-3">
+          {testimonials.items.map((t, i) => {
+            const featured = i === 1;
+            return (
+              <Reveal
+                key={t.name}
+                delay={i * 0.08}
+                className={cn(
+                  "relative flex flex-col rounded-2xl p-8",
+                  featured
+                    ? "bg-navy text-white shadow-[0_30px_80px_-30px_rgba(15,42,68,0.6)] lg:-translate-y-4"
+                    : "border border-stone bg-white",
+                )}
+              >
+                <Quote
+                  className={cn("size-10", featured ? "text-gold" : "text-gold/70")}
+                  fill="currentColor"
+                  strokeWidth={0}
+                />
+                <blockquote
+                  className={cn(
+                    "mt-5 flex-1 text-base leading-relaxed",
+                    featured ? "text-white/85" : "text-graphite",
+                  )}
+                >
+                  {t.quote}
+                </blockquote>
+                <div
+                  className={cn(
+                    "mt-7 flex items-center gap-3.5 border-t pt-6",
+                    featured ? "border-white/10" : "border-stone",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex size-12 items-center justify-center rounded-full font-display text-sm font-bold",
+                      featured ? "bg-gold text-navy" : "bg-navy text-gold",
+                    )}
+                    aria-hidden
+                  >
+                    {initials(t.name)}
+                  </span>
+                  <span>
+                    <span className={cn("block font-display font-bold", featured ? "text-white" : "text-navy")}>
+                      {t.name}
+                    </span>
+                    <span className={cn("block text-sm", featured ? "text-mist" : "text-graphite")}>
+                      {t.business}, {t.detail}
+                    </span>
+                  </span>
                 </div>
-              </div>
-            </Reveal>
-          ))}
+              </Reveal>
+            );
+          })}
         </div>
       </div>
     </section>

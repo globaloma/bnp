@@ -1,42 +1,80 @@
+import Image from "next/image";
 import Link from "next/link";
-import { company, footer } from "@/lib/site-content";
-import { LogoMark } from "./logo";
+import { ArrowRight, Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
+import { company, ctaBand, footer, nav } from "@/lib/site-content";
+import { Button } from "@/components/ui/button";
+import { Logo } from "./logo";
 
 export function SiteFooter() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="border-t border-white/10 bg-navy">
-      <div className="container-page py-14">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <span className="size-8">
-                <LogoMark />
-              </span>
-              <span className="text-sm font-semibold text-white">
-                {company.name}
-              </span>
+    <footer className="relative bg-navy">
+      {/* Call to action that overlaps the top of the footer. */}
+      <div className="container-page relative z-10 -mb-px pt-16 sm:pt-20">
+        <div className="relative overflow-hidden rounded-2xl bg-gold px-6 py-10 sm:px-12 sm:py-12">
+          <Image
+            src="/images/marketing/packing-tape.jpg"
+            alt=""
+            fill
+            sizes="(min-width: 1024px) 40rem, 100vw"
+            className="object-cover opacity-15 mix-blend-multiply"
+          />
+          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-xl">
+              <h2 className="font-display text-2xl leading-tight font-extrabold tracking-tight text-navy sm:text-3xl">
+                {ctaBand.title}
+              </h2>
+              <p className="mt-2 text-base text-navy/80">{ctaBand.body}</p>
             </div>
-            <p className="mt-3 text-xs font-medium text-teal-300">
-              {company.tagline}
-            </p>
-            <p className="mt-3 max-w-xs text-sm leading-relaxed text-mist">
-              {footer.description}
-            </p>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button
+                render={<Link href={nav.quote.href} />}
+                size="xl"
+                className="bg-navy text-white hover:bg-navy-600"
+              >
+                {nav.quote.label}
+                <ArrowRight />
+              </Button>
+              <Button
+                render={<Link href={nav.signUp.href} />}
+                size="xl"
+                variant="outline"
+                className="border-navy/30 bg-transparent text-navy hover:bg-navy/10"
+              >
+                {nav.signUp.label}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-dots-light">
+        <div className="container-page grid gap-12 py-16 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.3fr]">
+          <div>
+            <Logo />
+            <p className="mt-5 max-w-xs text-sm leading-relaxed text-mist">{footer.description}</p>
+            <a
+              href={company.whatsapp}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-5 inline-flex items-center gap-2 rounded-md border border-white/15 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:border-gold hover:text-gold-300"
+            >
+              <MessageCircle className="size-4" />
+              Chat with us on WhatsApp
+            </a>
           </div>
 
           {footer.columns.map((column) => (
             <div key={column.title}>
-              <h3 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-teal-300">
-                {column.title}
-              </h3>
-              <ul className="mt-3 flex flex-col gap-2">
+              <h3 className="font-display text-base font-bold text-white">{column.title}</h3>
+              <span className="mt-2 block h-0.5 w-8 rounded-full bg-gold" aria-hidden />
+              <ul className="mt-5 flex flex-col gap-3">
                 {column.links.map((link) => (
                   <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="text-sm text-mist transition-colors hover:text-teal-300"
+                      className="text-sm text-mist transition-colors hover:text-gold-300"
                     >
                       {link.label}
                     </Link>
@@ -47,71 +85,53 @@ export function SiteFooter() {
           ))}
 
           <div>
-            <h3 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-teal-300">
-              Contact
-            </h3>
-            <ul className="mt-3 flex flex-col gap-2 text-sm text-mist">
-              <li>
-                <a
-                  href={`tel:${company.phone}`}
-                  className="transition-colors hover:text-teal-300"
-                >
+            <h3 className="font-display text-base font-bold text-white">Get in touch</h3>
+            <span className="mt-2 block h-0.5 w-8 rounded-full bg-gold" aria-hidden />
+            <ul className="mt-5 flex flex-col gap-4 text-sm text-mist">
+              <li className="flex gap-3">
+                <MapPin className="mt-0.5 size-4 shrink-0 text-gold" />
+                <span>
+                  BoxNPick, Suite 207, Alba Plaza
+                  <br />
+                  Jabi, Abuja, Nigeria
+                </span>
+              </li>
+              <li className="flex gap-3">
+                <Phone className="mt-0.5 size-4 shrink-0 text-gold" />
+                <a href={`tel:${company.phone}`} className="hover:text-gold-300">
                   {company.phoneDisplay}
                 </a>
               </li>
-              <li>
-                <a
-                  href={`mailto:${company.email}`}
-                  className="transition-colors hover:text-teal-300"
-                >
+              <li className="flex gap-3">
+                <Mail className="mt-0.5 size-4 shrink-0 text-gold" />
+                <a href={`mailto:${company.email}`} className="break-all hover:text-gold-300">
                   {company.email}
                 </a>
               </li>
-              <li>
-                <a
-                  href={company.whatsapp}
-                  className="transition-colors hover:text-teal-300"
-                >
-                  WhatsApp us
-                </a>
-              </li>
-              <li>
-                <Link
-                  href="/login"
-                  className="transition-colors hover:text-teal-300"
-                >
-                  Sign in
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/signup"
-                  className="transition-colors hover:text-teal-300"
-                >
-                  Sign up
-                </Link>
+              <li className="flex gap-3">
+                <Clock className="mt-0.5 size-4 shrink-0 text-gold" />
+                {company.hours}
               </li>
             </ul>
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col gap-3 border-t border-white/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-mist">
-            {year} {company.legalName}. All rights reserved.
-          </p>
-          <div className="flex flex-wrap items-center gap-4 text-xs text-mist">
-            <Link href="/terms" className="transition-colors hover:text-teal-300">
-              Terms
-            </Link>
-            <Link href="/privacy" className="transition-colors hover:text-teal-300">
-              Privacy
-            </Link>
-            {company.locations.map((loc) => (
-              <span key={loc} className="flex items-center gap-1.5">
-                <span className="size-1.5 rounded-full bg-teal-300" />
-                {loc}
-              </span>
-            ))}
+        <div className="border-t border-white/10">
+          <div className="container-page flex flex-col gap-3 py-6 text-xs text-mist sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              © {year} {company.legalName}. All rights reserved.
+            </p>
+            <div className="flex flex-wrap items-center gap-5">
+              <Link href="/terms" className="hover:text-gold-300">
+                Terms
+              </Link>
+              <Link href="/privacy" className="hover:text-gold-300">
+                Privacy
+              </Link>
+              <Link href={nav.signIn.href} className="hover:text-gold-300">
+                Merchant sign in
+              </Link>
+            </div>
           </div>
         </div>
       </div>

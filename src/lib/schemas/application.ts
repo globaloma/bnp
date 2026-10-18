@@ -14,6 +14,9 @@ export const applicationSchema = z.object({
   location: z.string().trim().min(1, "Select a preferred location").max(80),
   volume: z.string().trim().max(80).optional(),
   note: z.string().trim().max(2000).optional(),
+  kind: z.enum(["contact", "quote"]).optional(),
+  // The quote calculator's estimate, as plain lines of text.
+  quote: z.string().trim().max(2000).optional(),
   // honeypot, must stay empty
   website: z.string().max(0).optional(),
 });

@@ -10,6 +10,8 @@
   --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-mono), ui-monospace, monospace;
   --font-heading: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  /* Marketing pages only; the variable is set on the marketing layout. */
+  --font-display: var(--font-jakarta), var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 
   /* BNP brand palette */
   --color-navy: #0f2a44;
@@ -192,4 +194,15 @@
     color: var(--color-teal-700);
     text-decoration: underline;
   }
+}
+
+/* Faint dot grid for section backgrounds on the marketing site. */
+@utility bg-dots {
+  background-image: radial-gradient(rgba(15, 42, 68, 0.09) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+@utility bg-dots-light {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 22px 22px;
 }

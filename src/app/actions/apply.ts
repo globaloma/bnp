@@ -36,6 +36,8 @@ export async function submitApplication(
     location: formData.get("location"),
     volume: formData.get("volume") || undefined,
     note: formData.get("note") || undefined,
+    kind: formData.get("kind") || undefined,
+    quote: formData.get("quote") || undefined,
     website: formData.get("website") || undefined,
   });
 
@@ -51,6 +53,7 @@ export async function submitApplication(
   if (parsed.data.website) return { ok: true };
 
   const d = parsed.data;
+  const isQuote = d.kind === "quote";
   const resend = getResend();
 
   if (!resend) {
@@ -66,10 +69,10 @@ export async function submitApplication(
       from: FROM,
       to: TO,
       replyTo: d.email,
-      subject: `Partner application: ${d.businessName.replace(/[\r\n]+/g, " ")}`,
+      subject: `${isQuote ? "Quote request" : "Merchant enquiry"}: ${d.businessName.replace(/[\r\n]+/g, " ")}`,
       html: `
         <div style="font-family:system-ui,Segoe UI,sans-serif;max-width:560px;">
-          <h2 style="color:#0f2a44;font-size:18px;margin:0 0 4px;">New partner application</h2>
+          <h2 style="color:#0f2a44;font-size:18px;margin:0 0 4px;">${isQuote ? "New quote request" : "New merchant enquiry"}</h2>
           <p style="color:#455568;font-size:13px;margin:0 0 16px;">Submitted through bnpfulfillment.com</p>
           <table style="border-collapse:collapse;width:100%;">
             ${row("Business", d.businessName)}
@@ -80,6 +83,11 @@ export async function submitApplication(
             ${row("Preferred location", d.location)}
             ${row("Monthly volume", d.volume)}
           </table>
+          ${
+            d.quote
+              ? `<p style="color:#0f2a44;font-size:13px;margin:16px 0 0;"><strong>Their estimate from the quote calculator</strong><br/>${escapeHtml(d.quote).replace(/\n/g, "<br/>")}</p>`
+              : ""
+          }
           ${
             d.note
               ? `<p style="color:#0f2a44;font-size:13px;margin:16px 0 0;"><strong>Notes</strong><br/>${escapeHtml(d.note).replace(/\n/g, "<br/>")}</p>`

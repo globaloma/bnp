@@ -45,7 +45,10 @@ export function SignupForm({ initialRole = "merchant" }: { initialRole?: Role })
         team confirms fit, most partners are approved within 48 hours.
       </p>
 
-      {!awaitingConfirmation ? (
+      {/* The public site is for merchants. Fulfillment center staff reach
+          this form through /signup?role=fulfillment_center, which shows the
+          role switch. */}
+      {!awaitingConfirmation && initialRole === "fulfillment_center" ? (
         <div className="mt-5 grid grid-cols-2 gap-2 rounded-lg bg-stone p-1">
           {(
             [

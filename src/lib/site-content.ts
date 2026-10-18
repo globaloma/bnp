@@ -1,7 +1,7 @@
 /**
  * Single source of truth for all marketing copy.
- * Content is lifted from the original PRD (reference/index.html) and lightly
- * rewritten for a cleaner voice. No em dashes, no en dashes used as separators.
+ * The public site speaks to merchants only: brands that want BNP to store,
+ * pack and deliver for them. No em dashes, no en dashes used as separators.
  */
 
 export const company = {
@@ -17,173 +17,241 @@ export const company = {
   primaryHub: {
     city: "Abuja, Nigeria",
     area: "Jabi, heart of the FCT",
+    address: "Suite 207, Alba Plaza, Jabi, Abuja",
   },
+  hours: "Monday to Friday, 8am to 6pm",
   // Shown on receipt PDFs under "Payment details". Null until the account
   // details are confirmed; the section stays hidden while it is.
   bankAccount: null as { bankName: string; accountNumber: string; accountName: string } | null,
 } as const;
 
-export const hero = {
-  eyebrow: "Abuja, Lagos and USA",
-  titleLines: ["No branch.", "No staff.", "No operational stress."],
-  subtitle:
-    "BNP Fulfillment is your Abuja operations partner. We store your inventory, fulfil your orders and deliver to your customers, so you stay focused on growing your business.",
-  primaryCta: { label: "Sign up free", href: "/signup" },
-  secondaryCta: { label: "See how it works", href: "/#how" },
-  stats: [
-    { value: 2400, suffix: "+", label: "Orders fulfilled" },
-    { value: 80, suffix: "+", label: "Active partners" },
-    { value: 7, suffix: " days", label: "Average launch time" },
-    { value: 98, suffix: "%", label: "On time delivery" },
+export const nav = {
+  links: [
+    { label: "Home", href: "/" },
+    { label: "About", href: "/about" },
+    { label: "Services", href: "/services" },
+    { label: "How it works", href: "/how-it-works" },
+    { label: "Pricing", href: "/pricing" },
+    { label: "FAQ", href: "/faq" },
+    { label: "Contact", href: "/contact" },
   ],
-  preview: {
-    tag: "Live on your dashboard",
-    orderRef: "ORD-0182",
-    customer: "Amara T.",
-    item: "Ankara Tote x2",
-    total: "₦14,000",
-    steps: ["Packed", "Dispatched", "Delivered"],
-    activeStep: 1,
-  },
+  signIn: { label: "Sign in", href: "/login" },
+  signUp: { label: "Start selling", href: "/signup" },
+  quote: { label: "Get a quote", href: "/get-a-quote" },
 } as const;
 
-export const stakeholders = {
-  label: "Three ways to work with BNP",
-  title: "Built for merchants, fulfillment centers and their customers.",
+// ---------------------------------------------------------------------------
+// Home
+// ---------------------------------------------------------------------------
+
+export const hero = {
+  eyebrow: "Fulfillment for Nigerian brands",
+  title: "Your stock on our shelves. Your orders at their door.",
+  subtitle:
+    "BNP stores your inventory in Abuja, packs every order the day it comes in and delivers it to your customer. You keep selling. We handle everything after the sale.",
+  primaryCta: { label: "Get a free quote", href: "/get-a-quote" },
+  secondaryCta: { label: "See how it works", href: "/how-it-works" },
+  stats: [
+    { value: 2400, suffix: "+", label: "Orders fulfilled" },
+    { value: 80, suffix: "+", label: "Brands on board" },
+    { value: 98, suffix: "%", label: "Delivered on time" },
+  ],
+} as const;
+
+export const highlights = [
+  {
+    icon: "Warehouse",
+    title: "Secure, insured storage",
+    body: "CCTV monitored shelves in Jabi. Every unit is counted, labelled and insured.",
+  },
+  {
+    icon: "Zap",
+    title: "Same day dispatch",
+    body: "Orders in before noon leave the same day to customers across the FCT.",
+  },
+  {
+    icon: "MonitorSmartphone",
+    title: "Live from your phone",
+    body: "See stock, orders and deliveries in real time from your dashboard.",
+  },
+] as const;
+
+export const aboutTeaser = {
+  label: "About BNP",
+  title: "Your operations team in Abuja, without hiring one.",
+  body: [
+    "Most growing brands hit the same wall: more orders than they can pack, customers in cities they can't reach quickly, and no time left to actually sell.",
+    "BNP Fulfillment is the team that takes that work off your hands. Send us your stock once. From then on we receive it, store it, pick and pack every order, and get it to your customer, while you watch it all from your dashboard.",
+  ],
+  points: [
+    "Live in five to seven days",
+    "No rent, no staff, no long contracts",
+    "One dashboard for Abuja, Lagos and the USA",
+    "Pay a share of sales only when you sell",
+  ],
+  cta: { label: "More about us", href: "/about" },
+  badge: { value: "7", label: "days to go live" },
+} as const;
+
+export const whyUs = {
+  label: "Why merchants choose BNP",
+  title: "Built for brands that would rather sell than pack.",
   description:
-    "One platform, three roles. Whichever seat you take, you get a dashboard built for exactly what you need to do.",
-  items: [
+    "You didn't start a business to tape boxes and chase riders. Here is what changes when BNP runs your operations.",
+  points: [
     {
-      icon: "Store",
-      title: "Merchants",
-      body: "List your products, we store, pack and ship every order. Track inventory and orders from one dashboard, from anywhere.",
-      cta: { label: "Sign up as a merchant", href: "/signup?role=merchant" },
+      title: "An Abuja address without a branch",
+      body: "Our Jabi hub becomes your physical presence in the capital. Customers can walk in to collect, and you never sign a lease.",
     },
     {
-      icon: "Boxes",
-      title: "Fulfillment centers",
-      body: "Run warehouse operations for our merchant network. Dispatch orders, manage stock and track performance across every brand you serve.",
-      cta: {
-        label: "Sign up as a fulfillment center",
-        href: "/signup?role=fulfillment_center",
-      },
+      title: "Faster delivery, better reviews",
+      body: "With your stock already in Abuja, FCT customers get their orders the same day or the next, not after a week in transit.",
     },
     {
-      icon: "ShoppingBag",
-      title: "Customers",
-      body: "Shop directly from the brands you love on BNP, with fast, reliable delivery to your door.",
-      cta: null,
-      badge: "Ask a merchant for their store link",
+      title: "Every unit accounted for",
+      body: "Products are labelled with their own barcode and tracked from the moment they arrive. You always know what's on the shelf.",
+    },
+    {
+      title: "Costs that follow your sales",
+      body: "A small yearly subscription, storage by the space you use and a share of sales. No sales, no fulfillment fee.",
     },
   ],
 } as const;
+
+export const testimonials = {
+  label: "Merchant stories",
+  title: "Brands that handed us the busy work.",
+  items: [
+    {
+      quote:
+        "I used to dread Abuja orders. The interstate complaints were endless. Since moving my stock to the BNP Jabi hub, my FCT customers get next day delivery and my reviews improved instantly.",
+      name: "Amara Chukwu",
+      business: "Amara Skincare",
+      detail: "Lagos based, Abuja active",
+    },
+    {
+      quote:
+        "My customers kept asking if I had a branch in Abuja. Now I tell them yes, because I do. The BNP hub is my Abuja address. Conversions from the FCT went up significantly within two months.",
+      name: "Tunde Akinwale",
+      business: "TechWear Nigeria",
+      detail: "Gadgets and accessories",
+    },
+    {
+      quote:
+        "Opening a physical store would have cost me over ₦8 million upfront. BNP let me test the Abuja market in seven days at a fraction of the cost. There really is no comparison.",
+      name: "Fatima Musa",
+      business: "Fatima's Organics",
+      detail: "Health and supplements",
+    },
+  ],
+} as const;
+
+// ---------------------------------------------------------------------------
+// Services
+// ---------------------------------------------------------------------------
 
 export const services = {
   label: "What we do",
   title: "Everything after the sale, handled.",
   description:
-    "From the moment an order is placed to the moment it reaches your customer, BNP manages the entire fulfillment chain on your behalf.",
+    "From the moment your stock arrives to the moment your customer opens the parcel, BNP runs the whole chain for you.",
   items: [
     {
+      slug: "warehousing",
       icon: "Warehouse",
+      image: "/images/marketing/warehouse-floor.jpg",
       title: "Warehousing and storage",
-      body: "Your products are received, labelled, photographed and stored securely in our Abuja facility. Every unit is tracked by SKU and fully insured in our care.",
+      body: "Your products are received, counted, labelled and stored on secure shelves in our Abuja facility. Every unit is tracked by SKU and insured while in our care.",
+      bullets: [
+        "Counted and checked on arrival",
+        "Barcode label on every product",
+        "CCTV monitored, fully insured",
+      ],
     },
     {
+      slug: "pick-and-pack",
       icon: "PackageCheck",
+      image: "/images/marketing/packing-order.jpg",
       title: "Pick, pack and dispatch",
-      body: "When an order comes in, our team picks the exact item from your shelf, packs it professionally and dispatches it to your customer, same day or next day.",
+      body: "When an order comes in, our team picks the exact item from your shelf, packs it properly and sends it out the same day or the next.",
+      bullets: [
+        "Same day dispatch before noon",
+        "Careful packing for fragile items",
+        "Every order scanned and checked",
+      ],
     },
     {
+      slug: "delivery",
       icon: "Bike",
+      image: "/images/marketing/parcel-handover.jpg",
       title: "Last mile delivery",
-      body: "BNP riders cover Abuja and surrounding areas. You can also add your own riders to the platform with custom delivery fees for full flexibility on dispatch.",
+      body: "BNP riders cover Abuja and its surroundings. Prefer your own riders? Add them to your account with their own delivery fees.",
+      bullets: [
+        "BNP riders on the ground daily",
+        "Use your own riders if you like",
+        "Customers confirm delivery on WhatsApp",
+      ],
     },
     {
-      icon: "BarChart3",
-      title: "Inventory management",
-      body: "Upload products with photos, pricing and SKUs through your partner dashboard. Receive automatic alerts when stock runs low, before it becomes a problem.",
-    },
-    {
-      icon: "Wallet",
-      title: "Payments and settlement",
-      body: "We handle payment collection for walk in and on site transactions. Monthly sales reports and settlement summaries are available on your dashboard at any time.",
-    },
-    {
+      slug: "storefront",
       icon: "Store",
-      title: "Walk in and brand presence",
-      body: "Our Jabi hub acts as your Abuja address. Customers can walk in to collect orders, interact with your products and experience your brand without you opening a store.",
+      image: "/images/marketing/online-store.jpg",
+      title: "Your own online store",
+      body: "Every merchant gets a store link to share on Instagram, WhatsApp and anywhere else. Customers order and pay online, and the order lands straight in our warehouse.",
+      bullets: [
+        "Online card and transfer payments",
+        "Order tracking for your customers",
+        "Receipts sent automatically",
+      ],
     },
     {
+      slug: "inventory",
+      icon: "BarChart3",
+      image: "/images/marketing/stock-check.jpg",
+      title: "Inventory management",
+      body: "Add products with photos, prices and variants from your dashboard. See exactly what's on hand, what's reserved for orders and what's still available to sell.",
+      bullets: [
+        "Colours and sizes as separate SKUs",
+        "Low stock alerts before you run out",
+        "Bulk upload by CSV",
+      ],
+    },
+    {
+      slug: "walk-in",
+      icon: "Footprints",
+      image: "/images/marketing/boxes-trolley.jpg",
+      title: "Walk in collection",
+      body: "Our Jabi hub works as your Abuja address. Customers can walk in to collect their orders, so your brand has a real touchpoint in the capital.",
+      bullets: [
+        "Pickup option at checkout",
+        "Your brand's Abuja presence",
+        "No shop rent to pay",
+      ],
+    },
+    {
+      slug: "returns",
       icon: "Undo2",
+      image: "/images/marketing/warehouse-staff.jpg",
       title: "Returns and claims",
-      body: "Returns are processed through the partner portal with photo documentation. Claims are handled transparently with a full audit trail and a written outcome for every case.",
+      body: "Returned items are checked and put back on the shelf or set aside. Damage claims come with photos, a full record and a written outcome.",
+      bullets: [
+        "Returns checked before restocking",
+        "Photo documentation",
+        "Written outcome on every claim",
+      ],
     },
     {
+      slug: "reports",
       icon: "TrendingUp",
-      title: "Reporting and insights",
-      body: "Access monthly inventory and financial reports from your dashboard. Export to CSV or PDF at any time. Your data is always yours, with no need to request it from us.",
-    },
-  ],
-} as const;
-
-export const steps = {
-  label: "How it works",
-  title: "From application to delivery in seven steps.",
-  description:
-    "A straightforward process built for Nigerian businesses. No logistics expertise required. Most partners go live within five to seven days of approval.",
-  items: [
-    {
-      icon: "Truck",
-      title: "Send your stock",
-      body: "Ship or drop off your inventory at our Jabi hub. We receive and log every unit.",
-    },
-    {
-      icon: "ClipboardList",
-      title: "We onboard it",
-      body: "Your items are photographed, shelved and uploaded to your partner dashboard.",
-    },
-    {
-      icon: "MonitorSmartphone",
-      title: "You control orders",
-      body: "You create, approve and manage every order from your dashboard, from anywhere in the world, and track them in real time.",
-    },
-    {
-      icon: "PackageCheck",
-      title: "Pick, pack and deliver",
-      body: "BNP picks, packs and dispatches. Same day or next day within Abuja.",
-    },
-    {
-      icon: "CreditCard",
-      title: "Payments handled",
-      body: "Walk in and on site payments are collected and logged against your account.",
-    },
-    {
-      icon: "FileBarChart",
+      image: "/images/marketing/merchant-laptop.jpg",
       title: "Reports and settlement",
-      body: "Monthly sales and inventory reports are ready in your dashboard to download anytime.",
+      body: "Sales, stock and payment reports are always on your dashboard. Export them whenever you want. Your data is yours.",
+      bullets: [
+        "Monthly sales and stock reports",
+        "Every charge visible in your wallet",
+        "Export any time",
+      ],
     },
-    {
-      icon: "Rocket",
-      title: "You scale",
-      body: "You focus on marketing and growth. We keep the operations running smoothly.",
-    },
-  ],
-} as const;
-
-export const audience = {
-  label: "Who it is for",
-  title: "Built for product businesses ready to grow.",
-  description:
-    "BNP is the right fit for brands that are already selling and want to reach Abuja customers faster, more reliably and without the overhead of a physical operation.",
-  fitList: [
-    "You sell online, on social media or through WhatsApp",
-    "You ship to Abuja and deal with delivery complaints",
-    "You want same day or next day delivery in the FCT",
-    "You need a local Abuja presence without a store",
-    "You want to be seen as a multi city brand",
-    "Your time is better spent on sales, not packing",
-    "You want to test and build Abuja demand with low risk",
   ],
   industries: [
     "Fashion and accessories",
@@ -197,141 +265,356 @@ export const audience = {
     "African export goods",
     "Diaspora brands",
   ],
+  fitList: [
+    "You sell online, on social media or through WhatsApp",
+    "You ship to Abuja and deal with delivery complaints",
+    "You want same day or next day delivery in the FCT",
+    "You need a local Abuja presence without a store",
+    "Your time is better spent on sales than packing",
+    "You want to test Abuja demand with low risk",
+  ],
 } as const;
 
-export const hub = {
-  label: "Our hub",
-  title: "Your new Abuja address.",
+// ---------------------------------------------------------------------------
+// How it works
+// ---------------------------------------------------------------------------
+
+export const steps = {
+  label: "How it works",
+  title: "From sign up to delivered, in a few simple steps.",
   description:
-    "The BNP primary facility is in Jabi, one of the most accessible commercial areas in Abuja. It is your brand's physical presence in the FCT without the cost of a branch.",
-  points: [
+    "No logistics experience needed. Most merchants are live within five to seven days of approval.",
+  items: [
     {
-      icon: "Zap",
-      title: "Same day and next day delivery",
-      body: "With your stock already in Abuja, we dispatch fast. Orders placed before noon go out the same day to FCT customers.",
+      icon: "ClipboardList",
+      title: "Create your account",
+      body: "Sign up in a few minutes and tell us about your business. Our team reviews and approves most merchants within 48 hours.",
     },
     {
-      icon: "Footprints",
-      title: "Customer walk ins welcome",
-      body: "Customers can visit our Jabi hub in person to collect orders or browse products, giving your brand a real world touchpoint in the capital.",
+      icon: "Truck",
+      title: "Send us your stock",
+      body: "Ship or drop off your products at our Jabi hub. Tell us what's coming on your dashboard so we can check it in.",
     },
     {
-      icon: "ShieldCheck",
-      title: "Secure, insured storage",
-      body: "All products in our facility are monitored by CCTV and fully insured. Damage claims are handled with complete documentation and transparency.",
+      icon: "Boxes",
+      title: "We receive and label it",
+      body: "Every unit is counted, labelled with its own barcode and put on a shelf. Your stock appears on your dashboard.",
     },
     {
-      icon: "Globe",
-      title: "Expanding to Lagos and the USA",
-      body: "Partners can assign inventory to Lagos or our Texas facility on the same account. One dashboard, multiple cities, no new contracts.",
+      icon: "ShoppingBag",
+      title: "Orders come in",
+      body: "Create orders from your dashboard, or let customers buy from your online store link. Stock is reserved the moment an order is placed.",
+    },
+    {
+      icon: "PackageCheck",
+      title: "We pick, pack and deliver",
+      body: "Our team picks the right items, packs them and sends them out the same day or the next. Your customer confirms delivery.",
+    },
+    {
+      icon: "FileBarChart",
+      title: "You track and grow",
+      body: "Watch every order, every unit and every naira from your dashboard, and spend your time on selling.",
     },
   ],
-  card: {
-    eyebrow: "Primary hub",
-    city: "Abuja, Nigeria",
-    area: "Jabi, heart of the FCT",
-    items: [
-      "Secure, organised warehouse facility",
-      "BNP riders on ground daily",
-      "Partner drop off and walk in enabled",
-      "Same day dispatch cutoff at noon",
-      "CCTV monitored storage bays",
-      "Lagos expansion active",
-      "USA facility in Texas, operational",
-    ],
-  },
+  needs: [
+    "Your business name and contact details",
+    "A list of the products you want to store",
+    "Your stock, delivered to our Jabi hub",
+  ],
 } as const;
+
+// ---------------------------------------------------------------------------
+// Pricing and quotes
+// ---------------------------------------------------------------------------
 
 export const pricing = {
   label: "Pricing",
-  title: "Simple, transparent costs.",
+  title: "Three simple fees. Nothing hidden.",
   description:
-    "Three straightforward fees. No hidden charges, no long term lock in. If you do not sell, your fulfillment fee is zero.",
+    "No long term lock in and no surprise invoices. If you don't sell, your fulfillment fee is zero.",
   tiers: [
     {
-      label: "Onboarding",
-      name: "Annual subscription",
+      label: "Once a year",
+      name: "Subscription",
       amount: "₦50,000",
-      qualifier: "Paid once per year, not monthly",
-      detail:
-        "Covers your full account setup, inventory onboarding and photography, partner dashboard access, WhatsApp integration and staff training.",
+      unit: "per year",
+      detail: "Your account, dashboard and online store, set up and ready.",
+      features: [
+        "Full account and inventory setup",
+        "Merchant dashboard and online store",
+        "WhatsApp delivery updates",
+        "Onboarding and training",
+      ],
       highlighted: false,
     },
     {
       label: "Monthly",
-      name: "Storage fee",
+      name: "Storage",
       amount: "₦10,000",
-      qualifier: "Per square metre of space used, per month",
-      detail:
-        "Covers secure shelved storage, real time inventory tracking, low stock alerts and full insurance on all goods in our facility.",
+      unit: "per m² per month",
+      detail: "You only pay for the shelf space your stock actually uses.",
+      features: [
+        "Secure, shelved storage",
+        "Live stock levels on your dashboard",
+        "Low stock alerts",
+        "Full insurance on goods in our care",
+      ],
       highlighted: true,
     },
     {
-      label: "Performance",
-      name: "Fulfillment fee",
+      label: "Only when you sell",
+      name: "Fulfillment",
       amount: "7%",
-      qualifier: "Of total sales value per month. No sale, no charge.",
-      detail:
-        "Covers pick, pack and dispatch per order. If your brand sells ₦500,000 in a month, the fulfillment fee is ₦35,000, and you paid no rent, no salaries and no overhead.",
+      unit: "of monthly sales",
+      detail: "Covers picking, packing and dispatching every order.",
+      features: [
+        "Pick and pack on every order",
+        "Same day dispatch before noon",
+        "Returns handling",
+        "No sales, no charge",
+      ],
       highlighted: false,
     },
   ],
-  note: "All fees are deducted automatically from your partner wallet. You keep full visibility of every charge through your dashboard. No surprise invoices, no manual follow ups.",
+  example:
+    "If your brand sells ₦500,000 in a month, the fulfillment fee is ₦35,000. No rent, no salaries, no overhead.",
+  note: "All fees are deducted from your merchant wallet and every charge is listed on your dashboard. Delivery fees are charged per order and shown at checkout.",
 } as const;
 
-export const testimonials = {
-  label: "Partner stories",
-  title: "What our partners say.",
-  items: [
-    {
-      quote:
-        "I used to dread Abuja orders. The interstate complaints were endless. Since moving my stock to the BNP Jabi hub, my FCT customers get next day delivery and my reviews improved instantly.",
-      name: "Amara Chukwu",
-      business: "Amara Skincare, Lagos based and Abuja active",
-    },
-    {
-      quote:
-        "My customers kept asking if I had a branch in Abuja. Now I tell them yes, because I do. The BNP hub is my Abuja address. Conversions from the FCT went up significantly within two months.",
-      name: "Tunde Akinwale",
-      business: "TechWear Nigeria, gadgets and accessories",
-    },
-    {
-      quote:
-        "Opening a physical store would have cost me over ₦8 million upfront. BNP let me test the Abuja market in seven days at a fraction of the cost. There really is no comparison.",
-      name: "Fatima Musa",
-      business: "Fatima's Organics, health and supplements",
-    },
-  ],
+/** Numbers the quote calculator uses. Keep in line with `pricing` above. */
+export const quote = {
+  subscriptionPerYear: 50_000,
+  storagePerSqmPerMonth: 10_000,
+  fulfillmentRate: 0.07,
+  // A medium carton is about 60 x 40 x 40 cm. Stacked two high on a shelf,
+  // roughly eight of them fit on one square metre of floor space.
+  cartonsPerSqm: 8,
+  minSqm: 1,
+  maxSqm: 100,
+  maxCartons: 800,
+  maxMonthlySales: 50_000_000,
 } as const;
 
-export const apply = {
-  label: "Talk to us first",
-  title: "Have questions before you sign up?",
-  description:
-    "Tell us about your business and a real person on our team will get back to you within 48 hours. Prefer to skip the wait? Create your account instantly instead.",
-  directCta: { label: "Sign up instantly", href: "/signup" },
-  perks: [
+// ---------------------------------------------------------------------------
+// About
+// ---------------------------------------------------------------------------
+
+export const about = {
+  intro: {
+    label: "Who we are",
+    title: "The operations partner behind growing Nigerian brands.",
+    body: [
+      "BNP Fulfillment, part of BoxNPick Global, exists for one reason: to let merchants grow without building a warehouse, hiring a packing team or opening a branch in every city.",
+      "We run the physical side of your business from our hub in Jabi, Abuja, with Lagos and our Texas facility on the same account. You sell. We store, pack, deliver and keep the records.",
+    ],
+  },
+  values: [
+    {
+      icon: "ShieldCheck",
+      title: "Care",
+      body: "We treat your stock as if it were ours. Every unit is counted, labelled, insured and accounted for.",
+    },
     {
       icon: "Zap",
-      title: "Live in five to seven days",
-      body: "Apply, get approved, send your stock and start selling in Abuja.",
+      title: "Speed",
+      body: "Orders in before noon go out the same day. Fast delivery is how your brand earns repeat customers.",
     },
     {
-      icon: "Smartphone",
-      title: "Manage from your phone",
-      body: "Your dashboard works fully on mobile. Create orders on WhatsApp.",
-    },
-    {
-      icon: "Package",
-      title: "Full service operations",
-      body: "We handle storage, packing, dispatch, returns and reporting.",
-    },
-    {
-      icon: "Globe",
-      title: "Scale beyond Abuja when ready",
-      body: "Add Lagos or the USA on the same account with no new application.",
+      icon: "MonitorSmartphone",
+      title: "Openness",
+      body: "Every unit, order and charge is on your dashboard. No guessing, no waiting for us to send a report.",
     },
   ],
+  mission:
+    "To give every Nigerian brand the operations of a big company, without the cost of building one.",
+  vision:
+    "A Nigeria where a brand in any city can sell to customers in every city, quickly and reliably.",
+} as const;
+
+export const hub = {
+  label: "Our locations",
+  title: "One account. Three locations.",
+  description:
+    "Start in Abuja and add Lagos or the USA when you're ready, all from the same dashboard. No new application, no new contract.",
+  locations: [
+    {
+      city: "Abuja",
+      area: "Jabi, FCT",
+      status: "Primary hub",
+      image: "/images/marketing/warehouse-aisle.jpg",
+      points: [
+        "Secure, organised warehouse",
+        "BNP riders on the ground daily",
+        "Walk in collection for customers",
+        "Same day dispatch cutoff at noon",
+      ],
+    },
+    {
+      city: "Lagos",
+      area: "Lagos State",
+      status: "Expanding",
+      image: "/images/marketing/delivery-van.jpg",
+      points: [
+        "Reach Lagos customers faster",
+        "Same dashboard, same account",
+        "Assign stock per location",
+      ],
+    },
+    {
+      city: "USA",
+      area: "Texas",
+      status: "Operational",
+      image: "/images/marketing/warehouse-staff.jpg",
+      points: [
+        "Serve diaspora customers",
+        "Ideal for African export goods",
+        "Managed from the same dashboard",
+      ],
+    },
+  ],
+} as const;
+
+// ---------------------------------------------------------------------------
+// FAQ
+// ---------------------------------------------------------------------------
+
+export const faq = {
+  label: "FAQ",
+  title: "Questions merchants ask us.",
+  groups: [
+    {
+      title: "Getting started",
+      items: [
+        {
+          q: "How do I get started with BNP?",
+          a: "Create a merchant account, tell us about your business and our team will review it, usually within 48 hours. Once approved, you send us your stock and you're ready to take orders. Most merchants are live within five to seven days.",
+        },
+        {
+          q: "How do I get my products into your warehouse?",
+          a: "Ship your stock to our Jabi hub or drop it off in person. Let us know what's coming on your dashboard. We count every unit, label it and shelve it, and it appears on your dashboard once it's checked in.",
+        },
+        {
+          q: "What kinds of products can I store with you?",
+          a: "Fashion, beauty, hair, gadgets, homeware, non perishable foods, supplements, gifts and more. If you sell something unusual, such as very large, fragile or temperature sensitive items, talk to us first and we'll confirm whether we can handle it.",
+        },
+        {
+          q: "Do I need to sign a long contract?",
+          a: "No. The subscription is yearly, storage is monthly and the fulfillment fee only applies when you sell. There is no long term lock in.",
+        },
+      ],
+    },
+    {
+      title: "Pricing and payments",
+      items: [
+        {
+          q: "How does the 7% fulfillment fee work?",
+          a: "It applies to the total value of goods sold in that month. If you sell ₦200,000 worth of goods, the fee is ₦14,000. If you sell nothing, the fulfillment fee is zero and only storage applies.",
+        },
+        {
+          q: "How is storage measured?",
+          a: "By the floor space your stock takes up on our shelves, in square metres. As a rough guide, about eight medium cartons fit in one square metre. Our quote calculator can estimate it for you.",
+        },
+        {
+          q: "How accurate is the online quote?",
+          a: "It uses our standard prices, so it's a close estimate. Your final storage cost depends on the actual space your stock uses once it's on our shelves. Delivery fees are separate and charged per order.",
+        },
+        {
+          q: "How do I pay the fees?",
+          a: "Fees are deducted from your merchant wallet, which you top up from your dashboard. Every charge is listed there, so there are no surprise invoices.",
+        },
+      ],
+    },
+    {
+      title: "Orders and delivery",
+      items: [
+        {
+          q: "How fast do orders go out?",
+          a: "Orders received before noon are dispatched the same day to customers in the FCT. Later orders go out the next day.",
+        },
+        {
+          q: "Can I use my own delivery riders?",
+          a: "Yes. Add your own riders to your account, set their delivery fees and assign orders to them. You can switch between BNP riders and your own at any time.",
+        },
+        {
+          q: "Can my customers order online?",
+          a: "Yes. Every merchant gets an online store link to share anywhere. Customers order and pay online, can track their order, and the order comes straight to our warehouse to be packed.",
+        },
+        {
+          q: "Can customers collect orders in person?",
+          a: "Yes. Our Jabi hub works as a collection point. Customers choose pickup, come in with their order number and collect it.",
+        },
+      ],
+    },
+    {
+      title: "Your stock",
+      items: [
+        {
+          q: "What happens if a product is damaged in your care?",
+          a: "All stock in our facility is insured. Report it from your dashboard with photos and a description, and we resolve every claim with full documentation and a written outcome.",
+        },
+        {
+          q: "How do I know how much stock I have?",
+          a: "Your dashboard shows, for every product, how many units are on our shelves, how many are reserved for open orders and how many are still available to sell. You also get alerts when stock runs low.",
+        },
+        {
+          q: "Can I store stock in Lagos or the USA?",
+          a: "Yes. Assign stock to Lagos or our Texas facility from the same dashboard. No new application and no new contract.",
+        },
+      ],
+    },
+  ],
+} as const;
+
+// ---------------------------------------------------------------------------
+// Contact and footer
+// ---------------------------------------------------------------------------
+
+export const contact = {
+  label: "Contact us",
+  title: "Talk to a real person on our team.",
+  description:
+    "Questions about storage, pricing or whether BNP is right for your brand? Send us a message and we'll get back to you within 48 hours.",
+  mapQuery: "Alba Plaza, Jabi, Abuja, Nigeria",
+} as const;
+
+export const ctaBand = {
+  title: "Ready to stop packing orders yourself?",
+  body: "See what BNP would cost for your brand in under a minute, or create your account and start sending stock this week.",
+} as const;
+
+export const footer = {
+  description:
+    "BNP Fulfillment stores, packs and delivers for Nigerian brands from our hub in Jabi, Abuja, with Lagos and the USA on the same account.",
+  columns: [
+    {
+      title: "Company",
+      links: [
+        { label: "About us", href: "/about" },
+        { label: "How it works", href: "/how-it-works" },
+        { label: "Pricing", href: "/pricing" },
+        { label: "FAQ", href: "/faq" },
+        { label: "Contact", href: "/contact" },
+      ],
+    },
+    {
+      title: "Services",
+      links: [
+        { label: "Warehousing", href: "/services#warehousing" },
+        { label: "Pick and pack", href: "/services#pick-and-pack" },
+        { label: "Last mile delivery", href: "/services#delivery" },
+        { label: "Online store", href: "/services#storefront" },
+        { label: "Returns and claims", href: "/services#returns" },
+      ],
+    },
+  ],
+} as const;
+
+// ---------------------------------------------------------------------------
+// Merchant enquiry form (contact page and quote page). `categories` is also
+// used by sign up and dashboard settings.
+// ---------------------------------------------------------------------------
+
+export const apply = {
   form: {
     title: "Tell us about your business",
     subtitle: "Takes three minutes. We respond within 48 hours.",
@@ -354,77 +637,7 @@ export const apply = {
       "200 to 500 orders per month",
       "Over 500 orders per month",
     ],
-    disclaimer:
-      "No payment required at this stage. We confirm fit before any fees are discussed.",
-    success:
-      "Application received. Our team will be in touch within 48 hours.",
+    disclaimer: "No payment required. We confirm fit before any fees are discussed.",
+    success: "Message received. Our team will be in touch within 48 hours.",
   },
-} as const;
-
-export const faq = {
-  label: "FAQ",
-  title: "Common questions.",
-  items: [
-    {
-      q: "How do I get my products into your facility?",
-      a: "Once approved, ship your inventory to our Jabi hub or drop it off in person. We receive, count, photograph and shelf your stock, and you confirm it in your dashboard within 24 hours.",
-    },
-    {
-      q: "How does the 7 percent fulfillment fee work exactly?",
-      a: "It applies to the total value of items sold in that month. If you sell ₦200,000 worth of goods, the fee is ₦14,000. If sales are zero, the fulfillment fee is zero and only storage applies.",
-    },
-    {
-      q: "Can my Abuja customers walk in to collect orders?",
-      a: "Yes. Our Jabi hub functions as a collection point. Customers walk in, reference their order and collect directly, giving your brand a genuine physical touchpoint in Abuja.",
-    },
-    {
-      q: "What happens if a product is damaged in your care?",
-      a: "All stock is fully insured. File a claim through the partner portal with photos and a description. BNP processes and resolves every claim with full documentation and a written outcome.",
-    },
-    {
-      q: "Can I use my own delivery riders?",
-      a: "Yes. You can add your own riders to the platform, set their delivery fees independently and assign orders to them. You can also switch between BNP riders and your own at any time.",
-    },
-    {
-      q: "Can I expand to Lagos or the USA later?",
-      a: "Yes. Assign new inventory to the Lagos or USA warehouse directly from your existing dashboard. No new application and no new contract. Everything stays on one account.",
-    },
-  ],
-} as const;
-
-export const nav = {
-  links: [
-    { label: "Services", href: "/#services" },
-    { label: "How it works", href: "/#how" },
-    { label: "Pricing", href: "/#pricing" },
-    { label: "Our hub", href: "/#hub" },
-    { label: "FAQ", href: "/#faq" },
-  ],
-  signIn: { label: "Sign in", href: "/login" },
-  cta: { label: "Sign up", href: "/signup" },
-} as const;
-
-export const footer = {
-  description:
-    "The fulfillment network of Nigeria, connecting merchants, fulfillment centers and customers across Abuja, Lagos and the USA.",
-  columns: [
-    {
-      title: "Services",
-      links: [
-        { label: "Warehousing", href: "/#services" },
-        { label: "Pick and pack", href: "/#services" },
-        { label: "Last mile delivery", href: "/#services" },
-        { label: "Returns and claims", href: "/#services" },
-      ],
-    },
-    {
-      title: "Company",
-      links: [
-        { label: "How it works", href: "/#how" },
-        { label: "Pricing", href: "/#pricing" },
-        { label: "Our hub in Jabi", href: "/#hub" },
-        { label: "Talk to us", href: "/#apply" },
-      ],
-    },
-  ],
 } as const;

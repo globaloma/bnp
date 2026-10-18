@@ -55,7 +55,12 @@ export function Logo({
         >
           {company.name}
         </span>
-        <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-teal-300">
+        <span
+          className={cn(
+            "mt-1 text-[10px] font-semibold uppercase tracking-[0.16em]",
+            tone === "dark" ? "text-teal-300" : "text-teal-700",
+          )}
+        >
           Operations partner
         </span>
       </span>
