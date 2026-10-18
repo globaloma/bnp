@@ -6,6 +6,7 @@ import { computeMultiLineTotals, computeOrderTotals, generateOrderRef } from "@/
 import { orderSchema, orderEditSchema, type ActionResult } from "@/lib/schemas/order";
 import type { OrderStatus } from "@/types/db";
 import { ORDER_STATUSES } from "@/types/db";
+import { MERCHANT_EDITABLE, merchantCanEdit, merchantStatusOptions } from "@/lib/order-status";
 import { initializeTransaction } from "@/lib/paystack";
 import { after } from "next/server";
 import { requestDeliveryConfirmation } from "@/lib/delivery-feedback";
@@ -147,7 +148,7 @@ export async function createOrder(
     if (product.stock < quantity) {
       return {
         ok: false,
-        error: `Only ${product.stock} units of ${product.name} are in stock.`,
+        error: `Only ${product.stock} units of ${product.name} are available.`,
       };
     }
   }
@@ -195,7 +196,7 @@ export async function createOrder(
         total: t.total,
         location: product.location,
         rider: d.rider,
-        status: "Packaged" as const,
+        status: "Reserved" as const,
         channel: "dashboard" as const,
         payment_status: "paid" as const,
       };
@@ -206,13 +207,9 @@ export async function createOrder(
     return { ok: false, error: insertError.message };
   }
 
-  const movedAt = new Date().toISOString();
-  for (const { product, quantity } of lines) {
-    await supabase
-      .from("products")
-      .update({ stock: product.stock - quantity, last_moved_at: movedAt })
-      .eq("id", product.id);
-  }
+  // No stock edit here: inserting Reserved lines makes the database allocate
+  // the stock (orders_apply_stock, migration 0022). On-hand only drops when
+  // the warehouse dispatches the order.
 
   // Fulfillment centers hear about dashboard orders too, not just storefront
   // sales, so they can start packing. Sent after the response.
@@ -244,6 +241,16 @@ export async function updateOrderStatus(
     return { ok: false, error: "Invalid status" };
   }
   const supabase = await createClient();
+  const { data: current } = await supabase
+    .from("orders")
+    .select("status")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (!current) return { ok: false, error: "That order could not be found." };
+  if (!merchantStatusOptions(current.status as OrderStatus).includes(status)) {
+    return { ok: false, error: `An order that is ${current.status} can't be changed to ${status}.` };
+  }
+
   const { data: updated, error } = await supabase
     .from("orders")
     .update({ status })
@@ -275,13 +282,14 @@ export async function editOrder(
 
   const { data: order, error: fetchError } = await supabase
     .from("orders")
-    .select("id, order_ref, product_id, quantity, unit_price, vat_rate")
+    .select("id, order_ref, product_id, quantity, unit_price, vat_rate, status")
     .eq("id", orderId)
     .single();
 
   if (fetchError || !order) {
     return { ok: false, error: "That order could not be found." };
   }
+  const currentStatus = order.status as OrderStatus;
 
   const parsed = orderEditSchema.safeParse({
     customerName: formData.get("customerName"),
@@ -307,6 +315,29 @@ export async function editOrder(
 
   const d = parsed.data;
 
+  if (!merchantStatusOptions(currentStatus).includes(d.status)) {
+    return {
+      ok: false,
+      error: `An order that is ${currentStatus} can't be changed to ${d.status}.`,
+    };
+  }
+
+  // Once the warehouse starts picking, only the status can change (e.g. to
+  // Delivered after dispatch). Everything else is handled by the BNP team.
+  if (!merchantCanEdit(currentStatus)) {
+    const { error: statusError } = await supabase
+      .from("orders")
+      .update({ status: d.status })
+      .eq("id", orderId);
+    if (statusError) return { ok: false, error: statusError.message };
+    if (d.status === "Delivered") {
+      after(() => requestDeliveryConfirmation(user.id, order.order_ref));
+    }
+    revalidatePath("/dashboard/orders");
+    revalidatePath("/dashboard");
+    return { ok: true };
+  }
+
   const { data: partner } = await supabase
     .from("partners")
     .select("charges_vat")
@@ -329,16 +360,14 @@ export async function editOrder(
     if (product) {
       productVatRate = product.vat;
 
-      if (d.quantity !== order.quantity) {
-        const delta = d.quantity - order.quantity;
-        const newStock = product.stock - delta;
-        if (newStock < 0) {
-          return { ok: false, error: "Not enough stock to increase this order's quantity." };
-        }
-        await supabase
-          .from("products")
-          .update({ stock: newStock, last_moved_at: new Date().toISOString() })
-          .eq("id", product.id);
+      // The database moves the reservation when the quantity changes; this
+      // only stops it going past what's available (`stock` is available).
+      const extra = d.quantity - order.quantity;
+      if (d.status === "Reserved" && extra > product.stock) {
+        return {
+          ok: false,
+          error: `Only ${product.stock} more available, so the quantity can go up to ${order.quantity + product.stock}.`,
+        };
       }
     }
   }
@@ -388,35 +417,29 @@ export async function editOrder(
   return { ok: true };
 }
 
+const LOCKED_MESSAGE =
+  "The warehouse has started on this order, so it can't be changed here. Contact the BNP team.";
+
+// Orders can only be deleted before picking starts, or once cancelled. The
+// database releases any reserved stock as the lines go.
+const DELETABLE: OrderStatus[] = [...MERCHANT_EDITABLE, "Cancelled"];
+
 export async function deleteOrderLine(orderId: string): Promise<ActionResult> {
   const supabase = await createClient();
 
   const { data: order, error: fetchError } = await supabase
     .from("orders")
-    .select("id, product_id, quantity")
+    .select("id, status")
     .eq("id", orderId)
     .single();
 
   if (fetchError || !order) {
     return { ok: false, error: "That order could not be found." };
   }
+  if (!DELETABLE.includes(order.status as OrderStatus)) return { ok: false, error: LOCKED_MESSAGE };
 
   const { error: deleteError } = await supabase.from("orders").delete().eq("id", orderId);
   if (deleteError) return { ok: false, error: deleteError.message };
-
-  if (order.product_id) {
-    const { data: product } = await supabase
-      .from("products")
-      .select("id, stock")
-      .eq("id", order.product_id)
-      .single();
-    if (product) {
-      await supabase
-        .from("products")
-        .update({ stock: product.stock + order.quantity })
-        .eq("id", product.id);
-    }
-  }
 
   revalidatePath("/dashboard/orders");
   revalidatePath("/dashboard/inventory");
@@ -435,13 +458,20 @@ export async function deleteOrderGroups(orderRefs: string[]): Promise<ActionResu
 
   const { data: lines, error: fetchError } = await supabase
     .from("orders")
-    .select("id, product_id, quantity")
+    .select("id, status")
     .in("order_ref", orderRefs)
     .eq("partner_id", user.id);
 
   if (fetchError) return { ok: false, error: fetchError.message };
   if (!lines || lines.length === 0) {
     return { ok: false, error: "Those orders could not be found." };
+  }
+  if (lines.some((l) => !DELETABLE.includes(l.status as OrderStatus))) {
+    return {
+      ok: false,
+      error:
+        "Some of these orders are already with the warehouse, so they can't be deleted. Contact the BNP team.",
+    };
   }
 
   const { error: deleteError } = await supabase
@@ -451,29 +481,6 @@ export async function deleteOrderGroups(orderRefs: string[]): Promise<ActionResu
     .eq("partner_id", user.id);
 
   if (deleteError) return { ok: false, error: deleteError.message };
-
-  const restockByProduct = new Map<string, number>();
-  for (const line of lines) {
-    if (!line.product_id) continue;
-    restockByProduct.set(
-      line.product_id,
-      (restockByProduct.get(line.product_id) ?? 0) + line.quantity,
-    );
-  }
-
-  for (const [productId, qty] of restockByProduct) {
-    const { data: product } = await supabase
-      .from("products")
-      .select("id, stock")
-      .eq("id", productId)
-      .single();
-    if (product) {
-      await supabase
-        .from("products")
-        .update({ stock: product.stock + qty })
-        .eq("id", product.id);
-    }
-  }
 
   revalidatePath("/dashboard/orders");
   revalidatePath("/dashboard/inventory");
@@ -490,13 +497,16 @@ export async function deleteOrderGroup(orderRef: string): Promise<ActionResult> 
 
   const { data: lines, error: fetchError } = await supabase
     .from("orders")
-    .select("id, product_id, quantity")
+    .select("id, status")
     .eq("order_ref", orderRef)
     .eq("partner_id", user.id);
 
   if (fetchError) return { ok: false, error: fetchError.message };
   if (!lines || lines.length === 0) {
     return { ok: false, error: "That order could not be found." };
+  }
+  if (lines.some((l) => !DELETABLE.includes(l.status as OrderStatus))) {
+    return { ok: false, error: LOCKED_MESSAGE };
   }
 
   const { error: deleteError } = await supabase
@@ -506,21 +516,6 @@ export async function deleteOrderGroup(orderRef: string): Promise<ActionResult> 
     .eq("partner_id", user.id);
 
   if (deleteError) return { ok: false, error: deleteError.message };
-
-  for (const line of lines) {
-    if (!line.product_id) continue;
-    const { data: product } = await supabase
-      .from("products")
-      .select("id, stock")
-      .eq("id", line.product_id)
-      .single();
-    if (product) {
-      await supabase
-        .from("products")
-        .update({ stock: product.stock + line.quantity })
-        .eq("id", product.id);
-    }
-  }
 
   revalidatePath("/dashboard/orders");
   revalidatePath("/dashboard/inventory");

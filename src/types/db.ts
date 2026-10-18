@@ -2,11 +2,15 @@ export type WarehouseLocation = "Abuja" | "Lagos" | "USA";
 export type PartnerStatus = "pending" | "active" | "suspended";
 export type PartnerRole = "merchant" | "fulfillment_center";
 export type OrderStatus =
-  | "Packaged"
-  | "Shipped"
+  | "Created"
+  | "Reserved"
+  | "Picking"
+  | "Packed"
+  | "Dispatched"
   | "Delivered"
   | "Returned"
-  | "Damaged";
+  | "Damaged"
+  | "Cancelled";
 export type OrderRider = "BNP Fleet" | "Own Rider" | "Pickup";
 export type OrderChannel = "dashboard" | "storefront";
 export type OrderPaymentStatus = "pending" | "paid" | "failed";
@@ -19,6 +23,8 @@ export type Partner = {
   business_name: string;
   contact_name: string;
   email: string;
+  /** Short unique code prefixed to this merchant's SKU barcodes, e.g. WALK. */
+  code: string;
   phone: string | null;
   category: string | null;
   status: PartnerStatus;
@@ -55,6 +61,18 @@ export type Product = {
   pickup_enabled: boolean;
   image_url: string | null;
   description: string | null;
+  /** Physically in the warehouse. */
+  on_hand: number;
+  /** Promised to open orders, not yet dispatched. */
+  allocated: number;
+  /** Colour/size of this SKU, e.g. "Red" or "Large". */
+  variant: string | null;
+  /** Shared by every variant of the same product. */
+  group_id: string | null;
+  /** Code 128 value on the SKU label, e.g. WALK-HAT-RED. */
+  barcode: string | null;
+  /** The merchant's own retail barcode (EAN/UPC), if the item has one. */
+  retail_barcode: string | null;
   published: boolean;
   last_moved_at: string;
   created_at: string;
@@ -118,6 +136,8 @@ export type StorefrontProduct = {
   pickup_enabled: boolean;
   image_url: string | null;
   description: string | null;
+  variant: string | null;
+  group_id: string | null;
 };
 
 export type DeliveryZone = {
@@ -206,11 +226,15 @@ export type WalletWithdrawal = {
 
 export const LOCATIONS: WarehouseLocation[] = ["Abuja", "Lagos", "USA"];
 export const ORDER_STATUSES: OrderStatus[] = [
-  "Packaged",
-  "Shipped",
+  "Created",
+  "Reserved",
+  "Picking",
+  "Packed",
+  "Dispatched",
   "Delivered",
   "Returned",
   "Damaged",
+  "Cancelled",
 ];
 export const LOW_STOCK_THRESHOLD = 3;
 export const STALE_DAYS_THRESHOLD = 30;

@@ -211,7 +211,9 @@ export async function confirmPayment(
   // whose conditional update actually flips the rows carries on.
   const { data: claimed, error: claimError } = await admin
     .from("orders")
-    .update({ payment_status: "paid" })
+    // Created -> Reserved is what allocates the stock (orders_apply_stock,
+    // migration 0022), so payment confirmation needs no stock code of its own.
+    .update({ payment_status: "paid", status: "Reserved" })
     .eq("payment_ref", reference)
     .eq("payment_status", "pending")
     .select("id");
@@ -221,17 +223,9 @@ export async function confirmPayment(
     return { ok: true, alreadyProcessed: true };
   }
 
-  for (const row of orderRows) {
-    if (!row.product_id) continue;
-    await admin.rpc("decrement_stock", {
-      p_product_id: row.product_id,
-      p_qty: row.quantity,
-    });
-    // If this returns false the product sold out between checkout and
-    // payment confirmation - the order still gets marked paid below since
-    // the customer has genuinely paid; the merchant will see stock at 0
-    // and needs to follow up. No reservation/holds system in v1.
-  }
+  // If the product sold out between checkout and payment, the reservation
+  // still goes through (available goes negative) because the customer has
+  // genuinely paid; the merchant sees it on their inventory and follows up.
 
   await Promise.all([sendNewOrderAlert(orderRows), sendCustomerConfirmation(orderRows)]);
 

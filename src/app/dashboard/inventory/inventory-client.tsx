@@ -2,7 +2,7 @@
 
 import { useActionState, useMemo, useState, useTransition } from "react";
 import Papa from "papaparse";
-import { Plus, Boxes, Eye, EyeOff, Pencil, Upload, Download } from "lucide-react";
+import { Plus, Boxes, Eye, EyeOff, Pencil, Printer, Upload, Download } from "lucide-react";
 import { toast } from "sonner";
 import { LOCATIONS, type Product, type WarehouseLocation } from "@/types/db";
 import { daysSince, naira } from "@/lib/format";
@@ -17,6 +17,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { EmptyState, StatCard } from "@/components/dashboard/ui";
+import { PrintLabelsDialog } from "@/components/dashboard/print-labels-dialog";
+import { displayName } from "@/lib/variants";
 import { ImageUploadField } from "@/components/dashboard/image-upload";
 import {
   addProduct,
@@ -39,13 +41,19 @@ function stockBucket(stock: number): Exclude<StockFilter, "All"> {
   return "In stock";
 }
 
-export function InventoryClient({ products }: { products: Product[] }) {
+export function InventoryClient({
+  products,
+  merchantName,
+}: {
+  products: Product[];
+  merchantName: string;
+}) {
   const [locFilter, setLocFilter] = useState<"All" | WarehouseLocation>("All");
   const [stockFilter, setStockFilter] = useState<StockFilter>("All");
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
-  const totalStock = products.reduce((sum, p) => sum + p.stock, 0);
+  const totalStock = products.reduce((sum, p) => sum + p.on_hand, 0);
   const lowCount = products.filter((p) => stockBucket(p.stock) === "Low stock").length;
   const outCount = products.filter((p) => stockBucket(p.stock) === "Out of stock").length;
   const inCount = products.length - lowCount - outCount;
@@ -157,7 +165,7 @@ export function InventoryClient({ products }: { products: Product[] }) {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {visible.map((item) => (
-            <ProductCard key={item.id} item={item} />
+            <ProductCard key={item.id} item={item} merchantName={merchantName} />
           ))}
         </div>
       )}
@@ -165,11 +173,12 @@ export function InventoryClient({ products }: { products: Product[] }) {
   );
 }
 
-function ProductCard({ item }: { item: Product }) {
+function ProductCard({ item, merchantName }: { item: Product; merchantName: string }) {
   const isLow = item.stock <= LOW_STOCK_THRESHOLD;
   const isStale = daysSince(item.last_moved_at) > STALE_DAYS_THRESHOLD;
   const [published, setPublished] = useState(item.published);
   const [editOpen, setEditOpen] = useState(false);
+  const [variantOpen, setVariantOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function handleTogglePublished() {
@@ -205,7 +214,10 @@ function ProductCard({ item }: { item: Product }) {
         )}
       </div>
       <div className="p-3.5">
-        <div className="text-sm font-semibold text-navy">{item.name}</div>
+        <div className="text-sm font-semibold text-navy">
+          {item.name}
+          {item.variant ? <span className="font-normal text-graphite"> · {item.variant}</span> : null}
+        </div>
         <div className="mb-1.5 text-[11px] text-mist">
           {item.sku || "No SKU"} · {item.location}
         </div>
@@ -218,7 +230,18 @@ function ProductCard({ item }: { item: Product }) {
         <div className="mt-1 flex items-center justify-between text-[11px]">
           <span className="text-graphite">VAT {item.vat}%</span>
           <span className={cn(isLow && "font-bold text-destructive")}>
-            {item.stock} in stock{isLow ? " !" : ""}
+            {item.stock} available{isLow ? " !" : ""}
+          </span>
+        </div>
+        <div className="mt-1 grid grid-cols-3 gap-1 rounded-md bg-stone/60 px-2 py-1 text-center text-[10px] text-graphite">
+          <span>
+            <span className="block font-semibold text-navy">{item.on_hand}</span>On-hand
+          </span>
+          <span>
+            <span className="block font-semibold text-navy">{item.allocated}</span>Reserved
+          </span>
+          <span>
+            <span className="block font-semibold text-navy">{item.stock}</span>Available
           </span>
         </div>
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
@@ -238,6 +261,51 @@ function ProductCard({ item }: { item: Product }) {
               <DialogTitle>Edit product</DialogTitle>
             </DialogHeader>
             <ProductForm product={item} onDone={() => setEditOpen(false)} />
+          </DialogContent>
+        </Dialog>
+        {item.barcode ? (
+          <PrintLabelsDialog
+            title={`Print labels for ${displayName(item)}`}
+            labels={[
+              {
+                barcode: item.barcode,
+                heading: displayName(item),
+                details: [merchantName],
+                onHand: item.on_hand,
+              },
+            ]}
+            fileName={`label-${item.barcode}.pdf`}
+            trigger={
+              <button
+                type="button"
+                className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-teal-700 hover:underline"
+              />
+            }
+          >
+            <Printer className="size-3" />
+            Print barcode labels
+          </PrintLabelsDialog>
+        ) : null}
+        <Dialog open={variantOpen} onOpenChange={setVariantOpen}>
+          <DialogTrigger
+            render={
+              <button
+                type="button"
+                className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-teal-700 hover:underline"
+              />
+            }
+          >
+            <Plus className="size-3" />
+            Add variant
+          </DialogTrigger>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>New variant of {item.name}</DialogTitle>
+            </DialogHeader>
+            <p className="-mt-1 text-xs text-graphite">
+              Each colour or size is its own SKU with its own stock and barcode.
+            </p>
+            <ProductForm variantOf={item} onDone={() => setVariantOpen(false)} />
           </DialogContent>
         </Dialog>
         {item.pickup_enabled ? (
@@ -269,8 +337,20 @@ function ProductCard({ item }: { item: Product }) {
   );
 }
 
-function ProductForm({ product, onDone }: { product?: Product; onDone: () => void }) {
+function ProductForm({
+  product,
+  variantOf,
+  onDone,
+}: {
+  product?: Product;
+  /** Prefills from this product and saves the new SKU as its variant. */
+  variantOf?: Product;
+  onDone: () => void;
+}) {
   const isEdit = Boolean(product);
+  // Shared details come from the product being edited, or the one this is
+  // a new variant of. SKU, variant and stock are always per SKU.
+  const base = product ?? variantOf;
   const boundAction = isEdit ? editProduct.bind(null, product!.id) : addProduct;
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
     async (prev, formData) => {
@@ -291,7 +371,7 @@ function ProductForm({ product, onDone }: { product?: Product; onDone: () => voi
       <ImageUploadField
         bucket="product-images"
         name="imageUrl"
-        initialUrl={product?.image_url ?? undefined}
+        initialUrl={base?.image_url ?? undefined}
       />
 
       <div className="grid grid-cols-2 gap-3">
@@ -300,7 +380,7 @@ function ProductForm({ product, onDone }: { product?: Product; onDone: () => voi
           <input
             name="name"
             required
-            defaultValue={product?.name}
+            defaultValue={base?.name}
             className={fieldClass}
             placeholder="e.g. Ankara Tote"
           />
@@ -312,8 +392,37 @@ function ProductForm({ product, onDone }: { product?: Product; onDone: () => voi
             name="sku"
             defaultValue={product?.sku ?? ""}
             className={fieldClass}
-            placeholder="ATB-001"
+            placeholder="Blank = make one"
           />
+          {errors?.sku ? <p className="mt-1 text-xs text-destructive">{errors.sku[0]}</p> : null}
+        </div>
+      </div>
+
+      {variantOf ? <input type="hidden" name="variantOf" value={variantOf.id} /> : null}
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={labelClass}>Variant (colour / size)</label>
+          <input
+            name="variant"
+            defaultValue={product?.variant ?? ""}
+            required={Boolean(variantOf)}
+            className={fieldClass}
+            placeholder="e.g. Red, Large"
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Retail barcode (EAN/UPC)</label>
+          <input
+            name="retailBarcode"
+            inputMode="numeric"
+            defaultValue={product?.retail_barcode ?? ""}
+            className={fieldClass}
+            placeholder="Optional"
+          />
+          {errors?.retailBarcode ? (
+            <p className="mt-1 text-xs text-destructive">{errors.retailBarcode[0]}</p>
+          ) : null}
         </div>
       </div>
 
@@ -321,7 +430,7 @@ function ProductForm({ product, onDone }: { product?: Product; onDone: () => voi
         <label className={labelClass}>Category</label>
         <input
           name="category"
-          defaultValue={product?.category ?? ""}
+          defaultValue={base?.category ?? ""}
           className={fieldClass}
           placeholder="e.g. Bags"
         />
@@ -335,7 +444,7 @@ function ProductForm({ product, onDone }: { product?: Product; onDone: () => voi
             type="number"
             min="0"
             step="0.01"
-            defaultValue={product?.cost_price}
+            defaultValue={base?.cost_price}
             className={fieldClass}
           />
         </div>
@@ -347,7 +456,7 @@ function ProductForm({ product, onDone }: { product?: Product; onDone: () => voi
             min="0"
             step="0.01"
             required
-            defaultValue={product?.sale_price}
+            defaultValue={base?.sale_price}
             className={fieldClass}
           />
           {errors?.salePrice ? (
@@ -364,21 +473,27 @@ function ProductForm({ product, onDone }: { product?: Product; onDone: () => voi
             type="number"
             min="0"
             step="0.1"
-            defaultValue={product?.vat ?? 7.5}
+            defaultValue={base?.vat ?? 7.5}
             className={fieldClass}
           />
         </div>
         <div>
-          <label className={labelClass}>Stock quantity *</label>
+          <label className={labelClass}>On-hand (in the warehouse) *</label>
           <input
             name="stock"
             type="number"
             min="0"
             required
-            defaultValue={product?.stock}
+            defaultValue={product?.on_hand}
             className={fieldClass}
           />
-          {errors?.stock ? <p className="mt-1 text-xs text-destructive">{errors.stock[0]}</p> : null}
+          {errors?.stock ? (
+            <p className="mt-1 text-xs text-destructive">{errors.stock[0]}</p>
+          ) : product && product.allocated > 0 ? (
+            <p className="mt-1 text-[11px] text-mist">
+              {product.allocated} reserved for open orders, {product.stock} available
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -387,7 +502,7 @@ function ProductForm({ product, onDone }: { product?: Product; onDone: () => voi
           <label className={labelClass}>Warehouse location</label>
           <select
             name="location"
-            defaultValue={product?.location ?? "Abuja"}
+            defaultValue={base?.location ?? "Abuja"}
             className={cn(fieldClass, "appearance-none")}
           >
             {LOCATIONS.map((l) => (
@@ -404,7 +519,7 @@ function ProductForm({ product, onDone }: { product?: Product; onDone: () => voi
             type="number"
             min="0"
             step="0.01"
-            defaultValue={product?.shipping_fee ?? 1200}
+            defaultValue={base?.shipping_fee ?? 1200}
             className={fieldClass}
           />
         </div>
@@ -416,7 +531,7 @@ function ProductForm({ product, onDone }: { product?: Product; onDone: () => voi
           name="description"
           rows={3}
           maxLength={2000}
-          defaultValue={product?.description ?? ""}
+          defaultValue={base?.description ?? ""}
           placeholder="What it is, size or weight, what it's made of, how to use it..."
           className={cn(fieldClass, "h-auto py-2")}
         />
@@ -429,7 +544,7 @@ function ProductForm({ product, onDone }: { product?: Product; onDone: () => voi
         <input
           type="checkbox"
           name="pickupEnabled"
-          defaultChecked={product?.pickup_enabled ?? false}
+          defaultChecked={base?.pickup_enabled ?? false}
           className="size-4 rounded border-stone"
         />
         Enable customer pickup option
@@ -459,9 +574,9 @@ function ProductForm({ product, onDone }: { product?: Product; onDone: () => voi
 }
 
 const CSV_TEMPLATE_HEADER =
-  "sku,name,category,cost_price,sale_price,vat,stock,location,shipping_fee,pickup_enabled,image_url,description";
+  "sku,name,variant,category,cost_price,sale_price,vat,stock,location,shipping_fee,pickup_enabled,image_url,description";
 const CSV_TEMPLATE_EXAMPLE =
-  "ATB-001,Ankara Tote,Bags,4000,7500,7.5,20,Abuja,1200,false,,Hand-sewn Ankara print tote with inner pocket";
+  "ATB-RED,Ankara Tote,Red,Bags,4000,7500,7.5,20,Abuja,1200,false,,Hand-sewn Ankara print tote with inner pocket";
 
 function downloadCsvTemplate() {
   const blob = new Blob([`${CSV_TEMPLATE_HEADER}\n${CSV_TEMPLATE_EXAMPLE}\n`], {
@@ -518,6 +633,7 @@ function parseCsvRows(rows: Record<string, string>[]): {
       shipping_fee: row.shipping_fee ? Number(row.shipping_fee) : undefined,
       pickup_enabled: ["true", "1", "yes"].includes(row.pickup_enabled?.trim().toLowerCase() ?? ""),
       image_url: row.image_url?.trim() || undefined,
+      variant: row.variant?.trim() || undefined,
       // Kept as "" (not undefined) when the column exists but is blank, so the
       // import knows the file has a description column.
       description: row.description !== undefined ? row.description.trim() : undefined,

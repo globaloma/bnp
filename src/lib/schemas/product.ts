@@ -7,7 +7,16 @@ export const productSchema = z.object({
   costPrice: z.coerce.number().min(0).default(0),
   salePrice: z.coerce.number().min(0.01, "Enter a sale price"),
   vat: z.coerce.number().min(0).max(100).default(7.5),
-  stock: z.coerce.number().int().min(0, "Enter a stock quantity"),
+  // Units physically in the warehouse (on-hand). Available to sell is
+  // on-hand minus what open orders have reserved.
+  stock: z.coerce.number().int().min(0, "Enter how many units are in the warehouse"),
+  variant: z.string().trim().max(60).optional(),
+  retailBarcode: z
+    .string()
+    .trim()
+    .regex(/^[0-9]{8,14}$/, "A retail barcode is 8 to 14 digits (EAN/UPC)")
+    .optional()
+    .or(z.literal("")),
   location: z.enum(["Abuja", "Lagos", "USA"]),
   shippingFee: z.coerce.number().min(0).default(0),
   pickupEnabled: z.coerce.boolean().default(false),

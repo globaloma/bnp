@@ -7,6 +7,13 @@ import { productSchema, type ActionResult } from "@/lib/schemas/product";
 import type { WarehouseLocation } from "@/types/db";
 import { LOCATIONS } from "@/types/db";
 import { getFulfillmentCenterEmails, sendAlertEmail } from "@/lib/notifications";
+import { escapeHtml } from "@/lib/spam-guard";
+
+function skuTakenMessage(message: string, sku?: string): string {
+  return message.includes("products_partner_sku_key") || message.includes("products_barcode_key")
+    ? `You already have a product with SKU ${sku ?? "that code"}. Use a different SKU.`
+    : message;
+}
 
 export type ProductCsvRow = {
   sku: string;
@@ -21,6 +28,7 @@ export type ProductCsvRow = {
   pickup_enabled?: boolean;
   image_url?: string;
   description?: string;
+  variant?: string;
   published?: boolean;
 };
 
@@ -47,6 +55,8 @@ export async function addProduct(
     pickupEnabled: formData.get("pickupEnabled") === "on",
     imageUrl: formData.get("imageUrl") || undefined,
     description: formData.get("description") ?? undefined,
+    variant: formData.get("variant") || undefined,
+    retailBarcode: formData.get("retailBarcode") ?? "",
     published: formData.get("published") === "on",
   });
 
@@ -59,15 +69,38 @@ export async function addProduct(
   }
 
   const d = parsed.data;
+
+  // "Add variant" passes the product it's a variant of; variants share a
+  // group so the storefront shows them as one product with options.
+  let groupId: string | null = null;
+  const variantOf = formData.get("variantOf");
+  if (typeof variantOf === "string" && variantOf) {
+    const { data: parent } = await supabase
+      .from("products")
+      .select("id, group_id")
+      .eq("id", variantOf)
+      .eq("partner_id", user.id)
+      .maybeSingle();
+    if (parent) {
+      groupId = parent.group_id ?? parent.id;
+      if (!parent.group_id) {
+        await supabase.from("products").update({ group_id: parent.id }).eq("id", parent.id);
+      }
+    }
+  }
+
   const { error } = await supabase.from("products").insert({
     partner_id: user.id,
     name: d.name,
     sku: d.sku || null,
+    variant: d.variant || null,
+    group_id: groupId,
+    retail_barcode: d.retailBarcode || null,
     category: d.category || null,
     cost_price: d.costPrice,
     sale_price: d.salePrice,
     vat: d.vat,
-    stock: d.stock,
+    on_hand: d.stock,
     location: d.location,
     shipping_fee: d.shippingFee,
     pickup_enabled: d.pickupEnabled,
@@ -77,7 +110,7 @@ export async function addProduct(
   });
 
   if (error) {
-    return { ok: false, error: error.message };
+    return { ok: false, error: skuTakenMessage(error.message, d.sku) };
   }
 
   revalidatePath("/dashboard/inventory");
@@ -109,6 +142,8 @@ export async function editProduct(
     pickupEnabled: formData.get("pickupEnabled") === "on",
     imageUrl: formData.get("imageUrl") || undefined,
     description: formData.get("description") ?? undefined,
+    variant: formData.get("variant") || undefined,
+    retailBarcode: formData.get("retailBarcode") ?? "",
     published: formData.get("published") === "on",
   });
 
@@ -124,20 +159,30 @@ export async function editProduct(
 
   const { data: existing } = await supabase
     .from("products")
-    .select("stock")
+    .select("on_hand, allocated")
     .eq("id", productId)
     .single();
+
+  if (existing && d.stock < existing.allocated) {
+    return {
+      ok: false,
+      error: `${existing.allocated} units are reserved for open orders, so on-hand can't go below that.`,
+      fieldErrors: { stock: [`At least ${existing.allocated} (reserved for orders)`] },
+    };
+  }
 
   const { error } = await supabase
     .from("products")
     .update({
       name: d.name,
       sku: d.sku || null,
+      variant: d.variant || null,
+      retail_barcode: d.retailBarcode || null,
       category: d.category || null,
       cost_price: d.costPrice,
       sale_price: d.salePrice,
       vat: d.vat,
-      stock: d.stock,
+      on_hand: d.stock,
       location: d.location,
       shipping_fee: d.shippingFee,
       pickup_enabled: d.pickupEnabled,
@@ -147,11 +192,11 @@ export async function editProduct(
     .eq("id", productId);
 
   if (error) {
-    return { ok: false, error: error.message };
+    return { ok: false, error: skuTakenMessage(error.message, d.sku) };
   }
 
-  if (existing && d.stock > existing.stock) {
-    const quantityAdded = d.stock - existing.stock;
+  if (existing && d.stock > existing.on_hand) {
+    const quantityAdded = d.stock - existing.on_hand;
     await supabase.from("stock_events").insert({
       partner_id: user.id,
       product_id: productId,
@@ -174,8 +219,8 @@ export async function editProduct(
           <div style="font-family:system-ui,Segoe UI,sans-serif;max-width:560px;">
             <h2 style="color:#0f2a44;font-size:18px;margin:0 0 4px;">A merchant just restocked</h2>
             <p style="color:#455568;font-size:13px;margin:0 0 16px;">
-              ${merchant?.business_name ?? "A merchant"} added ${quantityAdded} unit${quantityAdded === 1 ? "" : "s"} of
-              <strong style="color:#0f2a44;">${d.name}</strong> in ${d.location}, now at ${d.stock} in stock.
+              ${escapeHtml(merchant?.business_name ?? "A merchant")} added ${quantityAdded} unit${quantityAdded === 1 ? "" : "s"} of
+              <strong style="color:#0f2a44;">${escapeHtml(d.name)}${d.variant ? ` (${escapeHtml(d.variant)})` : ""}</strong> in ${d.location}, now ${d.stock} on hand.
             </p>
           </div>
         `,
@@ -224,7 +269,8 @@ export async function importProducts(
     cost_price: r.cost_price ?? 0,
     sale_price: r.sale_price,
     vat: r.vat ?? 7.5,
-    stock: r.stock ?? 0,
+    on_hand: r.stock ?? 0,
+    variant: r.variant?.trim().slice(0, 60) || null,
     location: r.location && (LOCATIONS as string[]).includes(r.location) ? r.location : "Abuja",
     shipping_fee: r.shipping_fee ?? 0,
     pickup_enabled: r.pickup_enabled ?? false,
@@ -236,7 +282,7 @@ export async function importProducts(
   const skus = payload.map((p) => p.sku).filter(Boolean);
   const { data: existingProducts } = await supabase
     .from("products")
-    .select("id, sku, stock")
+    .select("id, sku, on_hand")
     .eq("partner_id", user.id)
     .in("sku", skus);
   const existingBySku = new Map((existingProducts ?? []).map((p) => [p.sku, p]));
@@ -250,11 +296,11 @@ export async function importProducts(
   const restocks = payload
     .map((p) => {
       const existing = existingBySku.get(p.sku);
-      if (!existing || p.stock <= existing.stock) return null;
+      if (!existing || p.on_hand <= existing.on_hand) return null;
       return {
         productId: existing.id as string,
         name: p.name,
-        quantityAdded: p.stock - existing.stock,
+        quantityAdded: p.on_hand - existing.on_hand,
       };
     })
     .filter((r): r is { productId: string; name: string; quantityAdded: number } => r !== null);
@@ -280,7 +326,7 @@ export async function importProducts(
       const itemRows = restocks
         .map(
           (r) =>
-            `<li style="color:#0f2a44;font-size:13px;margin:2px 0;"><strong>${r.name}</strong> +${r.quantityAdded}</li>`,
+            `<li style="color:#0f2a44;font-size:13px;margin:2px 0;"><strong>${escapeHtml(r.name)}</strong> +${r.quantityAdded}</li>`,
         )
         .join("");
 
@@ -291,7 +337,7 @@ export async function importProducts(
           <div style="font-family:system-ui,Segoe UI,sans-serif;max-width:560px;">
             <h2 style="color:#0f2a44;font-size:18px;margin:0 0 4px;">A merchant just restocked via CSV import</h2>
             <p style="color:#455568;font-size:13px;margin:0 0 12px;">
-              ${merchant?.business_name ?? "A merchant"} increased stock on ${restocks.length} product${restocks.length === 1 ? "" : "s"}:
+              ${escapeHtml(merchant?.business_name ?? "A merchant")} increased stock on ${restocks.length} product${restocks.length === 1 ? "" : "s"}:
             </p>
             <ul style="margin:0;padding-left:18px;">${itemRows}</ul>
           </div>

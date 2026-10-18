@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useCart } from "./cart-context";
 import type { StorefrontProduct } from "@/types/db";
+import { displayName } from "@/lib/variants";
 
 /**
  * "Add to cart", switching to a quantity stepper once the product is in the
@@ -29,7 +30,7 @@ export function AddToCart({
     addItem(
       {
         productId: product.id,
-        name: product.name,
+        name: displayName(product),
         price: product.sale_price,
         vat: product.vat,
         shippingFee: product.shipping_fee,
@@ -40,7 +41,7 @@ export function AddToCart({
       },
       1,
     );
-    toast.success(`${product.name} added to cart`);
+    toast.success(`${displayName(product)} added to cart`);
   }
 
   if (inCartQty > 0) {

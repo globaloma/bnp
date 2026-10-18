@@ -41,13 +41,22 @@ export function phoneKey(phone: string): string {
   return phone.replace(/\D/g, "").slice(-10);
 }
 
-const PROGRESS: OrderStatus[] = ["Packaged", "Shipped", "Delivered"];
+const PROGRESS: OrderStatus[] = [
+  "Created",
+  "Reserved",
+  "Picking",
+  "Packed",
+  "Dispatched",
+  "Delivered",
+];
 
 /** The order is only as far along as its least-advanced item. */
 function overallStage(statuses: OrderStatus[]): OrderStatus {
   const problem = statuses.find((s) => s === "Damaged" || s === "Returned");
   if (problem) return problem;
-  const lowest = Math.min(...statuses.map((s) => PROGRESS.indexOf(s)));
+  const live = statuses.filter((s) => s !== "Cancelled");
+  if (live.length === 0) return "Cancelled";
+  const lowest = Math.min(...live.map((s) => PROGRESS.indexOf(s)));
   return PROGRESS[Math.max(0, lowest)];
 }
 

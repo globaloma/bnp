@@ -41,7 +41,7 @@ export default async function InventoryPage() {
           </div>
         }
       />
-      <InventoryClient products={products} />
+      <InventoryClient products={products} merchantName={auth.partner.business_name} />
     </div>
   );
 }

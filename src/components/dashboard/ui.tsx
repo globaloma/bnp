@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { OrderStatus, ReturnStatus } from "@/types/db";
+import { STATUS_BADGE as ORDER_STATUS_COLOR } from "@/lib/order-status";
 
 export function Panel({
   children,
@@ -86,13 +87,6 @@ export function StatCard({
   );
 }
 
-const ORDER_STATUS_COLOR: Record<OrderStatus, string> = {
-  Packaged: "bg-gold text-navy",
-  Shipped: "bg-teal text-white",
-  Delivered: "bg-navy text-white",
-  Returned: "bg-destructive text-white",
-  Damaged: "bg-destructive text-white",
-};
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
   return (

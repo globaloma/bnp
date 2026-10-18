@@ -1,11 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Boxes, Search } from "lucide-react";
+import { Boxes, Printer, Search } from "lucide-react";
 import { LOCATIONS, LOW_STOCK_THRESHOLD, type WarehouseLocation } from "@/types/db";
 import { formatDate, naira } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { displayName } from "@/lib/variants";
+import { Button } from "@/components/ui/button";
 import { EmptyState, StatCard } from "@/components/dashboard/ui";
+import { PrintLabelsDialog, type PrintableLabel } from "@/components/dashboard/print-labels-dialog";
 import {
   Table,
   TableBody,
@@ -24,6 +27,18 @@ function stockBucket(stock: number): Exclude<StockFilter, "All"> {
   return "In stock";
 }
 
+// SKUs get a barcode once they have a SKU code; until then there's nothing
+// to print.
+function skuLabel(p: ProductWithMerchant): PrintableLabel | null {
+  if (!p.barcode) return null;
+  return {
+    barcode: p.barcode,
+    heading: displayName(p),
+    details: [p.merchant_name],
+    onHand: p.on_hand,
+  };
+}
+
 export function FcInventoryClient({ products }: { products: ProductWithMerchant[] }) {
   const [stockFilter, setStockFilter] = useState<StockFilter>("All");
   const [locFilter, setLocFilter] = useState<"All locations" | WarehouseLocation>(
@@ -31,7 +46,7 @@ export function FcInventoryClient({ products }: { products: ProductWithMerchant[
   );
   const [query, setQuery] = useState("");
 
-  const totalStock = products.reduce((sum, p) => sum + p.stock, 0);
+  const totalStock = products.reduce((sum, p) => sum + p.on_hand, 0);
   const lowCount = products.filter((p) => stockBucket(p.stock) === "Low stock").length;
   const outCount = products.filter((p) => stockBucket(p.stock) === "Out of stock").length;
   const inCount = products.length - lowCount - outCount;
@@ -52,10 +67,14 @@ export function FcInventoryClient({ products }: { products: ProductWithMerchant[
         !q ||
         p.name.toLowerCase().includes(q) ||
         p.merchant_name.toLowerCase().includes(q) ||
-        (p.sku ?? "").toLowerCase().includes(q);
+        (p.sku ?? "").toLowerCase().includes(q) ||
+        (p.variant ?? "").toLowerCase().includes(q) ||
+        (p.barcode ?? "").toLowerCase().includes(q) ||
+        (p.retail_barcode ?? "").includes(q);
       return matchesStock && matchesLoc && matchesQuery;
     });
   }, [products, stockFilter, locFilter, query]);
+  const printable = visible.flatMap((p) => skuLabel(p) ?? []);
 
   return (
     <div>
@@ -93,7 +112,18 @@ export function FcInventoryClient({ products }: { products: ProductWithMerchant[
           ))}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {printable.length > 0 ? (
+            <PrintLabelsDialog
+              title={`Print labels for ${printable.length} SKU${printable.length === 1 ? "" : "s"}`}
+              labels={printable}
+              fileName="sku-labels.pdf"
+              trigger={<Button variant="outline" size="sm" />}
+            >
+              <Printer />
+              Print labels
+            </PrintLabelsDialog>
+          ) : null}
           <select
             value={locFilter}
             onChange={(e) =>
@@ -133,8 +163,13 @@ export function FcInventoryClient({ products }: { products: ProductWithMerchant[
                 <TableHead>Product</TableHead>
                 <TableHead>Merchant</TableHead>
                 <TableHead>Price</TableHead>
-                <TableHead>Stock</TableHead>
+                <TableHead className="text-right">On-hand</TableHead>
+                <TableHead className="text-right">Reserved</TableHead>
+                <TableHead className="text-right">Available</TableHead>
                 <TableHead>Restocked</TableHead>
+                <TableHead>
+                  <span className="sr-only">Label</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -143,14 +178,24 @@ export function FcInventoryClient({ products }: { products: ProductWithMerchant[
                 return (
                   <TableRow key={p.id}>
                     <TableCell>
-                      <div className="font-semibold text-navy">{p.name}</div>
+                      <div className="font-semibold text-navy">
+                        {p.name}
+                        {p.variant ? (
+                          <span className="font-normal text-graphite"> · {p.variant}</span>
+                        ) : null}
+                      </div>
                       <div className="text-[11px] text-mist">
                         {p.sku || "No SKU"} · {p.location}
                       </div>
+                      {p.barcode ? (
+                        <div className="font-mono text-[10px] text-mist">{p.barcode}</div>
+                      ) : null}
                     </TableCell>
                     <TableCell>{p.merchant_name}</TableCell>
                     <TableCell>{naira(p.sale_price)}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-right">{p.on_hand}</TableCell>
+                    <TableCell className="text-right">{p.allocated}</TableCell>
+                    <TableCell className="text-right">
                       <span
                         className={cn(
                           "font-semibold",
@@ -165,6 +210,9 @@ export function FcInventoryClient({ products }: { products: ProductWithMerchant[
                       </span>
                     </TableCell>
                     <TableCell>{formatDate(p.last_moved_at)}</TableCell>
+                    <TableCell>
+                      <SkuLabelButton product={p} />
+                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -173,5 +221,28 @@ export function FcInventoryClient({ products }: { products: ProductWithMerchant[
         </div>
       )}
     </div>
+  );
+}
+
+function SkuLabelButton({ product }: { product: ProductWithMerchant }) {
+  const label = skuLabel(product);
+  if (!label) {
+    return <span className="text-[11px] text-mist">Needs a SKU</span>;
+  }
+  return (
+    <PrintLabelsDialog
+      title={`Print labels for ${label.heading}`}
+      labels={[label]}
+      fileName={`label-${label.barcode}.pdf`}
+      trigger={
+        <button
+          type="button"
+          className="flex items-center gap-1 text-[11px] font-semibold whitespace-nowrap text-teal-700 hover:underline"
+        />
+      }
+    >
+      <Printer className="size-3" />
+      Label
+    </PrintLabelsDialog>
   );
 }

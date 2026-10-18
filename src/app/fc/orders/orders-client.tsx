@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { Download, Mail, MessageCircle, PackageSearch } from "lucide-react";
 import { toast } from "sonner";
 import type { OrderStatus } from "@/types/db";
+import { STATUS_ACCENT } from "@/lib/order-status";
 import { ORDER_STATUSES, LOCATIONS } from "@/types/db";
 import { naira, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -115,13 +116,7 @@ export function FcOrdersClient({ orders }: { orders: OrderWithMerchant[] }) {
   );
 }
 
-const ACCENT: Record<OrderStatus, "gold" | "teal" | "none" | "destructive"> = {
-  Packaged: "gold",
-  Shipped: "teal",
-  Delivered: "none",
-  Returned: "destructive",
-  Damaged: "destructive",
-};
+const ACCENT = STATUS_ACCENT;
 
 function OrderRow({
   order,
@@ -201,7 +196,8 @@ function OrderRow({
             onChange={(e) => onStatusChange(e.target.value as OrderStatus)}
             className="h-8 rounded-md border border-stone bg-card px-2 text-xs"
           >
-            {ORDER_STATUSES.map((s) => (
+            {/* Created only comes from an unpaid storefront checkout. */}
+            {ORDER_STATUSES.filter((s) => s !== "Created" || order.status === "Created").map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>

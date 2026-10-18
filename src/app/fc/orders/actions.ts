@@ -12,7 +12,10 @@ export async function updateOrderStatusAsFc(
   orderId: string,
   status: OrderStatus,
 ): Promise<ActionResult> {
-  if (!ORDER_STATUSES.includes(status)) {
+  // The warehouse moves orders through Picking, Packed and Dispatched, and
+  // handles cancellations once picking has started. Created only comes from a
+  // storefront checkout waiting for payment.
+  if (!ORDER_STATUSES.includes(status) || status === "Created") {
     return { ok: false, error: "Invalid status" };
   }
   const supabase = await createClient();

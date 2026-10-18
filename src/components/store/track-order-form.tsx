@@ -8,7 +8,16 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { AlertTriangle, Check, Clock, Package, Truck, Home, Store } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  ClipboardCheck,
+  Clock,
+  Package,
+  Truck,
+  Home,
+  Store,
+} from "lucide-react";
 import { trackOrder, type TrackResult } from "@/app/store/[slug]/track/actions";
 import type { TrackedOrder } from "@/lib/order-tracking";
 import { naira } from "@/lib/format";
@@ -192,6 +201,8 @@ function OrderStatusCard({ order }: { order: TrackedOrder }) {
             ? "Payment for this order didn't go through, so it hasn't been sent for fulfillment."
             : "We're still waiting for payment confirmation for this order."}
         </Notice>
+      ) : order.stage === "Cancelled" ? (
+        <Notice tone="bad">This order was cancelled. The seller will contact you about a refund.</Notice>
       ) : order.stage === "Returned" || order.stage === "Damaged" ? (
         <Notice tone="bad">
           {order.stage === "Returned"
@@ -230,24 +241,26 @@ function OrderStatusCard({ order }: { order: TrackedOrder }) {
 }
 
 function Timeline({ stage, isPickup }: { stage: TrackedOrder["stage"]; isPickup: boolean }) {
+  // Customers see four steps; the warehouse's Reserved and Picking both
+  // read as "Confirmed" to them.
   const steps = [
-    { key: "Packaged", label: "Packaged", icon: Package },
+    { label: "Confirmed", icon: ClipboardCheck },
+    { label: "Packed", icon: Package },
     isPickup
-      ? { key: "Shipped", label: "Ready for pickup", icon: Store }
-      : { key: "Shipped", label: "Shipped", icon: Truck },
-    isPickup
-      ? { key: "Delivered", label: "Collected", icon: Check }
-      : { key: "Delivered", label: "Delivered", icon: Home },
-  ] as const;
-  const current = steps.findIndex((s) => s.key === stage);
+      ? { label: "Ready for pickup", icon: Store }
+      : { label: "Dispatched", icon: Truck },
+    isPickup ? { label: "Collected", icon: Check } : { label: "Delivered", icon: Home },
+  ];
+  const current =
+    stage === "Delivered" ? 3 : stage === "Dispatched" ? 2 : stage === "Packed" ? 1 : 0;
 
   return (
-    <ol className="mt-5 grid grid-cols-3 gap-2">
+    <ol className="mt-5 grid grid-cols-4 gap-1">
       {steps.map((step, i) => {
         const done = i <= current;
         const Icon = step.icon;
         return (
-          <li key={step.key} className="flex flex-col items-center text-center">
+          <li key={step.label} className="flex flex-col items-center text-center">
             <div className="flex w-full items-center">
               <span
                 className={cn(

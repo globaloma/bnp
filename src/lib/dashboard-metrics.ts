@@ -1,4 +1,5 @@
 import { daysSince, isToday } from "@/lib/format";
+import { OPEN_STATUSES } from "@/lib/order-status";
 import {
   LOW_STOCK_THRESHOLD,
   STALE_DAYS_THRESHOLD,
@@ -7,7 +8,7 @@ import {
   type Product,
 } from "@/types/db";
 
-const IN_FLIGHT_STATUSES = ["Packaged", "Shipped"] as const;
+const IN_FLIGHT_STATUSES = OPEN_STATUSES;
 const NEEDS_REVIEW_STATUSES = ["Returned", "Damaged"] as const;
 
 export function ordersToday<T extends Pick<Order, "placed_at">>(orders: T[]): T[] {

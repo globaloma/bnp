@@ -10,6 +10,7 @@ import {
   Bell,
   Users,
   MessageSquareWarning,
+  Archive,
 } from "lucide-react";
 
 export type DashboardNavItem = {
@@ -33,6 +34,7 @@ export const fcDashboardNav: DashboardNavItem[] = [
   { href: "/fc", label: "Overview", icon: LayoutGrid },
   { href: "/fc/orders", label: "Orders", icon: ClipboardList },
   { href: "/fc/inventory", label: "Inventory", icon: Boxes },
+  { href: "/fc/bins", label: "Bins", icon: Archive },
 ];
 
 export const adminDashboardNav: DashboardNavItem[] = [

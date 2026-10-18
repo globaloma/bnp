@@ -3,6 +3,7 @@ import { AtSign, MessageCircle } from "lucide-react";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/public";
 import { ProductCard } from "@/components/store/product-card";
+import { groupVariants } from "@/lib/variants";
 import { StoreAvatar } from "@/components/store/store-avatar";
 import { whatsappLink } from "@/lib/format";
 import type { StorefrontPartner, StorefrontProduct } from "@/types/db";
@@ -69,7 +70,7 @@ export default async function StorePage({ params }: PageProps<"/store/[slug]">) 
   const { data: rawProducts } = await supabase
     .from("storefront_products")
     .select(
-      "id, partner_id, name, sku, category, sale_price, vat, stock, location, shipping_fee, pickup_enabled, image_url, description",
+      "id, partner_id, name, sku, category, sale_price, vat, stock, location, shipping_fee, pickup_enabled, image_url, description, variant, group_id",
     )
     .eq("partner_id", partner.id)
     .returns<StorefrontProduct[]>();
@@ -134,12 +135,8 @@ export default async function StorePage({ params }: PageProps<"/store/[slug]">) 
         </p>
       ) : (
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {products.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              href={`/store/${partner.slug}/p/${product.id}`}
-            />
+          {groupVariants(products).map((variants) => (
+            <ProductCard key={variants[0].id} variants={variants} slug={partner.slug} />
           ))}
         </div>
       )}

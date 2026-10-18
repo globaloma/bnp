@@ -1,5 +1,6 @@
 "use client";
 
+import { STATUS_ACCENT } from "@/lib/order-status";
 import { useActionState, useMemo, useState, useTransition } from "react";
 import { Plus, PackageSearch, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -270,13 +271,7 @@ export function OrdersClient({
   );
 }
 
-const ACCENT: Record<OrderStatus, "gold" | "teal" | "none" | "destructive"> = {
-  Packaged: "gold",
-  Shipped: "teal",
-  Delivered: "none",
-  Returned: "destructive",
-  Damaged: "destructive",
-};
+const ACCENT = STATUS_ACCENT;
 
 function OrderGroupRow({
   orderRef,

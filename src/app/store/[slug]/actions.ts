@@ -7,6 +7,7 @@ import { computeOrderTotals, generateOrderRef } from "@/lib/orders";
 import { initializeTransaction } from "@/lib/paystack";
 import { flatShippingFee, pickupAvailable } from "@/lib/delivery";
 import { withinRateLimit } from "@/lib/spam-guard";
+import { displayName } from "@/lib/variants";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bnpfulfillment.com";
 
@@ -62,7 +63,7 @@ export async function startCheckout(
   const { data: products } = await admin
     .from("products")
     .select(
-      "id, partner_id, name, sale_price, vat, stock, shipping_fee, pickup_enabled, published, location",
+      "id, partner_id, name, variant, sale_price, vat, stock, shipping_fee, pickup_enabled, published, location",
     )
     .in("id", productIds);
 
@@ -88,7 +89,7 @@ export async function startCheckout(
       return { ok: false, error: "One of the items in your cart is no longer available." };
     }
     if (product.stock < item.quantity) {
-      return { ok: false, error: `Only ${product.stock} of ${product.name} left in stock.` };
+      return { ok: false, error: `Only ${product.stock} of ${displayName(product)} available.` };
     }
     const vatRate = partner.charges_vat ? product.vat : 0;
     const totals = computeOrderTotals({
@@ -98,7 +99,7 @@ export async function startCheckout(
     });
     lineItems.push({
       productId: product.id,
-      name: product.name,
+      name: displayName(product),
       quantity: item.quantity,
       unitPrice: product.sale_price,
       vatRate,
@@ -173,7 +174,7 @@ export async function startCheckout(
     vat_rate: number;
     vat_amount: number;
     total: number;
-    status: "Packaged";
+    status: "Created";
     location: string;
     rider: "BNP Fleet" | "Pickup";
     channel: "storefront";
@@ -194,7 +195,7 @@ export async function startCheckout(
     vat_rate: item.vatRate,
     vat_amount: item.vatAmount,
     total: item.total,
-    status: "Packaged" as const,
+    status: "Created" as const,
     location: item.location,
     rider: isPickup ? ("Pickup" as const) : ("BNP Fleet" as const),
     channel: "storefront" as const,
@@ -218,7 +219,7 @@ export async function startCheckout(
       vat_rate: 0,
       vat_amount: 0,
       total: shippingFee,
-      status: "Packaged" as const,
+      status: "Created" as const,
       location: lineItems[0].location,
       rider: isPickup ? ("Pickup" as const) : ("BNP Fleet" as const),
       channel: "storefront" as const,

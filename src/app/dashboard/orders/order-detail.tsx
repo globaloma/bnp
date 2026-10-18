@@ -4,7 +4,7 @@ import { useActionState, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Download, MessageCircle, Mail, Pencil, Trash2, CreditCard } from "lucide-react";
 import type { Order, OrderStatus } from "@/types/db";
-import { ORDER_STATUSES } from "@/types/db";
+import { merchantCanEdit, merchantStatusOptions } from "@/lib/order-status";
 import { naira } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,13 @@ import { OrderStatusBadge } from "@/components/dashboard/ui";
 import { buildReceiptPdf, shareReceiptOnWhatsApp } from "@/lib/receipt-pdf";
 import { EmailReceiptForm } from "@/components/dashboard/email-receipt-form";
 import { computeOrderTotals } from "@/lib/orders";
-import { editOrder, deleteOrderLine, deleteOrderGroup, getOrderPaymentLink } from "./actions";
+import {
+  editOrder,
+  deleteOrderLine,
+  deleteOrderGroup,
+  getOrderPaymentLink,
+  updateOrderStatus,
+} from "./actions";
 import type { ActionResult } from "@/lib/schemas/order";
 
 const fieldClass =
@@ -42,6 +48,9 @@ export function OrderDetail({
   const [payingOnline, setPayingOnline] = useState(false);
 
   const first = lines[0];
+  const canDeleteOrder = lines.every(
+    (l) => merchantCanEdit(l.status) || l.status === "Cancelled",
+  );
   const subtotal = lines.reduce((sum, l) => sum + l.subtotal, 0);
   const discount = lines.reduce((sum, l) => sum + l.discount_amount, 0);
   const vat = lines.reduce((sum, l) => sum + l.vat_amount, 0);
@@ -134,12 +143,16 @@ export function OrderDetail({
       <div className="flex flex-col gap-2">
         {lines.map((line) =>
           editingId === line.id ? (
-            <EditLineForm
-              key={line.id}
-              line={line}
-              chargesVat={chargesVat}
-              onDone={() => setEditingId(null)}
-            />
+            merchantCanEdit(line.status) ? (
+              <EditLineForm
+                key={line.id}
+                line={line}
+                chargesVat={chargesVat}
+                onDone={() => setEditingId(null)}
+              />
+            ) : (
+              <StatusOnlyForm key={line.id} line={line} onDone={() => setEditingId(null)} />
+            )
           ) : (
             <div key={line.id} className="rounded-lg border border-stone bg-card p-3">
               <div className="flex items-start justify-between gap-2">
@@ -166,9 +179,9 @@ export function OrderDetail({
                   className="flex items-center gap-1 text-[11px] font-semibold text-teal-700 hover:underline"
                 >
                   <Pencil className="size-3" />
-                  Edit
+                  {merchantCanEdit(line.status) ? "Edit" : "Update status"}
                 </button>
-                {lines.length > 1 ? (
+                {lines.length > 1 && merchantCanEdit(line.status) ? (
                   <button
                     type="button"
                     onClick={() => setConfirmDeleteLine(line.id)}
@@ -244,18 +257,27 @@ export function OrderDetail({
             {payingOnline ? "Preparing..." : "Pay online"}
           </Button>
         ) : null}
-        <Button
-          type="button"
-          variant="destructive"
-          size="sm"
-          disabled={pending}
-          onClick={() => setConfirmDeleteGroup(true)}
-          className="ml-auto"
-        >
-          <Trash2 className="size-3.5" />
-          Delete order
-        </Button>
+        {canDeleteOrder ? (
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            disabled={pending}
+            onClick={() => setConfirmDeleteGroup(true)}
+            className="ml-auto"
+          >
+            <Trash2 className="size-3.5" />
+            Delete order
+          </Button>
+        ) : null}
       </div>
+
+      {!canDeleteOrder ? (
+        <p className="text-[11px] text-mist">
+          The warehouse has started on this order, so only its status can be updated here. To
+          change or cancel it, contact the BNP team.
+        </p>
+      ) : null}
 
       {emailing ? (
         <div className="rounded-lg border border-stone bg-card p-3">
@@ -429,7 +451,7 @@ function EditLineForm({
       <div>
         <label className={labelClass}>Status</label>
         <select name="status" defaultValue={line.status} className={cn(fieldClass, "appearance-none")}>
-          {ORDER_STATUSES.map((s: OrderStatus) => (
+          {merchantStatusOptions(line.status).map((s: OrderStatus) => (
             <option key={s} value={s}>
               {s}
             </option>
@@ -513,5 +535,66 @@ function EditLineForm({
         </Button>
       </div>
     </form>
+  );
+}
+
+/**
+ * For lines the warehouse has started: only the status can change, and only
+ * to what a merchant may set (e.g. Delivered or Returned after dispatch).
+ */
+function StatusOnlyForm({ line, onDone }: { line: Order; onDone: () => void }) {
+  const options = merchantStatusOptions(line.status);
+  const [status, setStatus] = useState<OrderStatus>(line.status);
+  const [pending, startTransition] = useTransition();
+
+  function save() {
+    startTransition(async () => {
+      const result = await updateOrderStatus(line.id, status);
+      if (result.ok) {
+        toast.success("Status updated");
+        onDone();
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-2.5 rounded-lg border border-teal/30 bg-teal/5 p-3">
+      <div className="text-sm font-medium text-navy">
+        {line.product_name} × {line.quantity}
+      </div>
+      {options.length > 1 ? (
+        <div>
+          <label className={labelClass}>Status</label>
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value as OrderStatus)}
+            className={cn(fieldClass, "appearance-none")}
+          >
+            {options.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <p className="text-xs text-graphite">
+          This item is {line.status.toLowerCase()} at the warehouse. Its status will update as it
+          moves through packing and dispatch.
+        </p>
+      )}
+      <div className="flex gap-2">
+        {options.length > 1 ? (
+          <Button type="button" size="sm" disabled={pending || status === line.status} onClick={save}>
+            {pending ? "Saving" : "Save status"}
+          </Button>
+        ) : null}
+        <Button type="button" size="sm" variant="outline" onClick={onDone}>
+          Close
+        </Button>
+      </div>
+    </div>
   );
 }

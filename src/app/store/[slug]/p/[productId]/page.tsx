@@ -7,6 +7,7 @@ import { naira } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { AddToCart } from "@/components/store/add-to-cart";
 import { ProductCard } from "@/components/store/product-card";
+import { groupVariants } from "@/lib/variants";
 import { ShareProduct } from "@/components/store/share-product";
 import { LOW_STOCK_THRESHOLD } from "@/types/db";
 import type { StorefrontPartner, StorefrontProduct } from "@/types/db";
@@ -15,7 +16,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bnpfulfillment.com
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const PRODUCT_COLUMNS =
-  "id, partner_id, name, sku, category, sale_price, vat, stock, location, shipping_fee, pickup_enabled, image_url, description";
+  "id, partner_id, name, sku, category, sale_price, vat, stock, location, shipping_fee, pickup_enabled, image_url, description, variant, group_id";
 
 async function loadProduct(slug: string, productId: string) {
   if (!UUID.test(productId)) return null;
@@ -94,9 +95,25 @@ export default async function ProductPage({
     .eq("partner_id", partner.id)
     .neq("id", product.id)
     .gt("stock", 0)
-    .limit(4)
+    .limit(24)
     .returns<StorefrontProduct[]>();
-  const moreProducts = (others ?? []).map(withVat);
+  const otherProducts = (others ?? []).map(withVat);
+  // Every variant of this product, sold-out ones included, for the chooser.
+  let siblings: StorefrontProduct[] = [product];
+  if (product.group_id) {
+    const { data: groupRows } = await supabase
+      .from("storefront_products")
+      .select(PRODUCT_COLUMNS)
+      .eq("partner_id", partner.id)
+      .eq("group_id", product.group_id)
+      .returns<StorefrontProduct[]>();
+    siblings = (groupRows ?? [product])
+      .map(withVat)
+      .sort((a, b) => (a.variant ?? "").localeCompare(b.variant ?? ""));
+  }
+  const moreProducts = groupVariants(
+    otherProducts.filter((p) => !product.group_id || p.group_id !== product.group_id),
+  ).slice(0, 4);
 
   const stockLabel =
     product.stock <= 0
@@ -166,6 +183,31 @@ export default async function ProductPage({
             </p>
           ) : null}
           <h1 className="mt-1 text-2xl font-semibold text-navy sm:text-3xl">{product.name}</h1>
+          {siblings.length > 1 ? (
+            <div className="mt-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-graphite">Options</p>
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                {siblings.map((v) => (
+                  <Link
+                    key={v.id}
+                    href={`/store/${partner.slug}/p/${v.id}`}
+                    aria-current={v.id === product.id ? "true" : undefined}
+                    className={cn(
+                      "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+                      v.id === product.id
+                        ? "border-navy bg-navy text-white"
+                        : "border-stone text-graphite hover:border-teal/40",
+                      v.stock <= 0 && v.id !== product.id && "text-mist line-through",
+                    )}
+                  >
+                    {v.variant ?? v.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ) : product.variant ? (
+            <p className="mt-1 text-sm text-graphite">{product.variant}</p>
+          ) : null}
 
           <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <span className="text-2xl font-semibold text-success">
@@ -215,8 +257,8 @@ export default async function ProductPage({
         <section className="mt-12">
           <h2 className="text-lg font-semibold text-navy">More from {partner.business_name}</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {moreProducts.map((p) => (
-              <ProductCard key={p.id} product={p} href={`/store/${partner.slug}/p/${p.id}`} />
+            {moreProducts.map((variants) => (
+              <ProductCard key={variants[0].id} variants={variants} slug={partner.slug} />
             ))}
           </div>
         </section>

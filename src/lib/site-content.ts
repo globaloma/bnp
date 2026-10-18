@@ -42,7 +42,7 @@ export const hero = {
     customer: "Amara T.",
     item: "Ankara Tote x2",
     total: "₦14,000",
-    steps: ["Packaged", "Shipped", "Delivered"],
+    steps: ["Packed", "Dispatched", "Delivered"],
     activeStep: 1,
   },
 } as const;
