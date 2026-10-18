@@ -78,6 +78,46 @@ export type Product = {
   created_at: string;
 };
 
+export type InboundStatus = "announced" | "receiving" | "received" | "cancelled";
+
+/** Stock a merchant is sending to a warehouse, received by scanning. */
+export type InboundDelivery = {
+  id: string;
+  ref: string;
+  partner_id: string;
+  location: WarehouseLocation;
+  status: InboundStatus;
+  expected_on: string | null;
+  note: string | null;
+  /** False when the warehouse logged stock that arrived without notice. */
+  announced: boolean;
+  started_at: string | null;
+  received_at: string | null;
+  created_at: string;
+};
+
+export type InboundDeliveryLine = {
+  id: string;
+  delivery_id: string;
+  product_id: string;
+  expected_qty: number;
+  received_qty: number;
+};
+
+/** What a scan function returns: big green, amber or red on the scan screen. */
+export type ScanResult = {
+  ok: boolean;
+  tone: "success" | "warning" | "error";
+  message: string;
+  product_id?: string;
+  received?: number;
+  expected?: number;
+  in_bin?: number;
+  left?: number;
+  /** Product name and variant, from putaway. */
+  label?: string;
+};
+
 export type Order = {
   id: string;
   partner_id: string;

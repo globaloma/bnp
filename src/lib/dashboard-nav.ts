@@ -11,6 +11,9 @@ import {
   Users,
   MessageSquareWarning,
   Archive,
+  Truck,
+  PackagePlus,
+  ArrowDownToLine,
 } from "lucide-react";
 
 export type DashboardNavItem = {
@@ -22,6 +25,7 @@ export type DashboardNavItem = {
 export const dashboardNav: DashboardNavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
   { href: "/dashboard/inventory", label: "Inventory", icon: Boxes },
+  { href: "/dashboard/deliveries", label: "Deliveries", icon: Truck },
   { href: "/dashboard/orders", label: "Orders", icon: ClipboardList },
   { href: "/dashboard/wallet", label: "Wallet", icon: WalletCards },
   { href: "/dashboard/rewards", label: "Rewards", icon: Award },
@@ -33,6 +37,8 @@ export const dashboardNav: DashboardNavItem[] = [
 export const fcDashboardNav: DashboardNavItem[] = [
   { href: "/fc", label: "Overview", icon: LayoutGrid },
   { href: "/fc/orders", label: "Orders", icon: ClipboardList },
+  { href: "/fc/receiving", label: "Receiving", icon: PackagePlus },
+  { href: "/fc/putaway", label: "Putaway", icon: ArrowDownToLine },
   { href: "/fc/inventory", label: "Inventory", icon: Boxes },
   { href: "/fc/bins", label: "Bins", icon: Archive },
 ];

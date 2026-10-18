@@ -6,8 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { productSchema, type ActionResult } from "@/lib/schemas/product";
 import type { WarehouseLocation } from "@/types/db";
 import { LOCATIONS } from "@/types/db";
-import { getFulfillmentCenterEmails, sendAlertEmail } from "@/lib/notifications";
-import { escapeHtml } from "@/lib/spam-guard";
+import { announceDeliveries } from "@/lib/deliveries";
 
 function skuTakenMessage(message: string, sku?: string): string {
   return message.includes("products_partner_sku_key") || message.includes("products_barcode_key")
@@ -49,7 +48,7 @@ export async function addProduct(
     costPrice: formData.get("costPrice") || 0,
     salePrice: formData.get("salePrice"),
     vat: formData.get("vat") || 7.5,
-    stock: formData.get("stock"),
+    incoming: formData.get("incoming") || 0,
     location: formData.get("location"),
     shippingFee: formData.get("shippingFee") || 0,
     pickupEnabled: formData.get("pickupEnabled") === "on",
@@ -89,7 +88,7 @@ export async function addProduct(
     }
   }
 
-  const { error } = await supabase.from("products").insert({
+  const { data: created, error } = await supabase.from("products").insert({
     partner_id: user.id,
     name: d.name,
     sku: d.sku || null,
@@ -100,17 +99,40 @@ export async function addProduct(
     cost_price: d.costPrice,
     sale_price: d.salePrice,
     vat: d.vat,
-    on_hand: d.stock,
     location: d.location,
     shipping_fee: d.shippingFee,
     pickup_enabled: d.pickupEnabled,
     image_url: d.imageUrl || null,
     description: d.description || null,
     published: d.published,
-  });
+  }).select("id").single();
 
   if (error) {
     return { ok: false, error: skuTakenMessage(error.message, d.sku) };
+  }
+
+  // Stock for a new product arrives as an announced delivery.
+  if (d.incoming > 0 && created) {
+    const { data: merchant } = await supabase
+      .from("partners")
+      .select("id, business_name")
+      .eq("id", user.id)
+      .single();
+    if (merchant) {
+      const announced = await announceDeliveries(supabase, merchant, [
+        {
+          productId: created.id,
+          qty: d.incoming,
+          location: d.location,
+          label: d.variant ? `${d.name} (${d.variant})` : d.name,
+        },
+      ]);
+      if (!announced.ok) {
+        revalidatePath("/dashboard/inventory");
+        return { ok: false, error: `Product saved, but the delivery wasn't announced: ${announced.error}` };
+      }
+    }
+    revalidatePath("/dashboard/deliveries");
   }
 
   revalidatePath("/dashboard/inventory");
@@ -136,7 +158,7 @@ export async function editProduct(
     costPrice: formData.get("costPrice") || 0,
     salePrice: formData.get("salePrice"),
     vat: formData.get("vat") || 7.5,
-    stock: formData.get("stock"),
+    incoming: formData.get("incoming") || 0,
     location: formData.get("location"),
     shippingFee: formData.get("shippingFee") || 0,
     pickupEnabled: formData.get("pickupEnabled") === "on",
@@ -157,20 +179,6 @@ export async function editProduct(
 
   const d = parsed.data;
 
-  const { data: existing } = await supabase
-    .from("products")
-    .select("on_hand, allocated")
-    .eq("id", productId)
-    .single();
-
-  if (existing && d.stock < existing.allocated) {
-    return {
-      ok: false,
-      error: `${existing.allocated} units are reserved for open orders, so on-hand can't go below that.`,
-      fieldErrors: { stock: [`At least ${existing.allocated} (reserved for orders)`] },
-    };
-  }
-
   const { error } = await supabase
     .from("products")
     .update({
@@ -182,7 +190,6 @@ export async function editProduct(
       cost_price: d.costPrice,
       sale_price: d.salePrice,
       vat: d.vat,
-      on_hand: d.stock,
       location: d.location,
       shipping_fee: d.shippingFee,
       pickup_enabled: d.pickupEnabled,
@@ -193,39 +200,6 @@ export async function editProduct(
 
   if (error) {
     return { ok: false, error: skuTakenMessage(error.message, d.sku) };
-  }
-
-  if (existing && d.stock > existing.on_hand) {
-    const quantityAdded = d.stock - existing.on_hand;
-    await supabase.from("stock_events").insert({
-      partner_id: user.id,
-      product_id: productId,
-      product_name: d.name,
-      quantity_added: quantityAdded,
-    });
-
-    const fcEmails = await getFulfillmentCenterEmails();
-    if (fcEmails.length > 0) {
-      const { data: merchant } = await supabase
-        .from("partners")
-        .select("business_name")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      await sendAlertEmail({
-        to: fcEmails,
-        subject: `Restock: ${d.name} (+${quantityAdded})`,
-        html: `
-          <div style="font-family:system-ui,Segoe UI,sans-serif;max-width:560px;">
-            <h2 style="color:#0f2a44;font-size:18px;margin:0 0 4px;">A merchant just restocked</h2>
-            <p style="color:#455568;font-size:13px;margin:0 0 16px;">
-              ${escapeHtml(merchant?.business_name ?? "A merchant")} added ${quantityAdded} unit${quantityAdded === 1 ? "" : "s"} of
-              <strong style="color:#0f2a44;">${escapeHtml(d.name)}${d.variant ? ` (${escapeHtml(d.variant)})` : ""}</strong> in ${d.location}, now ${d.stock} on hand.
-            </p>
-          </div>
-        `,
-      });
-    }
   }
 
   revalidatePath("/dashboard/inventory");
@@ -244,7 +218,7 @@ export async function deleteProduct(productId: string): Promise<ActionResult> {
 
 export async function importProducts(
   rows: ProductCsvRow[],
-): Promise<ActionResult & { imported?: number }> {
+): Promise<ActionResult & { imported?: number; announced?: string }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -269,7 +243,6 @@ export async function importProducts(
     cost_price: r.cost_price ?? 0,
     sale_price: r.sale_price,
     vat: r.vat ?? 7.5,
-    on_hand: r.stock ?? 0,
     variant: r.variant?.trim().slice(0, 60) || null,
     location: r.location && (LOCATIONS as string[]).includes(r.location) ? r.location : "Abuja",
     shipping_fee: r.shipping_fee ?? 0,
@@ -279,76 +252,59 @@ export async function importProducts(
     published: r.published ?? true,
   }));
 
-  const skus = payload.map((p) => p.sku).filter(Boolean);
-  const { data: existingProducts } = await supabase
-    .from("products")
-    .select("id, sku, on_hand")
-    .eq("partner_id", user.id)
-    .in("sku", skus);
-  const existingBySku = new Map((existingProducts ?? []).map((p) => [p.sku, p]));
-
   const { error } = await supabase
     .from("products")
     .upsert(payload, { onConflict: "partner_id,sku" });
 
   if (error) return { ok: false, error: error.message };
 
-  const restocks = payload
-    .map((p) => {
-      const existing = existingBySku.get(p.sku);
-      if (!existing || p.on_hand <= existing.on_hand) return null;
-      return {
-        productId: existing.id as string,
-        name: p.name,
-        quantityAdded: p.on_hand - existing.on_hand,
-      };
-    })
-    .filter((r): r is { productId: string; name: string; quantityAdded: number } => r !== null);
-
-  if (restocks.length > 0) {
-    await supabase.from("stock_events").insert(
-      restocks.map((r) => ({
-        partner_id: user.id,
-        product_id: r.productId,
-        product_name: r.name,
-        quantity_added: r.quantityAdded,
-      })),
-    );
-
-    const fcEmails = await getFulfillmentCenterEmails();
-    if (fcEmails.length > 0) {
-      const { data: merchant } = await supabase
-        .from("partners")
-        .select("business_name")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      const itemRows = restocks
-        .map(
-          (r) =>
-            `<li style="color:#0f2a44;font-size:13px;margin:2px 0;"><strong>${escapeHtml(r.name)}</strong> +${r.quantityAdded}</li>`,
-        )
-        .join("");
-
-      await sendAlertEmail({
-        to: fcEmails,
-        subject: `Restock via CSV: ${restocks.length} product${restocks.length === 1 ? "" : "s"} updated`,
-        html: `
-          <div style="font-family:system-ui,Segoe UI,sans-serif;max-width:560px;">
-            <h2 style="color:#0f2a44;font-size:18px;margin:0 0 4px;">A merchant just restocked via CSV import</h2>
-            <p style="color:#455568;font-size:13px;margin:0 0 12px;">
-              ${escapeHtml(merchant?.business_name ?? "A merchant")} increased stock on ${restocks.length} product${restocks.length === 1 ? "" : "s"}:
-            </p>
-            <ul style="margin:0;padding-left:18px;">${itemRows}</ul>
-          </div>
-        `,
-      });
+  // The stock column is what the merchant is sending us: one announced
+  // delivery per warehouse. On-hand changes when it's scanned in.
+  const sending = rows.filter((r) => (r.stock ?? 0) > 0);
+  let announcedNote = "";
+  if (sending.length > 0) {
+    const { data: saved } = await supabase
+      .from("products")
+      .select("id, sku, name, variant, location")
+      .eq("partner_id", user.id)
+      .in(
+        "sku",
+        sending.map((r) => r.sku),
+      );
+    const bySku = new Map((saved ?? []).map((p) => [p.sku as string, p]));
+    const { data: merchant } = await supabase
+      .from("partners")
+      .select("id, business_name")
+      .eq("id", user.id)
+      .single();
+    const lines = sending.flatMap((r) => {
+      const p = bySku.get(r.sku);
+      if (!p) return [];
+      return [
+        {
+          productId: p.id as string,
+          qty: Math.floor(r.stock ?? 0),
+          location: p.location as WarehouseLocation,
+          label: p.variant ? `${p.name} (${p.variant})` : (p.name as string),
+        },
+      ];
+    });
+    if (merchant && lines.length > 0) {
+      const announced = await announceDeliveries(supabase, merchant, lines);
+      if (!announced.ok) {
+        return {
+          ok: false,
+          error: `Products saved, but the delivery wasn't announced: ${announced.error}`,
+        };
+      }
+      announcedNote = announced.refs.join(", ");
+      revalidatePath("/dashboard/deliveries");
     }
   }
 
   revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard");
-  return { ok: true, imported: payload.length };
+  return { ok: true, imported: payload.length, announced: announcedNote || undefined };
 }
 
 export async function toggleProductPublished(

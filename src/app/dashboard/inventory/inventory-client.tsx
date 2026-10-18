@@ -477,24 +477,40 @@ function ProductForm({
             className={fieldClass}
           />
         </div>
-        <div>
-          <label className={labelClass}>On-hand (in the warehouse) *</label>
-          <input
-            name="stock"
-            type="number"
-            min="0"
-            required
-            defaultValue={product?.on_hand}
-            className={fieldClass}
-          />
-          {errors?.stock ? (
-            <p className="mt-1 text-xs text-destructive">{errors.stock[0]}</p>
-          ) : product && product.allocated > 0 ? (
+        {product ? (
+          <div>
+            <span className={labelClass}>In the warehouse</span>
+            <div className="flex h-10 items-center rounded-md border border-stone bg-stone/40 px-3 text-sm font-semibold text-navy">
+              {product.on_hand} on hand
+            </div>
             <p className="mt-1 text-[11px] text-mist">
-              {product.allocated} reserved for open orders, {product.stock} available
+              {product.allocated > 0 ? `${product.allocated} reserved, ${product.stock} available. ` : ""}
+              To add stock,{" "}
+              <a href="/dashboard/deliveries" className="font-semibold text-teal-700 hover:underline">
+                announce a delivery
+              </a>
+              .
             </p>
-          ) : null}
-        </div>
+          </div>
+        ) : (
+          <div>
+            <label className={labelClass}>Units you&apos;re sending us</label>
+            <input
+              name="incoming"
+              type="number"
+              min="0"
+              defaultValue={0}
+              className={fieldClass}
+            />
+            {errors?.incoming ? (
+              <p className="mt-1 text-xs text-destructive">{errors.incoming[0]}</p>
+            ) : (
+              <p className="mt-1 text-[11px] text-mist">
+                We announce the delivery to the warehouse. Stock appears once it&apos;s scanned in.
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -666,7 +682,11 @@ function ImportCsvForm({ onDone }: { onDone: () => void }) {
     startTransition(async () => {
       const result = await importProducts(rows);
       if (result.ok) {
-        toast.success(`${result.imported ?? rows.length} products imported`);
+        toast.success(
+          result.announced
+            ? `${result.imported ?? rows.length} products imported. Delivery ${result.announced} announced to the warehouse.`
+            : `${result.imported ?? rows.length} products imported`,
+        );
         onDone();
       } else {
         toast.error(result.error);
@@ -684,6 +704,10 @@ function ImportCsvForm({ onDone }: { onDone: () => void }) {
         <Download className="size-3.5" />
         Download CSV template
       </button>
+      <p className="text-xs leading-relaxed text-graphite">
+        The <span className="font-mono">stock</span> column is how many units you&apos;re sending us. We announce
+        them to the warehouse as a delivery, and they show as on hand once they&apos;re scanned in.
+      </p>
 
       <div>
         <label className={labelClass}>CSV file</label>
