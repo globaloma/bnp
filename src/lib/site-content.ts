@@ -121,27 +121,32 @@ export const whyUs = {
 export const testimonials = {
   label: "Merchant stories",
   title: "Brands that handed us the busy work.",
+  // Real testimonials from merchants, as posted on our Instagram.
+  instagram: "https://www.instagram.com/bnp_fulfillment/",
   items: [
     {
       quote:
-        "I used to dread Abuja orders. The interstate complaints were endless. Since moving my stock to the BNP Jabi hub, my FCT customers get next day delivery and my reviews improved instantly.",
-      name: "Amara Chukwu",
-      business: "Amara Skincare",
-      detail: "Lagos based, Abuja active",
+        "I had previously worked with another company and did not have a good experience. I agreed to partner and sell my PachaMama Foods products with BNP Fulfillment because their agent was very clear about its benefits: the website they provide, pick up at their office, or delivery within and outside Abuja. More importantly, they supported us by creating awareness of our products on their social media, which for me showed a true partnership. I have been with them for months and their professionalism is on point, their customer care always available, and payment and reconciliation has always been flawless.",
+      name: "Tamara Egbedi",
+      role: "CEO, PachaMama Foods",
     },
     {
       quote:
-        "My customers kept asking if I had a branch in Abuja. Now I tell them yes, because I do. The BNP hub is my Abuja address. Conversions from the FCT went up significantly within two months.",
-      name: "Tunde Akinwale",
-      business: "TechWear Nigeria",
-      detail: "Gadgets and accessories",
+        "Partnering with BNP Fulfillment has allowed us to focus on what we do best: creating and curating top-tier shoe care solutions that keep your footwear looking its best. With BNP Fulfillment by our side, expect excellence in every box.",
+      name: "Pariola Boluwatife",
+      role: "Founder, Sneaklin",
     },
     {
       quote:
-        "Opening a physical store would have cost me over ₦8 million upfront. BNP let me test the Abuja market in seven days at a fraction of the cost. There really is no comparison.",
-      name: "Fatima Musa",
-      business: "Fatima's Organics",
-      detail: "Health and supplements",
+        "Thanks to BNP Fulfillment, we no longer worry about the backend. Our focus stays on creating skincare innovations that our customers love. Their reliable service ensures Beauty Realm products are delivered smoothly and on time, so every order reflects the same standard of quality we promise in our brand.",
+      name: "Queen of Face",
+      role: "M.D., Beauty Realm Cosmetics & Skincare Ltd.",
+    },
+    {
+      quote:
+        "I no get office for Abuja, my goods dey for BNP Fulfillment center. Now I don get branch in Abuja for free.",
+      name: "Min Accessories",
+      role: "@min_accessories",
     },
   ],
 } as const;
