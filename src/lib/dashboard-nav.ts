@@ -16,6 +16,10 @@ import {
   ArrowDownToLine,
   ListChecks,
   Send,
+  RotateCcw,
+  ClipboardCheck,
+  ShieldCheck,
+  History,
 } from "lucide-react";
 
 export type DashboardNavItem = {
@@ -43,8 +47,12 @@ export const fcDashboardNav: DashboardNavItem[] = [
   { href: "/fc/putaway", label: "Putaway", icon: ArrowDownToLine },
   { href: "/fc/picking", label: "Picking", icon: ListChecks },
   { href: "/fc/dispatch", label: "Dispatch", icon: Send },
+  { href: "/fc/returns", label: "Returns", icon: RotateCcw },
+  { href: "/fc/counts", label: "Cycle counts", icon: ClipboardCheck },
+  { href: "/fc/approvals", label: "Approvals", icon: ShieldCheck },
   { href: "/fc/inventory", label: "Inventory", icon: Boxes },
   { href: "/fc/bins", label: "Bins", icon: Archive },
+  { href: "/fc/stock-log", label: "Stock log", icon: History },
 ];
 
 export const adminDashboardNav: DashboardNavItem[] = [

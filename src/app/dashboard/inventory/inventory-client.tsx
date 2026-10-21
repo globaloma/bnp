@@ -249,6 +249,11 @@ function ProductCard({ item, merchantName }: { item: Product; merchantName: stri
             {item.staged} arrived, being shelved. Sellable once put away.
           </div>
         ) : null}
+        {item.quarantined > 0 ? (
+          <div className="mt-1 text-[10px] font-semibold text-destructive">
+            {item.quarantined} returned damaged, held in quarantine.
+          </div>
+        ) : null}
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
           <DialogTrigger
             render={

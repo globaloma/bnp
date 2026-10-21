@@ -23,3 +23,12 @@ export async function setPartnerStatus(
   revalidatePath("/admin/partners");
   return { ok: true };
 }
+
+/** Lets a warehouse account approve stock adjustments (counts, quarantine). */
+export async function setSupervisor(partnerId: string, on: boolean): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_set_supervisor", { p_partner: partnerId, p_on: on });
+  if (error) return { ok: false, error: error.message.replace(/^.*?ERROR:\s*/, "") };
+  revalidatePath("/admin/partners");
+  return { ok: true };
+}

@@ -30,6 +30,8 @@ export type Partner = {
   status: PartnerStatus;
   role: PartnerRole;
   is_admin: boolean;
+  /** Warehouse accounts only: may approve stock adjustments (admins can too). */
+  is_supervisor: boolean;
   slug: string;
   charges_vat: boolean;
   wallet_balance: number;
@@ -67,6 +69,8 @@ export type Product = {
   allocated: number;
   /** Received but not yet put away into a bin, so not yet sellable. */
   staged: number;
+  /** Returned damaged, held apart until a supervisor writes it off or restocks it. */
+  quarantined: number;
   /** Colour/size of this SKU, e.g. "Red" or "Large". */
   variant: string | null;
   /** Shared by every variant of the same product. */
@@ -124,6 +128,10 @@ export type ScanResult = {
   complete?: boolean;
   /** Pick screen, when complete: the package label code. */
   package?: string;
+  /** Returns screen: the order line and its good and damaged counts. */
+  order_id?: string;
+  returned?: number;
+  damaged?: number;
 };
 
 export type Order = {
@@ -136,6 +144,9 @@ export type Order = {
   quantity: number;
   /** Units scanned into the order on the pick screen. */
   picked_qty: number;
+  /** Units scanned back in on the Returns screen, good and damaged. */
+  returned_qty: number;
+  returned_damaged_qty: number;
   unit_price: number;
   total: number;
   status: OrderStatus;

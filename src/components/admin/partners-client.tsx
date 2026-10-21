@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState, Panel } from "@/components/dashboard/ui";
-import { setPartnerStatus } from "@/app/admin/partners/actions";
+import { setPartnerStatus, setSupervisor } from "@/app/admin/partners/actions";
 
 type StatusFilter = "All" | PartnerStatus;
 
@@ -153,6 +153,24 @@ function PartnerRow({
   const [confirmSuspend, setConfirmSuspend] = useState(false);
   const [reasonInput, setReasonInput] = useState("");
   const [pending, startTransition] = useTransition();
+  const [supervisor, setSupervisorState] = useState(partner.is_supervisor);
+
+  function toggleSupervisor() {
+    const next = !supervisor;
+    startTransition(async () => {
+      const result = await setSupervisor(partner.id, next);
+      if (result.ok) {
+        setSupervisorState(next);
+        toast.success(
+          next
+            ? `${partner.business_name} can now approve stock changes`
+            : `${partner.business_name} is no longer a supervisor`,
+        );
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
 
   function apply(next: PartnerStatus, reason?: string) {
     startTransition(async () => {
@@ -181,6 +199,18 @@ function PartnerRow({
           <span className="ml-2 inline-flex items-center rounded-full bg-navy px-2 py-0.5 text-[10px] font-bold uppercase text-white">
             Admin
           </span>
+        ) : null}
+        {partner.role === "fulfillment_center" && !partner.is_admin ? (
+          <label className="mt-1.5 flex cursor-pointer items-center gap-1.5 text-[11px] font-semibold text-graphite">
+            <input
+              type="checkbox"
+              checked={supervisor}
+              disabled={pending}
+              onChange={toggleSupervisor}
+              className="size-3.5 accent-[#2e8b9a]"
+            />
+            Supervisor (approves stock changes)
+          </label>
         ) : null}
       </td>
       <td className="px-4 py-3">

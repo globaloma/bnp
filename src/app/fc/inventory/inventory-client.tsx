@@ -198,6 +198,9 @@ export function FcInventoryClient({ products }: { products: ProductWithMerchant[
                       {p.staged > 0 ? (
                         <div className="text-[10px] font-semibold text-gold-300">+{p.staged} to put away</div>
                       ) : null}
+                      {p.quarantined > 0 ? (
+                        <div className="text-[10px] font-semibold text-destructive">{p.quarantined} in quarantine</div>
+                      ) : null}
                     </TableCell>
                     <TableCell className="text-right">{p.allocated}</TableCell>
                     <TableCell className="text-right">
