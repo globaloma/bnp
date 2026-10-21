@@ -47,6 +47,28 @@ export function merchantStatusOptions(current: OrderStatus): OrderStatus[] {
   }
 }
 
+/**
+ * Statuses the warehouse may set by hand. Picking, Packed and Dispatched only
+ * come from the pick and dispatch scan screens (enforced in the database,
+ * migration 0024); by hand, staff can cancel before dispatch and record what
+ * happened afterwards.
+ */
+export function fcStatusOptions(current: OrderStatus): OrderStatus[] {
+  switch (current) {
+    case "Created":
+    case "Reserved":
+    case "Picking":
+    case "Packed":
+      return [current, "Cancelled"];
+    case "Dispatched":
+      return ["Dispatched", "Delivered", "Returned", "Damaged"];
+    case "Delivered":
+      return ["Delivered", "Returned", "Damaged"];
+    default:
+      return [current];
+  }
+}
+
 /** Badge colours, shared by every order list. */
 export const STATUS_BADGE: Record<OrderStatus, string> = {
   Created: "bg-stone text-graphite",

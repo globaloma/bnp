@@ -244,6 +244,11 @@ function ProductCard({ item, merchantName }: { item: Product; merchantName: stri
             <span className="block font-semibold text-navy">{item.stock}</span>Available
           </span>
         </div>
+        {item.staged > 0 ? (
+          <div className="mt-1 text-[10px] font-semibold text-gold-300">
+            {item.staged} arrived, being shelved. Sellable once put away.
+          </div>
+        ) : null}
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
           <DialogTrigger
             render={

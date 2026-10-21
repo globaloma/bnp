@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Download, Mail, MessageCircle, PackageSearch } from "lucide-react";
+import { Download, Mail, MessageCircle, PackageSearch, Printer } from "lucide-react";
 import { toast } from "sonner";
 import type { OrderStatus } from "@/types/db";
-import { STATUS_ACCENT } from "@/lib/order-status";
+import { STATUS_ACCENT, fcStatusOptions } from "@/lib/order-status";
+import { printPackageLabel } from "@/lib/package-label";
 import { ORDER_STATUSES, LOCATIONS } from "@/types/db";
 import { naira, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -164,6 +165,23 @@ function OrderRow({
   const receiptButton =
     "inline-flex h-7 items-center gap-1.5 rounded-md border border-stone bg-card px-2.5 text-[11px] font-semibold text-graphite transition-colors hover:border-teal/40 hover:text-teal-700 disabled:opacity-50";
 
+  function printLabel() {
+    printPackageLabel({
+      packageCode: `${order.merchant_code}-${order.order_ref}`,
+      orderRef: order.order_ref,
+      merchantName: order.merchant_name,
+      customerName: order.customer_name,
+      customerPhone: order.customer_phone,
+      deliveryAddress: order.delivery_address,
+      rider: order.rider,
+      location: order.location,
+      placedAt: order.placed_at,
+      items: orderLines
+        .filter((l) => l.status !== "Cancelled")
+        .map((l) => ({ name: l.product_name, quantity: l.quantity })),
+    });
+  }
+
   function onStatusChange(status: OrderStatus) {
     startTransition(async () => {
       const result = await updateOrderStatusAsFc(order.id, status);
@@ -196,8 +214,8 @@ function OrderRow({
             onChange={(e) => onStatusChange(e.target.value as OrderStatus)}
             className="h-8 rounded-md border border-stone bg-card px-2 text-xs"
           >
-            {/* Created only comes from an unpaid storefront checkout. */}
-            {ORDER_STATUSES.filter((s) => s !== "Created" || order.status === "Created").map((s) => (
+            {/* Picking, Packed and Dispatched come from the scan screens. */}
+            {fcStatusOptions(order.status).map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
@@ -222,6 +240,12 @@ function OrderRow({
           <Mail className="size-3.5" />
           Email
         </button>
+        {order.status === "Packed" || order.status === "Dispatched" ? (
+          <button type="button" onClick={printLabel} className={receiptButton}>
+            <Printer className="size-3.5" />
+            Package label
+          </button>
+        ) : null}
         {emailing ? (
           <div className="mt-1 w-full">
             <EmailReceiptForm

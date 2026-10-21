@@ -7,18 +7,27 @@ import { createClient } from "@/lib/supabase/server";
 import type { ActionResult } from "@/lib/schemas/order";
 import type { OrderStatus } from "@/types/db";
 import { ORDER_STATUSES } from "@/types/db";
+import { fcStatusOptions } from "@/lib/order-status";
 
 export async function updateOrderStatusAsFc(
   orderId: string,
   status: OrderStatus,
 ): Promise<ActionResult> {
-  // The warehouse moves orders through Picking, Packed and Dispatched, and
-  // handles cancellations once picking has started. Created only comes from a
-  // storefront checkout waiting for payment.
-  if (!ORDER_STATUSES.includes(status) || status === "Created") {
-    return { ok: false, error: "Invalid status" };
-  }
+  if (!ORDER_STATUSES.includes(status)) return { ok: false, error: "Invalid status" };
   const supabase = await createClient();
+  // Picking, Packed and Dispatched come from the scan screens; by hand,
+  // staff can only cancel before dispatch and record what happened after.
+  const { data: current } = await supabase.from("orders").select("status").eq("id", orderId).maybeSingle();
+  if (!current) return { ok: false, error: "Order not found." };
+  if (!fcStatusOptions(current.status as OrderStatus).includes(status)) {
+    return {
+      ok: false,
+      error:
+        status === "Picking" || status === "Packed" || status === "Dispatched"
+          ? "Use the Picking and Dispatch screens to move orders forward."
+          : `A ${current.status} order can't be set to ${status}.`,
+    };
+  }
   const { data: updated, error } = await supabase
     .from("orders")
     .update({ status })
@@ -33,6 +42,8 @@ export async function updateOrderStatusAsFc(
   }
 
   revalidatePath("/fc/orders");
+  revalidatePath("/fc/picking");
+  revalidatePath("/fc/putaway");
   revalidatePath("/fc");
   return { ok: true };
 }

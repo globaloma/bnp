@@ -193,7 +193,12 @@ export function FcInventoryClient({ products }: { products: ProductWithMerchant[
                     </TableCell>
                     <TableCell>{p.merchant_name}</TableCell>
                     <TableCell>{naira(p.sale_price)}</TableCell>
-                    <TableCell className="text-right">{p.on_hand}</TableCell>
+                    <TableCell className="text-right">
+                      {p.on_hand}
+                      {p.staged > 0 ? (
+                        <div className="text-[10px] font-semibold text-gold-300">+{p.staged} to put away</div>
+                      ) : null}
+                    </TableCell>
                     <TableCell className="text-right">{p.allocated}</TableCell>
                     <TableCell className="text-right">
                       <span

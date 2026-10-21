@@ -2,7 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Order, Partner, Product, StockEvent } from "@/types/db";
 
-export type OrderWithMerchant = Order & { merchant_name: string };
+export type OrderWithMerchant = Order & { merchant_name: string; merchant_code: string };
 export type ProductWithMerchant = Product & { merchant_name: string };
 export type StockEventWithMerchant = StockEvent & { merchant_name: string };
 
@@ -25,7 +25,7 @@ export async function getAuthedFulfillmentCenter(): Promise<{
   return { userId: user.id, fc: partner as Partner | null };
 }
 
-type MerchantJoin = { business_name: string } | null;
+type MerchantJoin = { business_name: string; code?: string } | null;
 
 export async function getFcNetworkData() {
   const supabase = await createClient();
@@ -37,7 +37,7 @@ export async function getFcNetworkData() {
       .order("created_at", { ascending: false }),
     supabase
       .from("orders")
-      .select("*, merchant:partners(business_name)")
+      .select("*, merchant:partners(business_name, code)")
       .order("placed_at", { ascending: false }),
   ]);
 
@@ -48,7 +48,11 @@ export async function getFcNetworkData() {
     }) as ProductWithMerchant[],
     orders: (orders.data ?? []).map((row) => {
       const { merchant, ...rest } = row as Order & { merchant: MerchantJoin };
-      return { ...rest, merchant_name: merchant?.business_name ?? "Unknown merchant" };
+      return {
+        ...rest,
+        merchant_name: merchant?.business_name ?? "Unknown merchant",
+        merchant_code: merchant?.code ?? "",
+      };
     }) as OrderWithMerchant[],
   };
 }

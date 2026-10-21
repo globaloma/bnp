@@ -14,6 +14,8 @@ import {
   Truck,
   PackagePlus,
   ArrowDownToLine,
+  ListChecks,
+  Send,
 } from "lucide-react";
 
 export type DashboardNavItem = {
@@ -39,6 +41,8 @@ export const fcDashboardNav: DashboardNavItem[] = [
   { href: "/fc/orders", label: "Orders", icon: ClipboardList },
   { href: "/fc/receiving", label: "Receiving", icon: PackagePlus },
   { href: "/fc/putaway", label: "Putaway", icon: ArrowDownToLine },
+  { href: "/fc/picking", label: "Picking", icon: ListChecks },
+  { href: "/fc/dispatch", label: "Dispatch", icon: Send },
   { href: "/fc/inventory", label: "Inventory", icon: Boxes },
   { href: "/fc/bins", label: "Bins", icon: Archive },
 ];

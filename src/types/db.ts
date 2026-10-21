@@ -65,6 +65,8 @@ export type Product = {
   on_hand: number;
   /** Promised to open orders, not yet dispatched. */
   allocated: number;
+  /** Received but not yet put away into a bin, so not yet sellable. */
+  staged: number;
   /** Colour/size of this SKU, e.g. "Red" or "Large". */
   variant: string | null;
   /** Shared by every variant of the same product. */
@@ -116,6 +118,12 @@ export type ScanResult = {
   left?: number;
   /** Product name and variant, from putaway. */
   label?: string;
+  /** Pick screen: units picked of the scanned line, and whether the order is done. */
+  picked?: number;
+  quantity?: number;
+  complete?: boolean;
+  /** Pick screen, when complete: the package label code. */
+  package?: string;
 };
 
 export type Order = {
@@ -126,6 +134,8 @@ export type Order = {
   product_id: string | null;
   product_name: string;
   quantity: number;
+  /** Units scanned into the order on the pick screen. */
+  picked_qty: number;
   unit_price: number;
   total: number;
   status: OrderStatus;

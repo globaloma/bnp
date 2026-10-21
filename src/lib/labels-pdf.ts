@@ -46,7 +46,38 @@ function barcodeModules(value: string): string {
   return (target.encodings ?? []).map((e) => e.data).join("");
 }
 
-function fitOneLine(doc: jsPDF, text: string, maxWidth: number): string {
+/**
+ * Draws a Code 128 barcode centred in the given box, as vector bars whose
+ * width is a whole number of printer dots where possible.
+ */
+export function drawCode128(
+  doc: jsPDF,
+  value: string,
+  boxX: number,
+  boxY: number,
+  boxWidth: number,
+  height: number,
+) {
+  const modules = barcodeModules(value);
+  const fitWidth = boxWidth / (modules.length + QUIET_ZONE_MODULES * 2);
+  const dots = Math.floor(fitWidth / PRINTER_DOT_MM);
+  // Below two dots, snapping would shrink the code too much; use the fit.
+  const moduleWidth = dots >= 2 ? dots * PRINTER_DOT_MM : fitWidth;
+  const x = boxX + (boxWidth - moduleWidth * modules.length) / 2;
+  doc.setFillColor(0, 0, 0);
+  for (let i = 0; i < modules.length; ) {
+    if (modules[i] !== "1") {
+      i++;
+      continue;
+    }
+    let run = 1;
+    while (modules[i + run] === "1") run++;
+    doc.rect(x + i * moduleWidth, boxY, run * moduleWidth, height, "F");
+    i += run;
+  }
+}
+
+export function fitOneLine(doc: jsPDF, text: string, maxWidth: number): string {
   if (doc.getTextWidth(text) <= maxWidth) return text;
   let cut = text;
   while (cut.length > 1 && doc.getTextWidth(`${cut}…`) > maxWidth) cut = cut.slice(0, -1);
@@ -89,24 +120,7 @@ function drawLabel(doc: jsPDF, item: LabelItem, width: number, height: number) {
   });
   y += headingH + gapH;
 
-  const modules = barcodeModules(item.barcode);
-  const fitWidth = contentWidth / (modules.length + QUIET_ZONE_MODULES * 2);
-  const dots = Math.floor(fitWidth / PRINTER_DOT_MM);
-  // Below two dots, snapping would shrink the code too much; use the fit.
-  const moduleWidth = dots >= 2 ? dots * PRINTER_DOT_MM : fitWidth;
-  const barsWidth = moduleWidth * modules.length;
-  const x = centre - barsWidth / 2;
-  doc.setFillColor(0, 0, 0);
-  for (let i = 0; i < modules.length; ) {
-    if (modules[i] !== "1") {
-      i++;
-      continue;
-    }
-    let run = 1;
-    while (modules[i + run] === "1") run++;
-    doc.rect(x + i * moduleWidth, y, run * moduleWidth, barsH, "F");
-    i += run;
-  }
+  drawCode128(doc, item.barcode, margin, y, contentWidth, barsH);
   y += barsH;
 
   doc.setFont("courier", "bold");
