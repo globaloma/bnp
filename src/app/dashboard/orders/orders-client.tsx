@@ -22,6 +22,7 @@ import { groupOrdersByRef } from "@/lib/orders";
 import { createOrder, deleteOrderGroups } from "./actions";
 import type { ActionResult } from "@/lib/schemas/order";
 import { OrderDetail } from "./order-detail";
+import { ImportOrdersDialog } from "./import-orders-dialog";
 
 const fieldClass =
   "h-10 w-full rounded-md border border-stone bg-white px-3 text-sm text-navy outline-none transition-colors focus-visible:border-teal focus-visible:ring-2 focus-visible:ring-teal/25";
@@ -173,6 +174,8 @@ export function OrdersClient({
           </div>
         </div>
 
+        <div className="flex flex-wrap gap-2">
+        <ImportOrdersDialog products={products} disabled={restricted} />
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger render={<Button size="lg" disabled={restricted} />}>
             <Plus className="size-4" />
@@ -189,6 +192,7 @@ export function OrdersClient({
             />
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {groups.length === 0 ? (
