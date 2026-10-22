@@ -20,6 +20,9 @@ import {
   ClipboardCheck,
   ShieldCheck,
   History,
+  Receipt,
+  Ruler,
+  Banknote,
 } from "lucide-react";
 
 export type DashboardNavItem = {
@@ -33,6 +36,7 @@ export const dashboardNav: DashboardNavItem[] = [
   { href: "/dashboard/inventory", label: "Inventory", icon: Boxes },
   { href: "/dashboard/deliveries", label: "Deliveries", icon: Truck },
   { href: "/dashboard/orders", label: "Orders", icon: ClipboardList },
+  { href: "/dashboard/billing", label: "Billing", icon: Receipt },
   { href: "/dashboard/wallet", label: "Wallet", icon: WalletCards },
   { href: "/dashboard/rewards", label: "Rewards", icon: Award },
   { href: "/dashboard/returns", label: "Returns & claims", icon: Undo2 },
@@ -52,11 +56,13 @@ export const fcDashboardNav: DashboardNavItem[] = [
   { href: "/fc/approvals", label: "Approvals", icon: ShieldCheck },
   { href: "/fc/inventory", label: "Inventory", icon: Boxes },
   { href: "/fc/bins", label: "Bins", icon: Archive },
+  { href: "/fc/storage", label: "Storage space", icon: Ruler },
   { href: "/fc/stock-log", label: "Stock log", icon: History },
 ];
 
 export const adminDashboardNav: DashboardNavItem[] = [
   { href: "/admin/partners", label: "Partners", icon: Users },
+  { href: "/admin/billing", label: "Billing", icon: Banknote },
   { href: "/admin/rewards", label: "Rewards", icon: Award },
   { href: "/admin/feedback", label: "Feedback", icon: MessageSquareWarning },
 ];

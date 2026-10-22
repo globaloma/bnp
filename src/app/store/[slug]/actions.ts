@@ -51,12 +51,15 @@ export async function startCheckout(
 
   const { data: partner } = await admin
     .from("partners")
-    .select("id, status, charges_vat")
+    .select("id, status, charges_vat, billing_locked")
     .eq("slug", slug)
     .maybeSingle();
 
   if (!partner || partner.status !== "active") {
     return { ok: false, error: "This store is not available right now." };
+  }
+  if (partner.billing_locked) {
+    return { ok: false, error: "This store isn't taking orders right now. Please try again later." };
   }
 
   const productIds = d.items.map((i) => i.productId);

@@ -47,12 +47,18 @@ export function walletAvailable(partner: Partner): number {
   return partner.wallet_balance - partner.wallet_buffer;
 }
 
+/**
+ * Standard merchants with an overdue invoice can't create orders until it's
+ * paid (billing_locked, migration 0028). Enterprise merchants can still take
+ * orders when their wallet hits the minimum; the warehouse just holds them.
+ */
 export function isFulfillmentRestricted(partner: Partner): boolean {
-  return walletAvailable(partner) <= 0;
+  return partner.billing_locked;
 }
 
+/** Enterprise only: the wallet is close to, or at, the agreed minimum. */
 export function isWalletLow(partner: Partner): boolean {
-  return walletAvailable(partner) < 10000;
+  return partner.plan_type === "enterprise" && partner.wallet_alert !== "ok";
 }
 
 export function alertCount<T extends StockShape>(

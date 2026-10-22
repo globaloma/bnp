@@ -28,7 +28,7 @@ export default async function OrdersPage() {
 
       {restricted ? (
         <div className="mb-5 rounded-lg bg-destructive px-4 py-3 text-sm font-semibold text-white">
-          Fulfillment suspended, your wallet is empty. Top up to create new orders.
+          Your account is paused because an invoice is overdue. Pay it on the Billing page to create new orders.
         </div>
       ) : null}
 

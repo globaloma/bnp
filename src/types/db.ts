@@ -15,7 +15,7 @@ export type OrderRider = "BNP Fleet" | "Own Rider" | "Pickup";
 export type OrderChannel = "dashboard" | "storefront";
 export type OrderPaymentStatus = "pending" | "paid" | "failed";
 export type OrderDiscountType = "fixed" | "percentage";
-export type WalletTxnType = "Top-up" | "Deduction" | "Reward";
+export type WalletTxnType = "Top-up" | "Deduction" | "Reward" | "Adjustment";
 export type ReturnStatus = "Under Review" | "Approved" | "Rejected" | "Resolved";
 
 export type Partner = {
@@ -35,6 +35,15 @@ export type Partner = {
   /** Merchant plan (Technical Specification v2, section 2). */
   plan_type: "standard" | "enterprise";
   plan_changed_at: string | null;
+  /** Floor space the warehouse has measured for this merchant, billed monthly. */
+  storage_sqm: number;
+  /** Enterprise: name and contact of their account manager. */
+  account_manager: string | null;
+  /** Standard: an invoice is overdue, so new orders and deliveries pause. */
+  billing_locked: boolean;
+  /** Enterprise: wallet at or below the minimum, so picking and dispatch pause. */
+  orders_paused: boolean;
+  wallet_alert: "ok" | "low" | "floor";
   slug: string;
   charges_vat: boolean;
   wallet_balance: number;
@@ -78,6 +87,9 @@ export type Product = {
   low_stock_threshold: number | null;
   /** Set once an alert has gone out for the current drop; clears on restock. */
   low_stock_alerted: boolean;
+  /** Value per unit, for insurance and stock valuation. Locked once set. */
+  declared_value: number | null;
+  declared_value_locked_at: string | null;
   /** Colour/size of this SKU, e.g. "Red" or "Large". */
   variant: string | null;
   /** Shared by every variant of the same product. */
@@ -88,6 +100,38 @@ export type Product = {
   retail_barcode: string | null;
   published: boolean;
   last_moved_at: string;
+  created_at: string;
+};
+
+export type Invoice = {
+  id: string;
+  number: string;
+  partner_id: string;
+  /** First day of the month billed. */
+  period: string;
+  storage_sqm: number;
+  storage_amount: number;
+  sales_value: number;
+  fulfillment_rate: number;
+  fulfillment_amount: number;
+  total: number;
+  status: "unpaid" | "paid" | "void";
+  issued_at: string;
+  due_at: string;
+  paid_at: string | null;
+  paid_via: "wallet" | "paystack" | "admin" | null;
+};
+
+export type BillingCharge = {
+  id: string;
+  partner_id: string;
+  kind: "storage" | "insurance" | "fulfillment" | "adjustment";
+  period: string | null;
+  order_ref: string | null;
+  basis: number | null;
+  rate: number | null;
+  amount: number;
+  note: string | null;
   created_at: string;
 };
 
@@ -154,6 +198,7 @@ export type Order = {
   /** Units scanned back in on the Returns screen, good and damaged. */
   returned_qty: number;
   returned_damaged_qty: number;
+  delivered_at: string | null;
   unit_price: number;
   total: number;
   status: OrderStatus;

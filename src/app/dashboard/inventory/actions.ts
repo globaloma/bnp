@@ -27,6 +27,8 @@ export type ProductCsvRow = {
   pickup_enabled?: boolean;
   image_url?: string;
   description?: string;
+  /** Value per unit; only fills products that don't have one yet. */
+  declared_value?: number;
   variant?: string;
   published?: boolean;
 };
@@ -51,6 +53,7 @@ export async function addProduct(
     incoming: formData.get("incoming") || 0,
     location: formData.get("location"),
     lowStockThreshold: formData.get("lowStockThreshold") ?? "",
+    declaredValue: formData.get("declaredValue") ?? "",
     shippingFee: formData.get("shippingFee") || 0,
     pickupEnabled: formData.get("pickupEnabled") === "on",
     imageUrl: formData.get("imageUrl") || undefined,
@@ -102,6 +105,7 @@ export async function addProduct(
     vat: d.vat,
     location: d.location,
     low_stock_threshold: d.lowStockThreshold,
+    declared_value: d.declaredValue,
     shipping_fee: d.shippingFee,
     pickup_enabled: d.pickupEnabled,
     image_url: d.imageUrl || null,
@@ -163,6 +167,7 @@ export async function editProduct(
     incoming: formData.get("incoming") || 0,
     location: formData.get("location"),
     lowStockThreshold: formData.get("lowStockThreshold") ?? "",
+    declaredValue: formData.get("declaredValue") ?? "",
     shippingFee: formData.get("shippingFee") || 0,
     pickupEnabled: formData.get("pickupEnabled") === "on",
     imageUrl: formData.get("imageUrl") || undefined,
@@ -195,6 +200,9 @@ export async function editProduct(
       vat: d.vat,
       location: d.location,
       low_stock_threshold: d.lowStockThreshold,
+      ...(d.declaredValue !== null && formData.get("declaredValueLocked") !== "1"
+        ? { declared_value: d.declaredValue }
+        : {}),
       shipping_fee: d.shippingFee,
       pickup_enabled: d.pickupEnabled,
       image_url: d.imageUrl || null,
@@ -261,6 +269,17 @@ export async function importProducts(
     .upsert(payload, { onConflict: "partner_id,sku" });
 
   if (error) return { ok: false, error: error.message };
+
+  // Declared values lock once set, so the file can only fill in missing ones.
+  for (const r of rows) {
+    if (r.declared_value === undefined || !Number.isFinite(r.declared_value) || r.declared_value < 0) continue;
+    await supabase
+      .from("products")
+      .update({ declared_value: r.declared_value })
+      .eq("partner_id", user.id)
+      .eq("sku", r.sku)
+      .is("declared_value", null);
+  }
 
   // The stock column is what the merchant is sending us: one announced
   // delivery per warehouse. On-hand changes when it's scanned in.

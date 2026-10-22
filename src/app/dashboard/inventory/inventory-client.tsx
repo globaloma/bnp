@@ -553,6 +553,44 @@ function ProductForm({
       </div>
 
       <div>
+        <label className={labelClass}>Declared value per unit (₦)</label>
+        {product?.declared_value !== null && product?.declared_value !== undefined ? (
+          <>
+            <input type="hidden" name="declaredValueLocked" value="1" />
+            <div className="flex h-10 items-center rounded-md border border-stone bg-stone/40 px-3 text-sm font-semibold text-navy">
+              {naira(product.declared_value)} per unit, locked
+            </div>
+            <p className="mt-1 text-[11px] text-mist">
+              To change it,{" "}
+              <a href="/dashboard/billing" className="font-semibold text-teal-700 hover:underline">
+                request a change
+              </a>{" "}
+              on the Billing page.
+            </p>
+          </>
+        ) : (
+          <>
+            <input
+              name="declaredValue"
+              type="number"
+              min="0"
+              step="0.01"
+              defaultValue=""
+              placeholder="What one unit is worth"
+              className={fieldClass}
+            />
+            {errors?.declaredValue ? (
+              <p className="mt-1 text-xs text-destructive">{errors.declaredValue[0]}</p>
+            ) : (
+              <p className="mt-1 text-[11px] text-mist">
+                Used to insure your stock. It locks once saved; later changes need our approval.
+              </p>
+            )}
+          </>
+        )}
+      </div>
+
+      <div>
         <label className={labelClass}>Low-stock alert</label>
         <div className="flex items-center gap-2 text-sm text-graphite">
           <span>Email me when available stock falls to</span>
@@ -623,7 +661,7 @@ function ProductForm({
 }
 
 const CSV_TEMPLATE_HEADER =
-  "sku,name,variant,category,cost_price,sale_price,vat,stock,location,shipping_fee,pickup_enabled,image_url,description";
+  "sku,name,variant,category,cost_price,sale_price,vat,stock,location,shipping_fee,pickup_enabled,image_url,description,declared_value";
 const CSV_TEMPLATE_EXAMPLE =
   "ATB-RED,Ankara Tote,Red,Bags,4000,7500,7.5,20,Abuja,1200,false,,Hand-sewn Ankara print tote with inner pocket";
 
@@ -686,6 +724,7 @@ function parseCsvRows(rows: Record<string, string>[]): {
       // Kept as "" (not undefined) when the column exists but is blank, so the
       // import knows the file has a description column.
       description: row.description !== undefined ? row.description.trim() : undefined,
+      declared_value: row.declared_value ? Number(row.declared_value) : undefined,
     });
   });
 

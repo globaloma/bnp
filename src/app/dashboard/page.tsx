@@ -56,7 +56,7 @@ export default async function DashboardOverviewPage() {
       {restricted ? (
         <div className="mb-5 flex items-center gap-3 rounded-lg bg-destructive px-4 py-3 text-sm font-semibold text-white">
           <AlertTriangle className="size-4 shrink-0" />
-          Fulfillment access restricted, your wallet is empty. Top up to resume.
+          Your account is paused because an invoice is overdue. Pay it on the Billing page to resume.
         </div>
       ) : null}
 

@@ -78,12 +78,14 @@ export default async function AlertsPage() {
         <Panel accent="destructive" className="mb-5 bg-destructive/5">
           <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-destructive">
             <CreditCard className="size-4" />
-            Low wallet alert
+            {partner.orders_paused ? "Orders paused: wallet at minimum" : "Low wallet alert"}
           </div>
           <p className="text-xs text-graphite">
-            Available balance is {naira(walletAvailable(partner))}, below{" "}
-            {naira(10000)}. Top up to avoid fulfillment suspension when it
-            runs out.
+            Your wallet balance is {naira(partner.wallet_balance)}, against your agreed minimum of{" "}
+            {naira(partner.wallet_buffer)} ({naira(walletAvailable(partner))} above it).{" "}
+            {partner.orders_paused
+              ? "The warehouse is holding your orders until you top up."
+              : "Top up to keep your orders moving."}
           </p>
         </Panel>
       ) : null}

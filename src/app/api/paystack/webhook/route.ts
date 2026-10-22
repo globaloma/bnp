@@ -1,4 +1,5 @@
 import { confirmPayment, confirmTransfer, confirmWalletTopup, verifyWebhookSignature } from "@/lib/paystack";
+import { confirmInvoicePayment } from "@/lib/invoice-payment";
 
 export async function POST(req: Request) {
   const rawBody = await req.text();
@@ -17,11 +18,13 @@ export async function POST(req: Request) {
 
   if (event.event === "charge.success" && event.data?.reference) {
     const reference = event.data.reference;
-    // Wallet top-up references are always prefixed "WTU-"; anything else
+    // Wallet top-ups start "WTU-", invoice payments "BIL-"; anything else
     // is a storefront order reference.
     const result = reference.startsWith("WTU-")
       ? await confirmWalletTopup(reference)
-      : await confirmPayment(reference);
+      : reference.startsWith("BIL-")
+        ? await confirmInvoicePayment(reference)
+        : await confirmPayment(reference);
     if (!result.ok) {
       console.error("[paystack webhook] payment confirmation failed:", result.error);
     }

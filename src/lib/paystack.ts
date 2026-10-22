@@ -6,6 +6,7 @@ import { alertFulfillmentCenters, orderItemRowsHtml, sendAlertEmail } from "@/li
 import { escapeHtml } from "@/lib/spam-guard";
 import { sendCustomerOrderEmail } from "@/lib/customer-email";
 import { sendQueuedLowStockAlerts } from "@/lib/low-stock-email";
+import { sendQueuedBillingNotices } from "@/lib/billing-email";
 
 const PAYSTACK_BASE = "https://api.paystack.co";
 
@@ -371,6 +372,8 @@ export async function confirmWalletTopup(
   });
 
   await admin.from("wallet_topups").update({ status: "paid" }).eq("reference", reference);
+  // A top-up can lift an Enterprise wallet back above its minimum.
+  await sendQueuedBillingNotices();
 
   return { ok: true, alreadyProcessed: false };
 }

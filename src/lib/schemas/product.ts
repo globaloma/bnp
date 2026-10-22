@@ -18,6 +18,12 @@ export const productSchema = z.object({
     .optional()
     .or(z.literal("")),
   location: z.enum(["Abuja", "Lagos", "USA"]),
+  // Value of one unit, for insurance and stock valuation. Set once, then
+  // locked (migration 0028); blank leaves it unset.
+  declaredValue: z
+    .union([z.literal(""), z.coerce.number().min(0, "Enter 0 or more").max(1_000_000_000)])
+    .optional()
+    .transform((v) => (v === "" || v === undefined ? null : v)),
   // Blank means the platform default (LOW_STOCK_THRESHOLD).
   lowStockThreshold: z
     .union([z.literal(""), z.coerce.number().int().min(0, "Enter 0 or more").max(100000)])
