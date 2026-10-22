@@ -200,6 +200,17 @@ function PartnerRow({
             Admin
           </span>
         ) : null}
+        {partner.role === "merchant" ? (
+          <span
+            className={
+              partner.plan_type === "enterprise"
+                ? "ml-2 inline-flex items-center rounded-full bg-gold px-2 py-0.5 text-[10px] font-bold uppercase text-navy"
+                : "ml-2 inline-flex items-center rounded-full bg-stone px-2 py-0.5 text-[10px] font-bold uppercase text-graphite"
+            }
+          >
+            {partner.plan_type === "enterprise" ? "Enterprise" : "Standard"}
+          </span>
+        ) : null}
         {partner.role === "fulfillment_center" && !partner.is_admin ? (
           <label className="mt-1.5 flex cursor-pointer items-center gap-1.5 text-[11px] font-semibold text-graphite">
             <input

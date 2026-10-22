@@ -11,6 +11,8 @@ import {
   type AuthResult,
 } from "@/lib/schemas/auth";
 import { roleHome } from "@/lib/roles";
+import { after } from "next/server";
+import { notifyEnterpriseChoice } from "@/lib/plans";
 import { guardSubmission, withinRateLimit } from "@/lib/spam-guard";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bnpfulfillment.com";
@@ -96,6 +98,7 @@ export async function signUp(
 
   const parsed = signUpSchema.safeParse({
     role: formData.get("role") || undefined,
+    plan: formData.get("plan") || undefined,
     businessName: formData.get("businessName"),
     contactName: formData.get("contactName"),
     email: formData.get("email"),
@@ -113,7 +116,7 @@ export async function signUp(
   }
 
   const supabase = await createClient();
-  const { role, businessName, contactName, email, phone, category, password } =
+  const { role, plan, businessName, contactName, email, phone, category, password } =
     parsed.data;
 
   const { data, error } = await supabase.auth.signUp({
@@ -122,6 +125,7 @@ export async function signUp(
     options: {
       data: {
         role,
+        plan_type: role === "merchant" ? plan : "standard",
         business_name: businessName,
         contact_name: contactName,
         phone,
@@ -138,6 +142,14 @@ export async function signUp(
           ? "An account with this email already exists. Try signing in instead."
           : error.message,
     };
+  }
+
+  // Enterprise needs our team to set up the wallet minimum and an account
+  // manager, so they hear about it straight away.
+  if (role === "merchant" && plan === "enterprise") {
+    after(() =>
+      notifyEnterpriseChoice({ businessName, contactName, email, phone, source: "sign-up" }),
+    );
   }
 
   const home = roleHome(role);

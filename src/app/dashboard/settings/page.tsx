@@ -7,6 +7,7 @@ import {
   ProfileForm,
   StorefrontForm,
 } from "@/components/dashboard/settings-forms";
+import { PlanForm } from "./plan-form";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -20,9 +21,10 @@ export default async function SettingsPage() {
     <>
       <PageHeader
         title="Settings"
-        description="Update your business details, storefront and password."
+        description="Your plan, business details, storefront and password."
       />
       <div className="flex max-w-3xl flex-col gap-6">
+        <PlanForm current={auth.partner.plan_type ?? "standard"} />
         <ProfileForm partner={auth.partner} isFc={false} />
         <StorefrontForm
           partner={auth.partner}

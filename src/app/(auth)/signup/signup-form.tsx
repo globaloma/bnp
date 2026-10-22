@@ -8,7 +8,7 @@ import { submitWithoutReset } from "@/lib/submit-without-reset";
 import { FormGuard } from "@/components/form-guard";
 import { ResendConfirmation } from "../resend-confirmation";
 import type { AuthResult } from "@/lib/schemas/auth";
-import { apply } from "@/lib/site-content";
+import { apply, guarantee } from "@/lib/site-content";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -24,12 +24,19 @@ function FieldError({ messages }: { messages?: string[] }) {
   return <p className="mt-1 text-xs text-destructive">{messages[0]}</p>;
 }
 
-export function SignupForm({ initialRole = "merchant" }: { initialRole?: Role }) {
+export function SignupForm({
+  initialRole = "merchant",
+  initialPlan = "standard",
+}: {
+  initialRole?: Role;
+  initialPlan?: "standard" | "enterprise";
+}) {
   const [state, formAction, pending] = useActionState<AuthResult | null, FormData>(
     signUp,
     null,
   );
   const [role, setRole] = useState<Role>(initialRole);
+  const [plan, setPlan] = useState(initialPlan);
 
   const errors = state && !state.ok ? state.fieldErrors : undefined;
   const awaitingConfirmation = state?.ok === true;
@@ -44,6 +51,11 @@ export function SignupForm({ initialRole = "merchant" }: { initialRole?: Role })
         Set up your dashboard access. Your account starts in review while our
         team confirms fit, most partners are approved within 48 hours.
       </p>
+      {!isFc ? (
+        <p className="mt-3 rounded-md bg-gold/10 px-3 py-2 text-xs font-semibold text-navy">
+          {guarantee.short}
+        </p>
+      ) : null}
 
       {/* The public site is for merchants. Fulfillment center staff reach
           this form through /signup?role=fulfillment_center, which shows the
@@ -109,6 +121,42 @@ export function SignupForm({ initialRole = "merchant" }: { initialRole?: Role })
 
           <form onSubmit={submitWithoutReset(formAction)} className="mt-6 flex flex-col gap-4">
             <input type="hidden" name="role" value={role} />
+            <input type="hidden" name="plan" value={plan} />
+            {!isFc ? (
+              <div>
+                <span className={labelClass}>Your plan</span>
+                <div className="grid grid-cols-2 gap-2" role="group" aria-label="Plan">
+                  {(
+                    [
+                      ["standard", "Standard", "7% of sales, monthly invoice"],
+                      ["enterprise", "Enterprise", "9%, insured, account manager"],
+                    ] as const
+                  ).map(([value, label, sub]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setPlan(value)}
+                      aria-pressed={plan === value}
+                      className={cn(
+                        "rounded-lg border-2 px-3 py-2.5 text-left transition-colors",
+                        plan === value ? "border-navy bg-navy text-white" : "border-stone text-navy hover:border-teal/40",
+                      )}
+                    >
+                      <span className="block text-sm font-semibold">{label}</span>
+                      <span className={cn("block text-[11px]", plan === value ? "text-white/70" : "text-mist")}>
+                        {sub}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-[11px] text-mist">
+                  You can change this later in Settings.{" "}
+                  <a href="/pricing" target="_blank" className="font-semibold text-teal-700 hover:underline">
+                    Compare plans
+                  </a>
+                </p>
+              </div>
+            ) : null}
             <FormGuard form="signup" />
             <div className="grid gap-4 sm:grid-cols-2">
               <div>

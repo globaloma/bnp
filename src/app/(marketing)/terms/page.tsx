@@ -78,33 +78,44 @@ const sections: LegalSection[] = [
   },
   {
     id: "fees",
-    title: "Fees and your wallet",
+    title: "Plans, fees and payment",
     body: (
       <>
-        <p>Our standard fees for merchants are:</p>
+        <p>
+          Merchants choose one of two plans. Both pay a <strong>registration fee</strong> of ₦50,000
+          a year, covering account setup, onboarding, dashboard access and the online store, and{" "}
+          <strong>storage</strong> of ₦10,000 per square metre of space used, per month.
+        </p>
         <ul>
           <li>
-            <strong>Annual subscription:</strong> ₦50,000, paid once a year, covering account
-            setup, onboarding and dashboard access.
+            <strong>Standard:</strong> a fulfillment fee of 7% of the total value of items sold in a
+            month, with no separate insurance charge. We send one invoice at the start of each month
+            for the month before. If it isn&apos;t paid within 3 days, we may pause new orders and
+            new stock intake until it is.
           </li>
           <li>
-            <strong>Storage:</strong> ₦10,000 per square metre of space used, per month.
-          </li>
-          <li>
-            <strong>Fulfillment:</strong> 7% of the total value of items sold in a month. If you
-            sell nothing, this fee is zero.
+            <strong>Enterprise:</strong> a fulfillment fee of 9% of the total value of items sold,
+            and insurance of 0.25% of the value of your stock with us at the end of each month.
+            Storage may be negotiated at volume. You keep a pre-funded wallet: fees are deducted as
+            they arise, and if the balance falls to the minimum we agree with you, outbound orders
+            pause until you top up. Enterprise merchants have a dedicated account manager.
           </li>
         </ul>
         <p>
-          Fees are deducted from your partner wallet, and every charge is shown in your dashboard.
-          You top up your wallet by card or bank payment through Paystack, and can withdraw your
-          available balance to a bank account in your business&apos;s name that you have verified
-          in the dashboard. If your wallet balance reaches zero, we may pause fulfillment of new
-          orders until it is topped up.
+          If you sell nothing in a month, your fulfillment fee is zero. Every charge is shown in
+          your dashboard. You can top up your wallet by card or bank payment through Paystack, and
+          withdraw your available balance to a bank account in your business&apos;s name that you
+          have verified in the dashboard.
+        </p>
+        <p>
+          <strong>First-month guarantee.</strong> If after your first month you feel a fulfillment
+          partner isn&apos;t right for you, or that you didn&apos;t get value for your money, tell us
+          by email and we&apos;ll refund your ₦50,000 registration fee in full. Storage and
+          fulfillment fees for that month still apply, and we return any stock you have with us.
         </p>
         <p>
           We&apos;ll give you at least 30 days&apos; notice by email before changing our fees.
-          Any agreed custom pricing in writing takes priority over the standard fees above.
+          Any agreed custom pricing in writing takes priority over the fees above.
         </p>
       </>
     ),
@@ -281,7 +292,7 @@ export default function TermsPage() {
   return (
     <LegalPage
       title="Terms of Service"
-      updated="13 October 2026"
+      updated="22 October 2026"
       intro={
         <p>
           These terms explain how {company.name} works, what we provide, what we expect from you

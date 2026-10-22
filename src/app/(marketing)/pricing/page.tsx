@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Calculator, Info } from "lucide-react";
-import { company, nav, pricing } from "@/lib/site-content";
+import { company, nav, planComparison, pricing } from "@/lib/site-content";
 import { naira } from "@/lib/format";
 import { estimateQuote, exampleMerchants } from "@/lib/quote";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,7 @@ import { FaqList, pickFaqs } from "@/components/marketing/faq-list";
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: `${company.name} pricing: ₦50,000 a year, ₦10,000 per square metre of storage a month and 7% of sales. No hidden fees, no long contracts.`,
+  description: `${company.name} plans: Standard at 7% of sales or Enterprise at 9% with insurance and an account manager, plus ₦10,000 per square metre of storage. Registration fee refunded if you're not happy after month one.`,
 };
 
 export default function PricingPage() {
@@ -27,7 +27,50 @@ export default function PricingPage() {
         image="/images/marketing/warehouse-aisle.jpg"
       />
 
-      <PricingCards />
+      <PricingCards compareLink={false} />
+
+      <section className="bg-white py-20 sm:py-28">
+        <div className="container-page">
+          <SectionHeading align="center" label="Compare plans" title="Standard and Enterprise, side by side." />
+          <Reveal className="mx-auto mt-12 max-w-5xl overflow-x-auto rounded-2xl border border-stone">
+            <table className="w-full min-w-[40rem] text-left text-[15px]">
+              <thead>
+                <tr className="bg-cream">
+                  <th className="px-5 py-4 text-xs font-bold uppercase tracking-[0.1em] text-graphite">&nbsp;</th>
+                  <th className="px-5 py-4 font-display text-lg font-extrabold text-navy">Standard</th>
+                  <th className="bg-gold/15 px-5 py-4 font-display text-lg font-extrabold text-navy">Enterprise</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone">
+                {planComparison.map((row) => (
+                  <tr key={row.feature}>
+                    <th scope="row" className="px-5 py-4 text-sm font-semibold text-graphite">
+                      {row.feature}
+                    </th>
+                    <td className="px-5 py-4 text-navy">{row.standard}</td>
+                    <td className="bg-gold/5 px-5 py-4 text-navy">{row.enterprise}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t border-stone">
+                  <td />
+                  <td className="px-5 py-5">
+                    <Button render={<Link href="/signup?plan=standard" />} size="lg">
+                      Get started on Standard
+                    </Button>
+                  </td>
+                  <td className="bg-gold/5 px-5 py-5">
+                    <Button render={<Link href="/signup?plan=enterprise" />} size="lg" className="bg-navy text-white hover:bg-navy-600">
+                      Get started on Enterprise
+                    </Button>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </Reveal>
+        </div>
+      </section>
 
       <section className="py-20 sm:py-28">
         <div className="container-page">
@@ -35,7 +78,7 @@ export default function PricingPage() {
             align="center"
             label="Worked examples"
             title="What merchants like you might pay."
-            description="Three typical brands, using our standard prices. Your own numbers will differ, so try the calculator for yours."
+            description="Three typical brands on the Standard plan. Your own numbers will differ, so try the calculator for yours, on either plan."
           />
           <div className="mt-14 grid gap-6 lg:grid-cols-3">
             {exampleMerchants.map((m, i) => {
@@ -66,7 +109,7 @@ export default function PricingPage() {
                     <span className="font-display text-3xl font-extrabold text-navy">{naira(est.monthly)}</span>
                   </div>
                   <p className="mt-3 text-xs text-mist">
-                    Plus the {naira(est.subscriptionPerYear)} yearly subscription.
+                    Plus the {naira(est.subscriptionPerYear)} yearly registration fee, refundable after month one.
                   </p>
                 </Reveal>
               );

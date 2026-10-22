@@ -85,7 +85,7 @@ export function HomeHero() {
               </Link>
             </div>
             <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/70">
-              {["No rent", "No packing staff", "No long contracts"].map((item) => (
+              {["No rent", "No packing staff", "No long contracts", "First-month money-back guarantee"].map((item) => (
                 <li key={item} className="flex items-center gap-2">
                   <Check className="size-4 text-gold" />
                   {item}

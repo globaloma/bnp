@@ -113,7 +113,7 @@ export const whyUs = {
     },
     {
       title: "Costs that follow your sales",
-      body: "A small yearly subscription, storage by the space you use and a share of sales. No sales, no fulfillment fee.",
+      body: "A yearly registration fee, refunded if you're not happy after your first month, storage by the space you use and a share of sales. No sales, no fulfillment fee.",
     },
   ],
 } as const;
@@ -325,6 +325,7 @@ export const steps = {
     "Your business name and contact details",
     "A list of the products you want to store",
     "Your stock, delivered to our Jabi hub",
+    "Your registration fee, refunded if you're not happy after the first month",
   ],
 } as const;
 
@@ -334,56 +335,77 @@ export const steps = {
 
 export const pricing = {
   label: "Pricing",
-  title: "Three simple fees. Nothing hidden.",
+  title: "Two plans. Pick the one that fits.",
   description:
-    "No long term lock in and no surprise invoices. If you don't sell, your fulfillment fee is zero.",
-  tiers: [
+    "Start on Standard and move up when you grow. No long term lock in, and if you don't sell, your fulfillment fee is zero.",
+  registration: {
+    amount: "₦50,000",
+    label: "registration fee, per year",
+    detail: "Covers your account setup, inventory onboarding, dashboard, online store and training. On both plans.",
+  },
+  plans: [
     {
-      label: "Once a year",
-      name: "Subscription",
-      amount: "₦50,000",
-      unit: "per year",
-      detail: "Your account, dashboard and online store, set up and ready.",
+      id: "standard",
+      name: "Standard",
+      tagline: "For growing Nigerian brands",
+      audience: "SME sellers with under 5,000 products, selling in Nigeria.",
+      fee: "7%",
+      feeUnit: "of monthly sales, all-inclusive",
       features: [
-        "Full account and inventory setup",
-        "Merchant dashboard and online store",
-        "WhatsApp delivery updates",
-        "Onboarding and training",
+        "Storage at ₦10,000 per m² per month",
+        "No separate insurance charge",
+        "One monthly invoice, with 3 days to pay",
+        "Self-serve dashboard and email support",
+        "BNP riders, your own riders or customer pickup",
+        "Your own online store",
       ],
+      cta: { label: "Get started on Standard", href: "/signup?plan=standard" },
       highlighted: false,
     },
     {
-      label: "Monthly",
-      name: "Storage",
-      amount: "₦10,000",
-      unit: "per m² per month",
-      detail: "You only pay for the shelf space your stock actually uses.",
+      id: "enterprise",
+      name: "Enterprise",
+      tagline: "For high-volume and international brands",
+      audience: "Brands with 5,000+ products or selling outside Nigeria.",
+      fee: "9%",
+      feeUnit: "of monthly sales",
       features: [
-        "Secure, shelved storage",
-        "Live stock levels on your dashboard",
-        "Low stock alerts",
-        "Full insurance on goods in our care",
+        "Storage at ₦10,000 per m², negotiable at volume",
+        "Goods insured at 0.25% of month-end stock value",
+        "Pre-funded wallet, charges deducted automatically",
+        "A dedicated account manager",
+        "BNP riders, your own riders or customer pickup",
+        "Add-on services, tailored to your brand",
       ],
+      cta: { label: "Get started on Enterprise", href: "/signup?plan=enterprise" },
       highlighted: true,
-    },
-    {
-      label: "Only when you sell",
-      name: "Fulfillment",
-      amount: "7%",
-      unit: "of monthly sales",
-      detail: "Covers picking, packing and dispatching every order.",
-      features: [
-        "Pick and pack on every order",
-        "Same day dispatch before noon",
-        "Returns handling",
-        "No sales, no charge",
-      ],
-      highlighted: false,
     },
   ],
   example:
-    "If your brand sells ₦500,000 in a month, the fulfillment fee is ₦35,000. No rent, no salaries, no overhead.",
-  note: "All fees are deducted from your merchant wallet and every charge is listed on your dashboard. Delivery fees are charged per order and shown at checkout.",
+    "On Standard, if your brand sells ₦500,000 in a month, the fulfillment fee is ₦35,000. No rent, no salaries, no overhead.",
+  note: "Standard merchants pay one invoice at the end of each month. Enterprise merchants keep a funded wallet and every charge is deducted and listed on the dashboard. Delivery fees are charged per order and shown at checkout.",
+} as const;
+
+/** Side-by-side comparison on the pricing page (Technical Specification v2, section 2.1). */
+export const planComparison = [
+  { feature: "Best for", standard: "SME sellers, under 5,000 products, selling in Nigeria", enterprise: "High-volume and international brands, 5,000+ products" },
+  { feature: "Fulfillment fee", standard: "7% of monthly sales, all-inclusive", enterprise: "9% of monthly sales" },
+  { feature: "Storage", standard: "₦10,000 per m² per month", enterprise: "₦10,000 per m² per month, negotiable at volume" },
+  { feature: "Insurance", standard: "No separate charge", enterprise: "0.25% of month-end stock value" },
+  { feature: "How you pay", standard: "One invoice at the end of each month", enterprise: "Pre-funded wallet, charges deducted automatically" },
+  { feature: "Time to pay", standard: "3 days after the invoice", enterprise: "Keep your wallet above an agreed minimum" },
+  { feature: "Support", standard: "Self-serve dashboard and email support", enterprise: "A dedicated account manager" },
+  { feature: "Delivery options", standard: "BNP riders, your own riders or customer pickup", enterprise: "BNP riders, your own riders or customer pickup" },
+  { feature: "Add-on services", standard: "Core services included", enterprise: "Tailored add-ons for your brand" },
+  { feature: "Registration fee", standard: "₦50,000 a year, refundable after month one", enterprise: "₦50,000 a year, refundable after month one" },
+] as const;
+
+/** The money-back promise on the registration fee, shown across the site. */
+export const guarantee = {
+  title: "Try us for a month, risk-free.",
+  body: "If after your first month you feel a fulfillment partner isn't right for you, or you didn't get value for your money, we'll refund your ₦50,000 registration fee in full. Just tell us.",
+  short: "Full refund of your ₦50,000 registration fee if you're not happy after your first month.",
+  badge: "First-month money-back guarantee",
 } as const;
 
 /** Numbers the quote calculator uses. Keep in line with `pricing` above. */
@@ -391,6 +413,10 @@ export const quote = {
   subscriptionPerYear: 50_000,
   storagePerSqmPerMonth: 10_000,
   fulfillmentRate: 0.07,
+  enterpriseFulfillmentRate: 0.09,
+  /** Enterprise insurance: share of month-end stock value, charged monthly. */
+  enterpriseInsuranceRate: 0.0025,
+  maxStockValue: 5_000_000_000,
   // A medium carton is about 60 x 40 x 40 cm. Stacked two high on a shelf,
   // roughly eight of them fit on one square metre of floor space.
   cartonsPerSqm: 8,
@@ -512,8 +538,16 @@ export const faq = {
       title: "Pricing and payments",
       items: [
         {
-          q: "How does the 7% fulfillment fee work?",
-          a: "It applies to the total value of goods sold in that month. If you sell ₦200,000 worth of goods, the fee is ₦14,000. If you sell nothing, the fulfillment fee is zero and only storage applies.",
+          q: "Which plan is right for me, Standard or Enterprise?",
+          a: "Standard suits most growing Nigerian brands: under 5,000 products, selling within Nigeria, paying one invoice a month. Enterprise is for high-volume and international brands that want a dedicated account manager, insured stock and a pre-funded wallet. You can start on Standard and move up later.",
+        },
+        {
+          q: "Can I get my registration fee back?",
+          a: "Yes. If after your first month you feel a fulfillment partner isn't right for you, or you didn't get value for your money, tell us and we'll refund your ₦50,000 registration fee in full.",
+        },
+        {
+          q: "How does the fulfillment fee work?",
+          a: "It's a share of the total value of goods you sell in a month: 7% on Standard and 9% on Enterprise. On Standard, if you sell ₦200,000 worth of goods, the fee is ₦14,000. If you sell nothing, the fulfillment fee is zero and only storage applies.",
         },
         {
           q: "How is storage measured?",
@@ -525,7 +559,7 @@ export const faq = {
         },
         {
           q: "How do I pay the fees?",
-          a: "Fees are deducted from your merchant wallet, which you top up from your dashboard. Every charge is listed there, so there are no surprise invoices.",
+          a: "On Standard, you get one invoice at the start of each month for the month before, and have 3 days to pay it online. On Enterprise, you keep a funded wallet and charges are deducted automatically. Either way, every charge is listed on your dashboard.",
         },
       ],
     },
@@ -584,7 +618,7 @@ export const contact = {
 
 export const ctaBand = {
   title: "Ready to stop packing orders yourself?",
-  body: "See what BNP would cost for your brand in under a minute, or create your account and start sending stock this week.",
+  body: "See what BNP would cost for your brand in under a minute, or create your account and start sending stock this week. Not happy after your first month? We refund your registration fee.",
 } as const;
 
 export const footer = {

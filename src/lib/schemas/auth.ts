@@ -7,6 +7,7 @@ export const signInSchema = z.object({
 
 export const signUpSchema = z.object({
   role: z.enum(["merchant", "fulfillment_center"]).default("merchant"),
+  plan: z.enum(["standard", "enterprise"]).default("standard"),
   businessName: z.string().trim().min(2, "Enter your business name").max(120),
   contactName: z.string().trim().min(2, "Enter your full name").max(120),
   email: z.string().trim().email("Enter a valid email address"),

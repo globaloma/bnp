@@ -32,6 +32,9 @@ export type Partner = {
   is_admin: boolean;
   /** Warehouse accounts only: may approve stock adjustments (admins can too). */
   is_supervisor: boolean;
+  /** Merchant plan (Technical Specification v2, section 2). */
+  plan_type: "standard" | "enterprise";
+  plan_changed_at: string | null;
   slug: string;
   charges_vat: boolean;
   wallet_balance: number;
