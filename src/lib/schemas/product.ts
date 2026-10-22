@@ -18,6 +18,11 @@ export const productSchema = z.object({
     .optional()
     .or(z.literal("")),
   location: z.enum(["Abuja", "Lagos", "USA"]),
+  // Blank means the platform default (LOW_STOCK_THRESHOLD).
+  lowStockThreshold: z
+    .union([z.literal(""), z.coerce.number().int().min(0, "Enter 0 or more").max(100000)])
+    .optional()
+    .transform((v) => (v === "" || v === undefined ? null : v)),
   shippingFee: z.coerce.number().min(0).default(0),
   pickupEnabled: z.coerce.boolean().default(false),
   imageUrl: z.string().trim().max(600).optional(),

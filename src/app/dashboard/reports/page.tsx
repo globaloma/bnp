@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getAuthedPartner, getDashboardData } from "@/lib/data/partner";
 import { naira } from "@/lib/format";
-import { LOCATIONS, LOW_STOCK_THRESHOLD, ORDER_STATUSES } from "@/types/db";
+import { LOCATIONS, ORDER_STATUSES } from "@/types/db";
+import { isLowStock } from "@/lib/low-stock";
 import { PageHeader, Panel, StatCard } from "@/components/dashboard/ui";
 import { ExportButtons } from "./export-buttons";
 import { MonthlyInvoice } from "./monthly-invoice";
@@ -70,7 +71,7 @@ export default async function ReportsPage() {
             <tbody>
               {LOCATIONS.map((loc) => {
                 const locInv = products.filter((p) => p.location === loc);
-                const low = locInv.filter((p) => p.stock <= LOW_STOCK_THRESHOLD);
+                const low = locInv.filter((p) => isLowStock(p));
                 return (
                   <tr key={loc} className="border-b border-stone">
                     <td className="py-2">{loc}</td>

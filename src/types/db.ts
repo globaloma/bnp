@@ -71,6 +71,10 @@ export type Product = {
   staged: number;
   /** Returned damaged, held apart until a supervisor writes it off or restocks it. */
   quarantined: number;
+  /** Email the merchant when available stock falls to this; null means the default. */
+  low_stock_threshold: number | null;
+  /** Set once an alert has gone out for the current drop; clears on restock. */
+  low_stock_alerted: boolean;
   /** Colour/size of this SKU, e.g. "Red" or "Large". */
   variant: string | null;
   /** Shared by every variant of the same product. */

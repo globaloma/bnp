@@ -5,6 +5,7 @@ import { naira } from "@/lib/format";
 import { alertFulfillmentCenters, orderItemRowsHtml, sendAlertEmail } from "@/lib/notifications";
 import { escapeHtml } from "@/lib/spam-guard";
 import { sendCustomerOrderEmail } from "@/lib/customer-email";
+import { sendQueuedLowStockAlerts } from "@/lib/low-stock-email";
 
 const PAYSTACK_BASE = "https://api.paystack.co";
 
@@ -227,7 +228,12 @@ export async function confirmPayment(
   // still goes through (available goes negative) because the customer has
   // genuinely paid; the merchant sees it on their inventory and follows up.
 
-  await Promise.all([sendNewOrderAlert(orderRows), sendCustomerConfirmation(orderRows)]);
+  await Promise.all([
+    sendNewOrderAlert(orderRows),
+    sendCustomerConfirmation(orderRows),
+    // Reserving stock may have taken a product to its low-stock level.
+    sendQueuedLowStockAlerts(),
+  ]);
 
   return { ok: true, alreadyProcessed: false };
 }

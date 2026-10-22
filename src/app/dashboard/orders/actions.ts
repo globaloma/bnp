@@ -11,6 +11,7 @@ import { initializeTransaction } from "@/lib/paystack";
 import { after } from "next/server";
 import { requestDeliveryConfirmation } from "@/lib/delivery-feedback";
 import { alertFulfillmentCenters } from "@/lib/notifications";
+import { sendQueuedLowStockAlerts } from "@/lib/low-stock-email";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bnpfulfillment.com";
 
@@ -213,6 +214,7 @@ export async function createOrder(
 
   // Fulfillment centers hear about dashboard orders too, not just storefront
   // sales, so they can start packing. Sent after the response.
+  after(() => sendQueuedLowStockAlerts());
   after(() =>
     alertFulfillmentCenters({
       merchantName: partner?.business_name ?? "A merchant",

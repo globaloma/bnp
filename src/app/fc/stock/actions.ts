@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { after } from "next/server";
 import { friendlyError } from "@/lib/deliveries";
+import { sendQueuedLowStockAlerts } from "@/lib/low-stock-email";
 import type { OrderStatus, ScanResult, WarehouseLocation } from "@/types/db";
 
 // Returns, cycle counts and supervisor approvals (migration 0025).
@@ -196,6 +198,7 @@ export async function decideAdjustment(id: string, approve: boolean, note: strin
     p_note: note.slice(0, 500) || null,
   });
   if (error) return fail(friendlyError(error.message));
+  if (approve) after(() => sendQueuedLowStockAlerts());
   touch();
   return data as ScanResult;
 }

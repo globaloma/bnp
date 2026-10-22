@@ -1,7 +1,7 @@
 import { daysSince, isToday } from "@/lib/format";
 import { OPEN_STATUSES } from "@/lib/order-status";
+import { isLowStock } from "@/lib/low-stock";
 import {
-  LOW_STOCK_THRESHOLD,
   STALE_DAYS_THRESHOLD,
   type Order,
   type Partner,
@@ -33,10 +33,10 @@ export function pendingReview<T extends Pick<Order, "status">>(orders: T[]): T[]
   return orders.filter((o) => (NEEDS_REVIEW_STATUSES as readonly string[]).includes(o.status));
 }
 
-type StockShape = Pick<Product, "id" | "stock" | "last_moved_at">;
+type StockShape = Pick<Product, "id" | "stock" | "last_moved_at"> & { low_stock_threshold?: number | null };
 
 export function lowStockProducts<T extends StockShape>(products: T[]): T[] {
-  return products.filter((p) => p.stock <= LOW_STOCK_THRESHOLD);
+  return products.filter((p) => isLowStock(p));
 }
 
 export function staleProducts<T extends StockShape>(products: T[]): T[] {

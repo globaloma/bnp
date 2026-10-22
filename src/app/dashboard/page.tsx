@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
+import { sendQueuedLowStockAlerts } from "@/lib/low-stock-email";
 import { AlertTriangle, PackageSearch } from "lucide-react";
 import { getAuthedPartner, getDashboardData } from "@/lib/data/partner";
 import {
@@ -33,6 +35,9 @@ export default async function DashboardOverviewPage() {
   const auth = await getAuthedPartner();
   if (!auth?.partner) redirect("/login");
   const { partner } = auth;
+
+  // Sends any low-stock alerts still waiting, after the page has rendered.
+  after(() => sendQueuedLowStockAlerts());
 
   const { products, orders } = await getDashboardData(partner.id);
 

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { LOCATIONS, type Product, type WarehouseLocation } from "@/types/db";
 import { daysSince, naira } from "@/lib/format";
 import { STALE_DAYS_THRESHOLD, LOW_STOCK_THRESHOLD } from "@/types/db";
+import { isLowStock } from "@/lib/low-stock";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,9 +36,9 @@ const labelClass = "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0
 
 type StockFilter = "All" | "In stock" | "Low stock" | "Out of stock";
 
-function stockBucket(stock: number): Exclude<StockFilter, "All"> {
-  if (stock === 0) return "Out of stock";
-  if (stock <= LOW_STOCK_THRESHOLD) return "Low stock";
+function stockBucket(p: Pick<Product, "stock" | "low_stock_threshold">): Exclude<StockFilter, "All"> {
+  if (p.stock <= 0) return "Out of stock";
+  if (isLowStock(p)) return "Low stock";
   return "In stock";
 }
 
@@ -54,8 +55,8 @@ export function InventoryClient({
   const [importOpen, setImportOpen] = useState(false);
 
   const totalStock = products.reduce((sum, p) => sum + p.on_hand, 0);
-  const lowCount = products.filter((p) => stockBucket(p.stock) === "Low stock").length;
-  const outCount = products.filter((p) => stockBucket(p.stock) === "Out of stock").length;
+  const lowCount = products.filter((p) => stockBucket(p) === "Low stock").length;
+  const outCount = products.filter((p) => stockBucket(p) === "Out of stock").length;
   const inCount = products.length - lowCount - outCount;
   const stockCounts: Record<StockFilter, number> = {
     All: products.length,
@@ -69,7 +70,7 @@ export function InventoryClient({
       products.filter(
         (p) =>
           (locFilter === "All" || p.location === locFilter) &&
-          (stockFilter === "All" || stockBucket(p.stock) === stockFilter),
+          (stockFilter === "All" || stockBucket(p) === stockFilter),
       ),
     [products, locFilter, stockFilter],
   );
@@ -174,7 +175,7 @@ export function InventoryClient({
 }
 
 function ProductCard({ item, merchantName }: { item: Product; merchantName: string }) {
-  const isLow = item.stock <= LOW_STOCK_THRESHOLD;
+  const isLow = isLowStock(item);
   const isStale = daysSince(item.last_moved_at) > STALE_DAYS_THRESHOLD;
   const [published, setPublished] = useState(item.published);
   const [editOpen, setEditOpen] = useState(false);
@@ -549,6 +550,28 @@ function ProductForm({
             className={fieldClass}
           />
         </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>Low-stock alert</label>
+        <div className="flex items-center gap-2 text-sm text-graphite">
+          <span>Email me when available stock falls to</span>
+          <input
+            name="lowStockThreshold"
+            type="number"
+            min="0"
+            defaultValue={product?.low_stock_threshold ?? ""}
+            placeholder={String(LOW_STOCK_THRESHOLD)}
+            className={cn(fieldClass, "w-20")}
+          />
+        </div>
+        {errors?.lowStockThreshold ? (
+          <p className="mt-1 text-xs text-destructive">{errors.lowStockThreshold[0]}</p>
+        ) : (
+          <p className="mt-1 text-[11px] text-mist">
+            Leave blank for the default of {LOW_STOCK_THRESHOLD}. You get one email each time it drops.
+          </p>
+        )}
       </div>
 
       <div>

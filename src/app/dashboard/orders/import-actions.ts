@@ -5,6 +5,7 @@ import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { computeMultiLineTotals, generateOrderRef } from "@/lib/orders";
 import { getFulfillmentCenterEmails, sendAlertEmail } from "@/lib/notifications";
+import { sendQueuedLowStockAlerts } from "@/lib/low-stock-email";
 import { escapeHtml } from "@/lib/spam-guard";
 import type { WarehouseLocation } from "@/types/db";
 import { checkImportRows, clean, type ImportRow } from "@/lib/order-import";
@@ -140,6 +141,7 @@ export async function importOrders(rows: ImportRow[], options: { create: boolean
     if (created.length > 0) {
       const merchantName = partner?.business_name ?? "A merchant";
       const units = goodGroups.flat().filter((c) => c.orderRef).reduce((s, c) => s + (c.quantity ?? 0), 0);
+      after(() => sendQueuedLowStockAlerts());
       after(async () => {
         const fcEmails = await getFulfillmentCenterEmails();
         await sendAlertEmail({

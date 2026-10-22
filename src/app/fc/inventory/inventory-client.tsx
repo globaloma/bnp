@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { Boxes, Printer, Search } from "lucide-react";
-import { LOCATIONS, LOW_STOCK_THRESHOLD, type WarehouseLocation } from "@/types/db";
+import { LOCATIONS, type WarehouseLocation } from "@/types/db";
+import { isLowStock } from "@/lib/low-stock";
 import { formatDate, naira } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { displayName } from "@/lib/variants";
@@ -21,9 +22,9 @@ import type { ProductWithMerchant } from "@/lib/data/fulfillment-center";
 
 type StockFilter = "All" | "In stock" | "Low stock" | "Out of stock";
 
-function stockBucket(stock: number): Exclude<StockFilter, "All"> {
-  if (stock === 0) return "Out of stock";
-  if (stock <= LOW_STOCK_THRESHOLD) return "Low stock";
+function stockBucket(p: ProductWithMerchant): Exclude<StockFilter, "All"> {
+  if (p.stock <= 0) return "Out of stock";
+  if (isLowStock(p)) return "Low stock";
   return "In stock";
 }
 
@@ -47,8 +48,8 @@ export function FcInventoryClient({ products }: { products: ProductWithMerchant[
   const [query, setQuery] = useState("");
 
   const totalStock = products.reduce((sum, p) => sum + p.on_hand, 0);
-  const lowCount = products.filter((p) => stockBucket(p.stock) === "Low stock").length;
-  const outCount = products.filter((p) => stockBucket(p.stock) === "Out of stock").length;
+  const lowCount = products.filter((p) => stockBucket(p) === "Low stock").length;
+  const outCount = products.filter((p) => stockBucket(p) === "Out of stock").length;
   const inCount = products.length - lowCount - outCount;
 
   const counts: Record<StockFilter, number> = {
@@ -61,7 +62,7 @@ export function FcInventoryClient({ products }: { products: ProductWithMerchant[
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return products.filter((p) => {
-      const matchesStock = stockFilter === "All" || stockBucket(p.stock) === stockFilter;
+      const matchesStock = stockFilter === "All" || stockBucket(p) === stockFilter;
       const matchesLoc = locFilter === "All locations" || p.location === locFilter;
       const matchesQuery =
         !q ||
@@ -174,7 +175,7 @@ export function FcInventoryClient({ products }: { products: ProductWithMerchant[
             </TableHeader>
             <TableBody>
               {visible.map((p) => {
-                const bucket = stockBucket(p.stock);
+                const bucket = stockBucket(p);
                 return (
                   <TableRow key={p.id}>
                     <TableCell>
