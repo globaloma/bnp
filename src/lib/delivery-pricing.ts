@@ -2,6 +2,8 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WarehouseLocation } from "@/types/db";
 import { methodLabel, riderFor, type DeliveryMethod, type DeliveryOptions } from "@/lib/delivery-methods";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { gigConfigured, gigPrice, gigStations } from "@/lib/gig";
 
 // Server side of delivery options: what's on offer for a warehouse, and the
 // authoritative price for a choice. Prices come from the database
@@ -28,6 +30,16 @@ export async function loadDeliveryOptions(
       .lte("effective_from", today),
     supabase.from("delivery_zones").select("id, name, fee").eq("partner_id", partnerId).order("created_at"),
   ]);
+  // Live GIG destinations; if GIG can't be reached, GIG falls back to any
+  // uploaded rate card rather than breaking the order form.
+  let gigLive: string[] | null = null;
+  if (gigConfigured() && hub !== "USA") {
+    try {
+      gigLive = (await gigStations()).map((s) => s.name);
+    } catch (err) {
+      console.error("[gig] stations", err);
+    }
+  }
   return {
     hub,
     dispatchZones: (zones ?? []).map((z) => ({ ...z, rate: Number(z.rate) })),
@@ -42,7 +54,35 @@ export async function loadDeliveryOptions(
       })),
     ownZones: (own ?? []).map((z) => ({ id: z.id, name: z.name, fee: Number(z.fee) })),
     walkIn: hub === "Abuja",
+    gigLive,
   };
+}
+
+/** GIG weighs in half-kilo steps; anything under that is priced as 0.5 kg. */
+function gigWeight(kg: number): number {
+  return Math.max(0.5, Math.ceil(kg * 2) / 2);
+}
+
+/**
+ * BNP's price for a GIG parcel: GIG's live price plus BNP's markup, rounded
+ * up to the next ₦50. Null when GIG isn't connected or can't price it.
+ */
+export async function liveGigFee(hub: WarehouseLocation, zone: string, weightKg: number): Promise<number | null> {
+  if (!gigConfigured() || hub === "USA") return null;
+  const admin = createAdminClient();
+  const { data: settings } = await admin.from("delivery_settings").select("*").single();
+  if (!settings) return null;
+  const from =
+    hub === "Lagos"
+      ? { lat: Number(settings.lagos_lat), lng: Number(settings.lagos_lng) }
+      : { lat: Number(settings.abuja_lat), lng: Number(settings.abuja_lng) };
+  try {
+    const base = await gigPrice({ from, fromStation: hub, to: zone, weightKg: gigWeight(weightKg) });
+    return Math.ceil((base * (1 + Number(settings.gig_markup))) / 50) * 50;
+  } catch (err) {
+    console.error("[gig] price", err);
+    return null;
+  }
 }
 
 export type PricedDelivery = {
@@ -91,6 +131,18 @@ export async function priceDelivery(
   }
 
   if (method !== "walk_in" && !zone) return { ok: false, error: "Choose the delivery area." };
+
+  if (method === "gig" && gigConfigured() && hub !== "USA") {
+    const weightKg = Math.round((input.weightKg ?? 0) * 100) / 100;
+    const fee = await liveGigFee(hub, zone, weightKg);
+    if (fee === null) return { ok: false, error: "GIG couldn't price this delivery right now. Choose another option." };
+    // Recorded so the database accepts this price on a merchant's order.
+    await createAdminClient()
+      .from("delivery_quotes")
+      .insert({ partner_id: partnerId, method: "gig", hub, zone, weight_kg: weightKg, amount: fee });
+    return { ok: true, delivery: { ...base, fee, zone, label: `${methodLabel(method)} (${zone})` } };
+  }
+
   const { data, error } = await supabase.rpc("delivery_quote", {
     p_method: method,
     p_hub: hub,

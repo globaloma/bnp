@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { startCheckout } from "@/app/store/[slug]/actions";
 import type { ActionResult } from "@/lib/schemas/checkout";
 import { useCart } from "./cart-context";
+import { useGigQuote } from "@/lib/use-gig-quote";
 
 const fieldClass =
   "h-11 w-full rounded-md border border-stone bg-white px-3 text-sm text-navy outline-none transition-colors placeholder:text-mist focus-visible:border-teal focus-visible:ring-2 focus-visible:ring-teal/25";
@@ -57,13 +58,16 @@ export function CheckoutForm({
     ? (availableMethods(options, "store").filter((m) => m !== "walk_in") as StoreMethod[])
     : [];
   const method: StoreMethod | null = picked && methods.includes(picked) ? picked : (methods[0] ?? null);
-  const weightKg = items.reduce((sum, i) => sum + (weights[i.productId] ?? 0) * i.quantity, 0);
+  const weightKg = Math.round(items.reduce((sum, i) => sum + (weights[i.productId] ?? 0) * i.quantity, 0) * 100) / 100;
+  const gig = useGigQuote(options, isPickup ? null : method, zone, weightKg);
   // null = an area still needs choosing, so there's no fee to show yet.
   const shippingFee: number | null = isPickup
     ? 0
-    : method && options
-      ? previewFee(options, method, zone, Math.round(weightKg * 100) / 100)
-      : flatShippingFee(items);
+    : gig.live
+      ? gig.fee
+      : method && options
+        ? previewFee(options, method, zone, weightKg)
+        : flatShippingFee(items);
   const zoneChoices: { value: string; label: string }[] =
     !options || !method
       ? []
@@ -211,7 +215,9 @@ export function CheckoutForm({
               </option>
             ))}
           </select>
-          {zone && shippingFee === null ? (
+          {zone && gig.loading ? (
+            <p className="mt-1 text-xs text-mist">Getting the GIG price...</p>
+          ) : zone && shippingFee === null ? (
             <p className="mt-1 text-xs text-destructive">No price for this order here. Choose another option.</p>
           ) : null}
           {errors?.deliveryZone ? (

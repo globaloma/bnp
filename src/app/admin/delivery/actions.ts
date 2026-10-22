@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { gigConfigured, gigStations } from "@/lib/gig";
+import { liveGigFee } from "@/lib/delivery-pricing";
 
 // Delivery rates (migration 0029). Admins write these tables directly; the
 // row-level policies only let admins change them.
@@ -124,4 +126,51 @@ export async function switchOffCarrier(carrier: "UPS" | "GIG"): Promise<Result> 
   if (error) return { ok: false, error: error.message };
   revalidatePath("/admin/delivery");
   return { ok: true, message: `${carrier} is no longer offered.` };
+}
+
+const settingsSchema = z.object({
+  markupPercent: z.coerce.number().min(0, "Markup can't be negative").max(200),
+  abujaLat: z.coerce.number().min(-90).max(90),
+  abujaLng: z.coerce.number().min(-180).max(180),
+  lagosLat: z.coerce.number().min(-90).max(90),
+  lagosLng: z.coerce.number().min(-180).max(180),
+});
+
+export async function saveDeliverySettings(input: z.input<typeof settingsSchema>): Promise<Result> {
+  const parsed = settingsSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+  const d = parsed.data;
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("delivery_settings")
+    .update({
+      gig_markup: Math.round(d.markupPercent * 100) / 10000,
+      abuja_lat: d.abujaLat,
+      abuja_lng: d.abujaLng,
+      lagos_lat: d.lagosLat,
+      lagos_lng: d.lagosLng,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", true);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin/delivery");
+  return { ok: true, message: "Saved." };
+}
+
+/** Asks GIG for one Abuja to Lagos price, to check the connection works. */
+export async function testGig(): Promise<Result> {
+  const supabase = await createClient();
+  const { data: isAdmin } = await supabase.rpc("is_admin");
+  if (!isAdmin) return { ok: false, error: "Admins only." };
+  if (!gigConfigured()) return { ok: false, error: "GIG isn't connected yet: GIG_EMAIL and GIG_PASSWORD aren't set." };
+  try {
+    const stations = await gigStations();
+    const lagos = stations.find((s) => s.name === "Lagos")?.name ?? stations[0]?.name;
+    if (!lagos) return { ok: false, error: "GIG returned no destinations." };
+    const fee = await liveGigFee("Abuja", lagos, 1);
+    if (fee === null) return { ok: false, error: `Signed in to GIG (${stations.length} destinations) but couldn't get a price. Check the server log.` };
+    return { ok: true, message: `GIG works: 1 kg Abuja to ${lagos} costs customers ₦${fee.toLocaleString("en-NG")} (with markup).` };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "GIG didn't respond." };
+  }
 }

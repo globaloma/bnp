@@ -35,9 +35,17 @@ export type DeliveryOptions = {
   rates: RateRow[];
   ownZones: OwnZoneOption[];
   walkIn: boolean;
+  /** GIG destinations when live GIG prices are connected; the price then comes from the server. */
+  gigLive: string[] | null;
 };
 
+/** True when this method's price has to be fetched from the server (live GIG). */
+export function needsLiveQuote(options: DeliveryOptions, method: DeliveryMethod): boolean {
+  return method === "gig" && options.gigLive !== null;
+}
+
 export function carrierZones(options: DeliveryOptions, carrier: "UPS" | "GIG"): string[] {
+  if (carrier === "GIG" && options.gigLive) return options.gigLive;
   return [...new Set(options.rates.filter((r) => r.carrier === carrier).map((r) => r.zone))].sort();
 }
 
@@ -50,6 +58,7 @@ export function previewFee(
 ): number | null {
   if (method === "walk_in") return options.walkIn ? 0 : null;
   if (method === "bnp_dispatch") return options.dispatchZones.find((z) => z.name === zone)?.rate ?? null;
+  if (needsLiveQuote(options, method)) return null;
   if (method === "gig" || method === "ups") {
     const carrier = method === "gig" ? "GIG" : "UPS";
     const row = options.rates.find(
@@ -64,7 +73,7 @@ export function previewFee(
 export function availableMethods(options: DeliveryOptions, mode: "merchant" | "store"): DeliveryMethod[] {
   const list: DeliveryMethod[] = [];
   if (options.dispatchZones.length > 0) list.push("bnp_dispatch");
-  if (options.rates.some((r) => r.carrier === "GIG")) list.push("gig");
+  if (options.gigLive || options.rates.some((r) => r.carrier === "GIG")) list.push("gig");
   if (options.rates.some((r) => r.carrier === "UPS")) list.push("ups");
   if (options.walkIn) list.push("walk_in");
   // Merchants can always use their own rider; store customers only when the

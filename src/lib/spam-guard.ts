@@ -16,7 +16,8 @@ export type GuardedForm =
   | "forgot"
   | "resend"
   | "track"
-  | "checkout";
+  | "checkout"
+  | "quote";
 
 const LIMITS: Record<GuardedForm, { limit: number; windowSeconds: number }> = {
   apply: { limit: 3, windowSeconds: 60 * 60 },
@@ -26,6 +27,7 @@ const LIMITS: Record<GuardedForm, { limit: number; windowSeconds: number }> = {
   resend: { limit: 5, windowSeconds: 60 * 60 },
   track: { limit: 20, windowSeconds: 10 * 60 },
   checkout: { limit: 10, windowSeconds: 10 * 60 },
+  quote: { limit: 40, windowSeconds: 10 * 60 },
 };
 
 /** Forms that need a form token (bots mostly target these). */

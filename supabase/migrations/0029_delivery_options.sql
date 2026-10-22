@@ -121,6 +121,40 @@ begin
 end $$;
 grant execute on function delivery_quote(text, warehouse_location, text, numeric) to anon, authenticated;
 
+-- Live GIG prices (src/lib/gig.ts): BNP's markup on GIG's price, and where
+-- each hub sends from. One row, admin-editable.
+create table if not exists delivery_settings (
+  id         boolean primary key default true check (id),
+  gig_markup numeric(5,4) not null default 0.10 check (gig_markup >= 0 and gig_markup <= 2),
+  abuja_lat  numeric(9,6) not null default 9.067900,
+  abuja_lng  numeric(9,6) not null default 7.425500,
+  lagos_lat  numeric(9,6) not null default 6.601800,
+  lagos_lng  numeric(9,6) not null default 3.351500,
+  updated_at timestamptz not null default now()
+);
+insert into delivery_settings (id) values (true) on conflict do nothing;
+alter table delivery_settings enable row level security;
+drop policy if exists "delivery_settings read" on delivery_settings;
+create policy "delivery_settings read" on delivery_settings for select using (true);
+drop policy if exists "delivery_settings admin" on delivery_settings;
+create policy "delivery_settings admin" on delivery_settings for update using (is_admin()) with check (is_admin());
+
+-- Live prices the server got from GIG. The database can't call GIG, so a
+-- merchant's GIG order must match a recent quote written here by the server.
+create table if not exists delivery_quotes (
+  id         uuid primary key default gen_random_uuid(),
+  partner_id uuid not null references partners (id) on delete cascade,
+  method     text not null,
+  hub        warehouse_location not null,
+  zone       text not null,
+  weight_kg  numeric(8,2) not null,
+  amount     numeric(12,2) not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists delivery_quotes_lookup_idx on delivery_quotes (partner_id, method, zone, created_at desc);
+alter table delivery_quotes enable row level security;
+revoke all on delivery_quotes from anon, authenticated;
+
 -- ---------------------------------------------------------------------------
 -- 3. Dispatch time, and the Enterprise delivery charge
 -- ---------------------------------------------------------------------------
@@ -163,6 +197,15 @@ begin
   if new.delivery_method is null or new.delivery_method = 'own_rider' then return null; end if;
   if auth.uid() is null or is_admin() or is_fulfillment_center() then return null; end if;
   q := delivery_quote(new.delivery_method, new.location, new.delivery_zone, coalesce(new.delivery_weight_kg, 0));
+  -- A live GIG price the server fetched for this merchant in the last 2 hours.
+  if new.delivery_method = 'gig' then
+    select amount into q from delivery_quotes
+    where partner_id = new.partner_id and method = 'gig' and hub = new.location
+      and zone = new.delivery_zone and weight_kg = coalesce(new.delivery_weight_kg, 0)
+      and created_at > now() - interval '2 hours'
+    order by created_at desc limit 1;
+    q := coalesce(q, delivery_quote(new.delivery_method, new.location, new.delivery_zone, coalesce(new.delivery_weight_kg, 0)));
+  end if;
   if q is null then
     raise exception 'That delivery option is not available for this order.' using errcode = '22023';
   end if;

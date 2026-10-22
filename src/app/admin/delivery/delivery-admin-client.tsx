@@ -9,7 +9,7 @@ import type { WarehouseLocation } from "@/types/db";
 import { naira } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { saveDispatchZone, switchOffCarrier, uploadRateCard } from "./actions";
+import { saveDeliverySettings, saveDispatchZone, switchOffCarrier, testGig, uploadRateCard } from "./actions";
 
 export type ZoneRow = {
   id: string;
@@ -303,6 +303,97 @@ export function CarrierRates({ carrier, rows }: { carrier: "UPS" | "GIG"; rows: 
           </div>
         </>
       ) : null}
+    </div>
+  );
+}
+
+export type DeliverySettingsRow = {
+  markupPercent: number;
+  abujaLat: number;
+  abujaLng: number;
+  lagosLat: number;
+  lagosLng: number;
+};
+
+/** Live GIG prices: connection status, BNP's markup and the hub locations. */
+export function GigPanel({ connected, settings }: { connected: boolean; settings: DeliverySettingsRow }) {
+  const router = useRouter();
+  const [draft, setDraft] = useState(() =>
+    Object.fromEntries(Object.entries(settings).map(([k, v]) => [k, String(v)])) as Record<keyof DeliverySettingsRow, string>,
+  );
+  const [pending, startTransition] = useTransition();
+  const field = (key: keyof DeliverySettingsRow, label: string) => (
+    <label className="text-xs font-semibold text-graphite">
+      {label}
+      <input
+        value={draft[key]}
+        onChange={(e) => setDraft({ ...draft, [key]: e.target.value.replace(/[^0-9.-]/g, "") })}
+        inputMode="decimal"
+        className={cn(fieldClass, "mt-1")}
+      />
+    </label>
+  );
+
+  function save() {
+    startTransition(async () => {
+      const result = await saveDeliverySettings(draft);
+      if (result.ok) {
+        toast.success(result.message ?? "Saved.");
+        router.refresh();
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
+
+  function test() {
+    startTransition(async () => {
+      const result = await testGig();
+      if (result.ok) toast.success(result.message ?? "GIG works.");
+      else toast.error(result.error, { duration: 10000 });
+    });
+  }
+
+  return (
+    <div className="rounded-lg border border-stone bg-card">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone px-4 py-3">
+        <div>
+          <div className="flex items-center gap-2 font-semibold text-navy">
+            GIG Logistics live prices
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                connected ? "bg-success/10 text-success" : "bg-stone text-graphite",
+              )}
+            >
+              {connected ? "Connected" : "Not connected"}
+            </span>
+          </div>
+          <div className="text-xs text-graphite">
+            {connected
+              ? "Merchants and customers get GIG's price for each order, plus the markup below."
+              : "Add BNP's GIG merchant login (GIG_EMAIL and GIG_PASSWORD) in Vercel to switch this on. Until then GIG uses the rate card below, if one is uploaded."}
+          </div>
+        </div>
+        <Button size="sm" variant="outline" onClick={test} disabled={pending || !connected}>
+          Test GIG
+        </Button>
+      </div>
+      <div className="grid gap-3 px-4 py-3 sm:grid-cols-5">
+        {field("markupPercent", "BNP markup (%)")}
+        {field("abujaLat", "Abuja hub latitude")}
+        {field("abujaLng", "Abuja hub longitude")}
+        {field("lagosLat", "Lagos hub latitude")}
+        {field("lagosLng", "Lagos hub longitude")}
+      </div>
+      <div className="flex items-center justify-between gap-3 border-t border-stone px-4 py-2.5">
+        <p className="text-[11px] text-mist">
+          GIG prices from the hub&apos;s map position. Copy it from Google Maps (right-click the warehouse).
+        </p>
+        <Button size="sm" onClick={save} disabled={pending}>
+          Save
+        </Button>
+      </div>
     </div>
   );
 }

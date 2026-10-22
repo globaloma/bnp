@@ -40,15 +40,19 @@ export function DeliveryPicker({
   choice,
   onChange,
   errors,
+  fee,
+  loading = false,
 }: {
   options: DeliveryOptions;
   choice: DeliveryChoice;
   onChange: (next: DeliveryChoice) => void;
   errors?: Record<string, string[]>;
+  /** The price, worked out by the form (live GIG prices come from the server). */
+  fee: number | null;
+  loading?: boolean;
 }) {
   const methods = availableMethods(options, "merchant");
   const set = (patch: Partial<DeliveryChoice>) => onChange({ ...choice, ...patch });
-  const fee = choiceFee(options, choice);
   const isCarrier = choice.method === "gig" || choice.method === "ups";
 
   return (
@@ -174,9 +178,11 @@ export function DeliveryPicker({
 
       {choice.method !== "own_rider" ? (
         <p className="mt-2.5 text-xs text-graphite">
-          {fee === null ? (
+          {loading ? (
+            "Getting the GIG price..."
+          ) : fee === null ? (
             isCarrier && choice.zone ? (
-              <span className="text-destructive">No rate for this weight. Choose another option.</span>
+              <span className="text-destructive">No price for this destination and weight. Choose another option.</span>
             ) : (
               "Choose an area to see the price."
             )

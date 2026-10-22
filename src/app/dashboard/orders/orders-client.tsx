@@ -24,6 +24,7 @@ import type { ActionResult } from "@/lib/schemas/order";
 import { OrderDetail } from "./order-detail";
 import { ImportOrdersDialog } from "./import-orders-dialog";
 import { DeliveryPicker, choiceFee, type DeliveryChoice } from "./delivery-picker";
+import { useGigQuote } from "@/lib/use-gig-quote";
 import type { DeliveryOptions } from "@/lib/delivery-methods";
 import type { WarehouseLocation } from "@/types/db";
 
@@ -418,7 +419,8 @@ function CreateOrderForm({
   const productWeight =
     Math.round(chosen.reduce((sum, { product, quantity }) => sum + (product.weight_kg ?? 0) * quantity, 0) * 100) / 100;
   const choice = weightEdited ? delivery : { ...delivery, weightKg: productWeight };
-  const fee = options ? choiceFee(options, choice) : null;
+  const gig = useGigQuote(options, choice.method, choice.zone, choice.weightKg);
+  const fee = gig.live ? gig.fee : options ? choiceFee(options, choice) : null;
 
   const totals = chosen.length
     ? computeMultiLineTotals({
@@ -545,6 +547,8 @@ function CreateOrderForm({
             setDelivery(next);
           }}
           errors={errors}
+          fee={fee}
+          loading={gig.loading}
         />
       ) : null}
 
