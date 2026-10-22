@@ -4,6 +4,7 @@ import { getAuthedFulfillmentCenter } from "@/lib/data/fulfillment-center";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/dashboard/ui";
 import type { Order } from "@/types/db";
+import { methodLabel } from "@/lib/delivery-methods";
 import { DispatchStation, type Parcel } from "./dispatch-station";
 
 export const metadata: Metadata = { title: "Dispatch" };
@@ -13,6 +14,8 @@ function groupParcels(rows: (Order & { merchant: { business_name: string; code: 
   for (const r of rows) {
     const key = `${r.partner_id}:${r.order_ref}`;
     const existing = map.get(key);
+    // The delivery-fee line of a store order isn't a parcel item.
+    if (!r.product_id) continue;
     if (existing) {
       existing.units += r.quantity;
       continue;
@@ -24,6 +27,13 @@ function groupParcels(rows: (Order & { merchant: { business_name: string; code: 
       merchant: r.merchant?.business_name ?? "Merchant",
       customer: r.customer_name,
       rider: r.rider,
+      partnerId: r.partner_id,
+      delivery: r.delivery_method
+        ? `${methodLabel(r.delivery_method)}${r.delivery_zone ? `, ${r.delivery_zone}` : ""}`
+        : r.rider,
+      carrier: r.delivery_method === "gig" || r.delivery_method === "ups",
+      tracking: r.tracking_number,
+      pickupAt: r.pickup_at,
       location: r.location,
       units: r.quantity,
       updatedAt: r.updated_at,

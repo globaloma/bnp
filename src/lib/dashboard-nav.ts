@@ -63,6 +63,7 @@ export const fcDashboardNav: DashboardNavItem[] = [
 export const adminDashboardNav: DashboardNavItem[] = [
   { href: "/admin/partners", label: "Partners", icon: Users },
   { href: "/admin/billing", label: "Billing", icon: Banknote },
+  { href: "/admin/delivery", label: "Delivery rates", icon: Truck },
   { href: "/admin/rewards", label: "Rewards", icon: Award },
   { href: "/admin/feedback", label: "Feedback", icon: MessageSquareWarning },
 ];

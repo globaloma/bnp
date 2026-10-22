@@ -553,6 +553,24 @@ function ProductForm({
       </div>
 
       <div>
+        <label className={labelClass}>Weight per unit (kg)</label>
+        <input
+          name="weightKg"
+          type="number"
+          min="0"
+          step="0.001"
+          defaultValue={base?.weight_kg ?? ""}
+          placeholder="e.g. 0.5"
+          className={fieldClass}
+        />
+        {errors?.weightKg ? (
+          <p className="mt-1 text-xs text-destructive">{errors.weightKg[0]}</p>
+        ) : (
+          <p className="mt-1 text-[11px] text-mist">Used to price GIG and UPS deliveries.</p>
+        )}
+      </div>
+
+      <div>
         <label className={labelClass}>Declared value per unit (₦)</label>
         {product?.declared_value !== null && product?.declared_value !== undefined ? (
           <>

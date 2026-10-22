@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/public";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { loadDeliveryOptions } from "@/lib/delivery-pricing";
+import type { DeliveryOptions } from "@/lib/delivery-methods";
 import { CheckoutForm } from "@/components/store/checkout-form";
-import type { DeliveryZone, StorefrontPartner } from "@/types/db";
+import type { StorefrontPartner, WarehouseLocation } from "@/types/db";
 
 export default async function CheckoutPage({
   params,
@@ -17,17 +20,25 @@ export default async function CheckoutPage({
 
   if (!partner) notFound();
 
-  const { data: zones } = await supabase
-    .from("storefront_delivery_zones")
-    .select("id, partner_id, name, fee")
+  // Delivery prices and product weights are public information, read with
+  // the server's client so the merchant's own delivery areas are included.
+  const admin = createAdminClient();
+  const { data: products } = await admin
+    .from("products")
+    .select("id, location, weight_kg")
     .eq("partner_id", partner.id)
-    .order("name")
-    .returns<DeliveryZone[]>();
+    .eq("published", true);
+
+  const hubs = [...new Set((products ?? []).map((p) => p.location as WarehouseLocation))];
+  const options = Object.fromEntries(
+    await Promise.all(hubs.map(async (hub) => [hub, await loadDeliveryOptions(admin, hub, partner.id)] as const)),
+  ) as Partial<Record<WarehouseLocation, DeliveryOptions>>;
+  const weights = Object.fromEntries((products ?? []).map((p) => [p.id, Number(p.weight_kg) || 0]));
 
   return (
     <div className="container-page max-w-lg py-8">
       <h1 className="mb-5 text-xl font-semibold text-navy">Checkout</h1>
-      <CheckoutForm slug={slug} zones={zones ?? []} />
+      <CheckoutForm slug={slug} options={options} weights={weights} />
     </div>
   );
 }

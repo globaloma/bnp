@@ -15,7 +15,10 @@ export const checkoutSchema = z.object({
     .optional()
     .or(z.literal("")),
   fulfillment: z.enum(["delivery", "pickup"]).default("delivery"),
-  deliveryZoneId: z.string().uuid().optional().or(z.literal("")),
+  // Delivery options (migration 0029). Empty when the warehouse has none,
+  // which falls back to the merchant's flat shipping fee.
+  deliveryMethod: z.enum(["bnp_dispatch", "gig", "ups", "own_rider"]).optional(),
+  deliveryZone: z.string().trim().max(120).optional().or(z.literal("")),
   deliveryAddress: z.string().trim().max(500).optional().default(""),
   items: z
     .array(

@@ -10,6 +10,10 @@ import {
 } from "@/lib/dashboard-metrics";
 import { naira } from "@/lib/format";
 import { PageHeader, StatCard } from "@/components/dashboard/ui";
+import { createClient } from "@/lib/supabase/server";
+import { loadDeliveryOptions } from "@/lib/delivery-pricing";
+import type { DeliveryOptions } from "@/lib/delivery-methods";
+import type { WarehouseLocation } from "@/types/db";
 import { OrdersClient } from "./orders-client";
 
 export const metadata: Metadata = { title: "Orders" };
@@ -21,6 +25,13 @@ export default async function OrdersPage() {
 
   const { orders, products } = await getDashboardData(partner.id);
   const restricted = isFulfillmentRestricted(partner);
+
+  // Delivery choices for each warehouse the merchant keeps stock in.
+  const supabase = await createClient();
+  const hubs = [...new Set(products.map((p) => p.location))] as WarehouseLocation[];
+  const deliveryOptions = Object.fromEntries(
+    await Promise.all(hubs.map(async (hub) => [hub, await loadDeliveryOptions(supabase, hub, partner.id)] as const)),
+  ) as Partial<Record<WarehouseLocation, DeliveryOptions>>;
 
   return (
     <div>
@@ -53,6 +64,7 @@ export default async function OrdersPage() {
         products={products}
         restricted={restricted}
         chargesVat={partner.charges_vat}
+        deliveryOptions={deliveryOptions}
       />
     </div>
   );

@@ -54,6 +54,7 @@ export async function addProduct(
     location: formData.get("location"),
     lowStockThreshold: formData.get("lowStockThreshold") ?? "",
     declaredValue: formData.get("declaredValue") ?? "",
+    weightKg: formData.get("weightKg") ?? "",
     shippingFee: formData.get("shippingFee") || 0,
     pickupEnabled: formData.get("pickupEnabled") === "on",
     imageUrl: formData.get("imageUrl") || undefined,
@@ -106,6 +107,7 @@ export async function addProduct(
     location: d.location,
     low_stock_threshold: d.lowStockThreshold,
     declared_value: d.declaredValue,
+    weight_kg: d.weightKg,
     shipping_fee: d.shippingFee,
     pickup_enabled: d.pickupEnabled,
     image_url: d.imageUrl || null,
@@ -168,6 +170,7 @@ export async function editProduct(
     location: formData.get("location"),
     lowStockThreshold: formData.get("lowStockThreshold") ?? "",
     declaredValue: formData.get("declaredValue") ?? "",
+    weightKg: formData.get("weightKg") ?? "",
     shippingFee: formData.get("shippingFee") || 0,
     pickupEnabled: formData.get("pickupEnabled") === "on",
     imageUrl: formData.get("imageUrl") || undefined,
@@ -200,6 +203,7 @@ export async function editProduct(
       vat: d.vat,
       location: d.location,
       low_stock_threshold: d.lowStockThreshold,
+      weight_kg: d.weightKg,
       ...(d.declaredValue !== null && formData.get("declaredValueLocked") !== "1"
         ? { declared_value: d.declaredValue }
         : {}),

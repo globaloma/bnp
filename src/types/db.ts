@@ -90,6 +90,8 @@ export type Product = {
   /** Value per unit, for insurance and stock valuation. Locked once set. */
   declared_value: number | null;
   declared_value_locked_at: string | null;
+  /** kg per unit, for weight-priced delivery (migration 0029). */
+  weight_kg: number | null;
   /** Colour/size of this SKU, e.g. "Red" or "Large". */
   variant: string | null;
   /** Shared by every variant of the same product. */
@@ -217,6 +219,15 @@ export type Order = {
   vat_rate: number;
   vat_amount: number;
   delivery_fee: number;
+  /** Delivery options (migration 0029); null on older orders. */
+  delivery_method: "bnp_dispatch" | "gig" | "ups" | "walk_in" | "own_rider" | null;
+  delivery_zone: string | null;
+  delivery_weight_kg: number | null;
+  /** Who pays BNP for the delivery: merchant (on their bill) or customer (at checkout). */
+  delivery_billed_to: "merchant" | "customer" | "none";
+  tracking_number: string | null;
+  pickup_at: string | null;
+  dispatched_at: string | null;
   subtotal: number;
   placed_at: string;
   created_at: string;

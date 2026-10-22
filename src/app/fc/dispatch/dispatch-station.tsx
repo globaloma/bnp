@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Truck } from "lucide-react";
 import type { OrderRider, ScanResult, WarehouseLocation } from "@/types/db";
 import { ScanStation } from "@/components/warehouse/scan-station";
 import { useWarehouseLocation, WarehousePicker } from "@/components/warehouse/warehouse-picker";
 import { dispatchScan } from "../picking/actions";
+import { saveTrackingNumber } from "./actions";
 
 export type Parcel = {
   key: string;
@@ -14,6 +17,13 @@ export type Parcel = {
   merchant: string;
   customer: string;
   rider: OrderRider;
+  partnerId: string;
+  /** e.g. "GIG Logistics, South-West Nigeria". */
+  delivery: string;
+  /** GIG or UPS, which need the carrier's tracking number. */
+  carrier: boolean;
+  tracking: string | null;
+  pickupAt: string | null;
   location: WarehouseLocation;
   units: number;
   updatedAt: string;
@@ -88,12 +98,63 @@ function ParcelList({
                 <div className="truncate text-[11px] text-graphite">
                   {p.customer} · {p.merchant} · {p.units} item{p.units === 1 ? "" : "s"}
                 </div>
+                {p.pickupAt ? (
+                  <div className="text-[11px] font-semibold text-gold-300">
+                    Collecting{" "}
+                    {new Date(p.pickupAt).toLocaleString("en-NG", {
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                ) : null}
+                {p.carrier ? <TrackingField parcel={p} /> : null}
               </div>
-              <span className="shrink-0 text-[11px] font-semibold text-graphite">{p.rider}</span>
+              <span className="max-w-[40%] shrink-0 text-right text-[11px] font-semibold text-graphite">{p.delivery}</span>
             </li>
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+function TrackingField({ parcel }: { parcel: Parcel }) {
+  const router = useRouter();
+  const [value, setValue] = useState(parcel.tracking ?? "");
+  const [pending, startTransition] = useTransition();
+  const changed = value.trim() !== (parcel.tracking ?? "");
+
+  function save() {
+    startTransition(async () => {
+      const result = await saveTrackingNumber(parcel.partnerId, parcel.orderRef, value);
+      if (result.ok) {
+        toast.success("Tracking number saved.");
+        router.refresh();
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
+
+  return (
+    <div className="mt-1 flex items-center gap-1.5">
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && changed) save();
+        }}
+        placeholder="Carrier tracking number"
+        className="h-7 w-full max-w-[12rem] rounded border border-stone bg-white px-2 font-mono text-[11px] text-navy outline-none focus:border-teal"
+      />
+      {changed ? (
+        <button type="button" onClick={save} disabled={pending} className="text-[11px] font-semibold text-teal-700 hover:underline">
+          Save
+        </button>
+      ) : null}
     </div>
   );
 }

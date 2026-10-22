@@ -82,6 +82,8 @@ export async function alertFulfillmentCenters(params: {
   customerName: string;
   lines: { product_name: string; quantity: number; total: number }[];
   source: "storefront" | "dashboard";
+  /** e.g. "Walk-in collection, Tue 4 Nov, 2:00 pm" or "GIG Logistics (Lagos)". */
+  delivery?: string;
 }) {
   const fcEmails = await getFulfillmentCenterEmails();
   if (fcEmails.length === 0) return;
@@ -100,6 +102,7 @@ export async function alertFulfillmentCenters(params: {
       <div style="font-family:system-ui,Segoe UI,sans-serif;max-width:560px;">
         <h2 style="color:#0f2a44;font-size:18px;margin:0 0 4px;">New order ready for fulfillment</h2>
         <p style="color:#455568;font-size:13px;margin:0 0 16px;">${escapeHtml(params.merchantName)} ${how} for ${escapeHtml(params.customerName)}.</p>
+        ${params.delivery ? `<p style="color:#0f2a44;font-size:13px;margin:0 0 12px;"><strong>Delivery:</strong> ${escapeHtml(params.delivery)}</p>` : ""}
         <table style="border-collapse:collapse;width:100%;">${orderItemRowsHtml(params.lines)}</table>
         <p style="color:#0f2a44;font-size:14px;font-weight:700;margin:12px 0 0;">Total: ${naira(total)}</p>
         <p style="font-size:13px;margin:16px 0 0;"><a href="${siteUrl}/fc/orders" style="color:#2e8b9a;">Open your orders</a></p>

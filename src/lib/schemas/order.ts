@@ -21,7 +21,12 @@ export const orderSchema = z.object({
       }),
     )
     .min(1, "Add at least one product"),
-  rider: z.enum(["BNP Fleet", "Own Rider", "Pickup"]),
+  deliveryMethod: z.enum(["bnp_dispatch", "gig", "ups", "walk_in", "own_rider"], {
+    message: "Choose how it's delivered",
+  }),
+  deliveryZone: z.string().trim().max(120).optional().or(z.literal("")),
+  weightKg: z.coerce.number().min(0).max(100000).default(0),
+  pickupAt: z.string().trim().max(40).optional().or(z.literal("")),
   discountType: z.enum(["fixed", "percentage"]).optional(),
   discountValue: z.coerce.number().min(0).default(0),
   deliveryFee: z.coerce.number().min(0).default(0),

@@ -23,6 +23,9 @@ import { createOrder, deleteOrderGroups } from "./actions";
 import type { ActionResult } from "@/lib/schemas/order";
 import { OrderDetail } from "./order-detail";
 import { ImportOrdersDialog } from "./import-orders-dialog";
+import { DeliveryPicker, choiceFee, type DeliveryChoice } from "./delivery-picker";
+import type { DeliveryOptions } from "@/lib/delivery-methods";
+import type { WarehouseLocation } from "@/types/db";
 
 const fieldClass =
   "h-10 w-full rounded-md border border-stone bg-white px-3 text-sm text-navy outline-none transition-colors focus-visible:border-teal focus-visible:ring-2 focus-visible:ring-teal/25";
@@ -36,11 +39,13 @@ export function OrdersClient({
   products,
   restricted,
   chargesVat,
+  deliveryOptions,
 }: {
   orders: Order[];
   products: Product[];
   restricted: boolean;
   chargesVat: boolean;
+  deliveryOptions: Partial<Record<WarehouseLocation, DeliveryOptions>>;
 }) {
   const [statusFilter, setStatusFilter] = useState<"All" | OrderStatus>("All");
   const [paymentFilter, setPaymentFilter] = useState<"All" | OrderPaymentStatus>("All");
@@ -188,6 +193,7 @@ export function OrdersClient({
             <CreateOrderForm
               products={products}
               chargesVat={chargesVat}
+              deliveryOptions={deliveryOptions}
               onDone={() => setOpen(false)}
             />
           </DialogContent>
@@ -364,19 +370,28 @@ function OrderGroupRow({
 function CreateOrderForm({
   products,
   chargesVat,
+  deliveryOptions,
   onDone,
 }: {
   products: Product[];
   chargesVat: boolean;
+  deliveryOptions: Partial<Record<WarehouseLocation, DeliveryOptions>>;
   onDone: () => void;
 }) {
   const [lines, setLines] = useState<{ key: string; productId: string; quantity: number }[]>(
     () => [{ key: crypto.randomUUID(), productId: "", quantity: 1 }],
   );
-  const [rider, setRider] = useState("BNP Fleet");
+  const [delivery, setDelivery] = useState<DeliveryChoice>({
+    method: "bnp_dispatch",
+    zone: "",
+    weightKg: 0,
+    ownFee: 0,
+    pickupAt: "",
+  });
+  // The parcel weight follows the products until the merchant types one.
+  const [weightEdited, setWeightEdited] = useState(false);
   const [discountType, setDiscountType] = useState<"" | "fixed" | "percentage">("");
   const [discountValue, setDiscountValue] = useState(0);
-  const [deliveryFee, setDeliveryFee] = useState(0);
 
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
     async (prev, formData) => {
@@ -391,12 +406,19 @@ function CreateOrderForm({
   );
 
   const errors = state && !state.ok ? state.fieldErrors : undefined;
-  const isOwnRider = rider === "Own Rider";
 
   const chosen = lines.flatMap((l) => {
     const product = products.find((p) => p.id === l.productId);
     return product ? [{ product, quantity: l.quantity }] : [];
   });
+
+  // Delivery is priced from the warehouse of the first product.
+  const hub = chosen[0]?.product.location ?? products[0]?.location;
+  const options = hub ? deliveryOptions[hub] : undefined;
+  const productWeight =
+    Math.round(chosen.reduce((sum, { product, quantity }) => sum + (product.weight_kg ?? 0) * quantity, 0) * 100) / 100;
+  const choice = weightEdited ? delivery : { ...delivery, weightKg: productWeight };
+  const fee = options ? choiceFee(options, choice) : null;
 
   const totals = chosen.length
     ? computeMultiLineTotals({
@@ -407,7 +429,7 @@ function CreateOrderForm({
         })),
         discountType: discountType || undefined,
         discountValue,
-        deliveryFee: isOwnRider ? deliveryFee : 0,
+        deliveryFee: fee ?? 0,
       })
     : null;
 
@@ -514,37 +536,17 @@ function CreateOrderForm({
         ) : null}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className={labelClass}>Rider / delivery</label>
-          <select
-            name="rider"
-            value={rider}
-            onChange={(e) => setRider(e.target.value)}
-            className={cn(fieldClass, "appearance-none")}
-          >
-            <option>BNP Fleet</option>
-            <option>Own Rider</option>
-            <option>Pickup</option>
-          </select>
-        </div>
-
-        {isOwnRider ? (
-          <div>
-            <label className={labelClass}>Delivery price (₦)</label>
-            <input
-              name="deliveryFee"
-              type="number"
-              min="0"
-              step="0.01"
-              value={deliveryFee}
-              onChange={(e) => setDeliveryFee(Math.max(0, Number(e.target.value) || 0))}
-              className={fieldClass}
-              placeholder="What you're charging for the rider"
-            />
-          </div>
-        ) : null}
-      </div>
+      {options ? (
+        <DeliveryPicker
+          options={options}
+          choice={choice}
+          onChange={(next) => {
+            if (next.weightKg !== choice.weightKg) setWeightEdited(true);
+            setDelivery(next);
+          }}
+          errors={errors}
+        />
+      ) : null}
 
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -617,7 +619,7 @@ function CreateOrderForm({
         </p>
       )}
 
-      {state && !state.ok && !state.fieldErrors ? (
+      {state && !state.ok && (!state.fieldErrors || state.fieldErrors.deliveryZone) ? (
         <p className="text-xs text-destructive">{state.error}</p>
       ) : null}
 

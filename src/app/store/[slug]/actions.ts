@@ -8,6 +8,9 @@ import { initializeTransaction } from "@/lib/paystack";
 import { flatShippingFee, pickupAvailable } from "@/lib/delivery";
 import { withinRateLimit } from "@/lib/spam-guard";
 import { displayName } from "@/lib/variants";
+import { loadDeliveryOptions, priceDelivery } from "@/lib/delivery-pricing";
+import { availableMethods, type DeliveryMethod } from "@/lib/delivery-methods";
+import type { WarehouseLocation } from "@/types/db";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bnpfulfillment.com";
 
@@ -33,7 +36,8 @@ export async function startCheckout(
     customerPhone: formData.get("customerPhone"),
     customerEmail: formData.get("customerEmail") || undefined,
     fulfillment: formData.get("fulfillment") || undefined,
-    deliveryZoneId: formData.get("deliveryZoneId") || undefined,
+    deliveryMethod: formData.get("deliveryMethod") || undefined,
+    deliveryZone: formData.get("deliveryZone") || undefined,
     deliveryAddress: formData.get("deliveryAddress") || undefined,
     items: itemsInput,
   });
@@ -66,7 +70,7 @@ export async function startCheckout(
   const { data: products } = await admin
     .from("products")
     .select(
-      "id, partner_id, name, variant, sale_price, vat, stock, shipping_fee, pickup_enabled, published, location",
+      "id, partner_id, name, variant, sale_price, vat, stock, shipping_fee, pickup_enabled, published, location, weight_kg",
     )
     .in("id", productIds);
 
@@ -81,9 +85,10 @@ export async function startCheckout(
     subtotal: number;
     vatAmount: number;
     total: number;
-    location: string;
+    location: WarehouseLocation;
     shippingFee: number;
     pickupEnabled: boolean;
+    weightKg: number;
   }[] = [];
 
   for (const item of d.items) {
@@ -112,14 +117,21 @@ export async function startCheckout(
       location: product.location,
       shippingFee: product.shipping_fee,
       pickupEnabled: product.pickup_enabled,
+      weightKg: (Number(product.weight_kg) || 0) * item.quantity,
     });
   }
 
-  // Delivery price: free for pickup, the chosen zone's fee when the
-  // merchant has zones, otherwise the old flat per-product fee.
+  // Delivery price, worked out here from our own rates (never the browser's
+  // numbers): free for pickup; BNP Dispatch, GIG or UPS from the warehouse's
+  // rates, paid by the customer; or the merchant's own delivery areas. With
+  // none of those set up, the merchant's flat shipping fee.
   const isPickup = d.fulfillment === "pickup";
+  const hub = lineItems[0].location;
   let shippingFee = 0;
   let shippingLabel = "Shipping";
+  let deliveryMethod: DeliveryMethod | null = null;
+  let deliveryZone: string | null = null;
+  const weightKg = Math.round(lineItems.reduce((sum, i) => sum + i.weightKg, 0) * 100) / 100;
 
   if (isPickup) {
     if (!pickupAvailable(lineItems)) {
@@ -128,27 +140,49 @@ export async function startCheckout(
         error: "Pickup isn't available for everything in your cart. Choose delivery instead.",
       };
     }
+    deliveryMethod = "walk_in";
   } else {
-    const { data: zones } = await admin
-      .from("delivery_zones")
-      .select("id, name, fee")
-      .eq("partner_id", partner.id);
-
-    if (zones && zones.length > 0) {
-      const zone = zones.find((z) => z.id === d.deliveryZoneId);
-      if (!zone) {
+    const options = await loadDeliveryOptions(admin, hub, partner.id);
+    const offered = availableMethods(options, "store").filter((m) => m !== "walk_in");
+    if (offered.length > 0) {
+      if (!d.deliveryMethod || !offered.includes(d.deliveryMethod)) {
         return {
           ok: false,
-          error: "Choose your delivery area.",
-          fieldErrors: { deliveryZoneId: ["Choose your delivery area"] },
+          error: "Choose how you want it delivered.",
+          fieldErrors: { deliveryZone: ["Choose a delivery option"] },
         };
       }
-      shippingFee = Number(zone.fee);
-      shippingLabel = `Shipping (${zone.name})`;
+      const priced = await priceDelivery(admin, {
+        method: d.deliveryMethod,
+        hub,
+        zone: d.deliveryZone,
+        weightKg,
+        partnerId: partner.id,
+        mode: "store",
+      });
+      if (!priced.ok) {
+        return { ok: false, error: priced.error, fieldErrors: { deliveryZone: [priced.error] } };
+      }
+      shippingFee = priced.delivery.fee;
+      shippingLabel = priced.delivery.label;
+      deliveryMethod = priced.delivery.method;
+      deliveryZone = priced.delivery.zone;
     } else {
       shippingFee = flatShippingFee(lineItems);
     }
   }
+  const rider = isPickup ? ("Pickup" as const) : deliveryMethod === "own_rider" ? ("Own Rider" as const) : ("BNP Fleet" as const);
+  // The customer pays for BNP's delivery at checkout; nothing goes on the
+  // merchant's bill. Their own rider is theirs to settle.
+  const deliveryFields = {
+    delivery_method: deliveryMethod,
+    delivery_zone: deliveryZone,
+    delivery_weight_kg: weightKg || null,
+    delivery_billed_to:
+      deliveryMethod && deliveryMethod !== "own_rider" && deliveryMethod !== "walk_in" && shippingFee > 0
+        ? ("customer" as const)
+        : ("none" as const),
+  };
 
   const itemsTotal = lineItems.reduce((sum, i) => sum + i.total, 0);
   const grandTotal = itemsTotal + shippingFee;
@@ -178,12 +212,13 @@ export async function startCheckout(
     vat_amount: number;
     total: number;
     status: "Created";
-    location: string;
-    rider: "BNP Fleet" | "Pickup";
+    location: WarehouseLocation;
+    rider: "BNP Fleet" | "Own Rider" | "Pickup";
     channel: "storefront";
     payment_status: "pending";
     payment_ref: string;
   }[] = lineItems.map((item) => ({
+    ...deliveryFields,
     partner_id: partner.id,
     order_ref: orderRef,
     customer_name: d.customerName,
@@ -200,7 +235,7 @@ export async function startCheckout(
     total: item.total,
     status: "Created" as const,
     location: item.location,
-    rider: isPickup ? ("Pickup" as const) : ("BNP Fleet" as const),
+    rider,
     channel: "storefront" as const,
     payment_status: "pending" as const,
     payment_ref: reference,
@@ -208,6 +243,7 @@ export async function startCheckout(
 
   if (shippingFee > 0) {
     rows.push({
+      ...deliveryFields,
       partner_id: partner.id,
       order_ref: orderRef,
       customer_name: d.customerName,
@@ -224,7 +260,7 @@ export async function startCheckout(
       total: shippingFee,
       status: "Created" as const,
       location: lineItems[0].location,
-      rider: isPickup ? ("Pickup" as const) : ("BNP Fleet" as const),
+      rider,
       channel: "storefront" as const,
       payment_status: "pending" as const,
       payment_ref: reference,

@@ -7,6 +7,7 @@ import type { Order, OrderStatus } from "@/types/db";
 import { merchantCanEdit, merchantStatusOptions } from "@/lib/order-status";
 import { naira } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { methodLabel } from "@/lib/delivery-methods";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { OrderStatusBadge } from "@/components/dashboard/ui";
@@ -134,6 +135,22 @@ export function OrderDetail({
         {first.customer_email ? <div className="text-mist">{first.customer_email}</div> : null}
         {first.delivery_address ? (
           <div className="mt-1 text-graphite">{first.delivery_address}</div>
+        ) : null}
+        {first.delivery_method ? (
+          <div className="mt-1 text-graphite">
+            <span className="font-semibold text-navy">{methodLabel(first.delivery_method)}</span>
+            {first.delivery_zone ? `, ${first.delivery_zone}` : ""}
+            {first.pickup_at
+              ? `, collecting ${new Date(first.pickup_at).toLocaleString("en-NG", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}`
+              : ""}
+            {first.tracking_number ? (
+              <span>
+                {" "}
+                · tracking <span className="font-mono">{first.tracking_number}</span>
+              </span>
+            ) : null}
+            {first.delivery_billed_to === "merchant" ? <span className="text-mist"> · on your BNP bill</span> : null}
+          </div>
         ) : null}
         {first.notes ? (
           <div className="mt-1 text-graphite italic">&ldquo;{first.notes}&rdquo;</div>
@@ -371,13 +388,15 @@ function EditLineForm({
 
   const errors = state && !state.ok ? state.fieldErrors : undefined;
   const isOwnRider = rider === "Own Rider";
+  // BNP delivery is fixed once booked (and billed to the merchant).
+  const bnpDelivery = line.delivery_method !== null && line.delivery_method !== "own_rider";
   const totals = computeOrderTotals({
     unitPrice: line.unit_price,
     quantity,
     vatRate: chargesVat ? line.vat_rate : 0,
     discountType: discountType || undefined,
     discountValue,
-    deliveryFee: isOwnRider ? deliveryFee : 0,
+    deliveryFee: bnpDelivery ? line.delivery_fee : isOwnRider ? deliveryFee : 0,
   });
 
   return (
@@ -418,22 +437,30 @@ function EditLineForm({
             className={fieldClass}
           />
         </div>
-        <div>
-          <label className={labelClass}>Rider</label>
-          <select
-            name="rider"
-            value={rider}
-            onChange={(e) => setRider(e.target.value)}
-            className={cn(fieldClass, "appearance-none")}
-          >
-            <option>BNP Fleet</option>
-            <option>Own Rider</option>
-            <option>Pickup</option>
-          </select>
-        </div>
+        {bnpDelivery ? (
+          <div>
+            <input type="hidden" name="rider" value={line.rider} />
+            <label className={labelClass}>Delivery</label>
+            <div className="flex h-9 items-center text-xs text-graphite">{methodLabel(line.delivery_method)}</div>
+          </div>
+        ) : (
+          <div>
+            <label className={labelClass}>Rider</label>
+            <select
+              name="rider"
+              value={rider}
+              onChange={(e) => setRider(e.target.value)}
+              className={cn(fieldClass, "appearance-none")}
+            >
+              <option>BNP Fleet</option>
+              <option>Own Rider</option>
+              <option>Pickup</option>
+            </select>
+          </div>
+        )}
       </div>
 
-      {isOwnRider ? (
+      {isOwnRider && !bnpDelivery ? (
         <div>
           <label className={labelClass}>Delivery price (₦)</label>
           <input

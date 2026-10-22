@@ -62,7 +62,7 @@ export default async function RewardsPage() {
 
       <Panel accent="success" className="mb-5">
         <div className="mb-2.5 flex items-center justify-between">
-          <span className="text-sm font-semibold text-navy">This month's milestone</span>
+          <span className="text-sm font-semibold text-navy">This month&apos;s milestone</span>
           <span className="text-xs font-semibold text-success">
             {ordersThisMonth}/{MILESTONE_TARGET} orders
           </span>

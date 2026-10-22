@@ -12,6 +12,8 @@ import { after } from "next/server";
 import { requestDeliveryConfirmation } from "@/lib/delivery-feedback";
 import { alertFulfillmentCenters } from "@/lib/notifications";
 import { sendQueuedLowStockAlerts } from "@/lib/low-stock-email";
+import { priceDelivery } from "@/lib/delivery-pricing";
+import type { DeliveryMethod } from "@/lib/delivery-methods";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bnpfulfillment.com";
 
@@ -102,7 +104,10 @@ export async function createOrder(
     deliveryAddress: formData.get("deliveryAddress") || undefined,
     notes: formData.get("notes") || undefined,
     items: itemsInput,
-    rider: formData.get("rider") || "BNP Fleet",
+    deliveryMethod: formData.get("deliveryMethod") || undefined,
+    deliveryZone: formData.get("deliveryZone") || undefined,
+    weightKg: formData.get("weightKg") || 0,
+    pickupAt: formData.get("pickupAt") || undefined,
     discountType: formData.get("discountType") || undefined,
     discountValue: formData.get("discountValue") || 0,
     deliveryFee: formData.get("deliveryFee") || 0,
@@ -132,7 +137,7 @@ export async function createOrder(
 
   const { data: products, error: productError } = await supabase
     .from("products")
-    .select("id, name, sale_price, vat, stock, location")
+    .select("id, name, sale_price, vat, stock, location, weight_kg")
     .in("id", [...quantities.keys()]);
 
   if (productError || !products || products.length !== quantities.size) {
@@ -154,7 +159,31 @@ export async function createOrder(
     }
   }
 
-  const deliveryFee = d.rider === "Own Rider" ? d.deliveryFee : 0;
+  // BNP delivery is priced from our rates and billed to the merchant; their
+  // own rider costs BNP nothing and the fee is what they charge the customer.
+  const method = d.deliveryMethod as DeliveryMethod;
+  const priced = await priceDelivery(supabase, {
+    method,
+    hub: lines[0].product.location,
+    zone: d.deliveryZone,
+    weightKg: d.weightKg,
+    partnerId: user.id,
+    ownFee: d.deliveryFee,
+    mode: "merchant",
+  });
+  if (!priced.ok) {
+    return { ok: false, error: priced.error, fieldErrors: { deliveryZone: [priced.error] } };
+  }
+  const delivery = priced.delivery;
+  let pickupAt: string | null = null;
+  if (method === "walk_in") {
+    const when = d.pickupAt ? new Date(`${d.pickupAt}:00+01:00`) : null;
+    if (!when || Number.isNaN(when.getTime()) || when.getTime() < Date.now()) {
+      return { ok: false, error: "Choose when the customer will collect.", fieldErrors: { pickupAt: ["Choose a time"] } };
+    }
+    pickupAt = when.toISOString();
+  }
+  const deliveryFee = delivery.fee;
   const vatRates = lines.map(({ product }) => (partner?.charges_vat ? product.vat : 0));
   let orderRef: string;
   try {
@@ -196,7 +225,12 @@ export async function createOrder(
         delivery_fee: t.deliveryFee,
         total: t.total,
         location: product.location,
-        rider: d.rider,
+        rider: delivery.rider,
+        delivery_method: method,
+        delivery_zone: delivery.zone,
+        delivery_weight_kg: d.weightKg || null,
+        delivery_billed_to: method === "own_rider" || deliveryFee === 0 ? ("none" as const) : ("merchant" as const),
+        pickup_at: pickupAt,
         status: "Reserved" as const,
         channel: "dashboard" as const,
         payment_status: "paid" as const,
@@ -226,6 +260,16 @@ export async function createOrder(
         total: totals.perLine[i].total,
       })),
       source: "dashboard",
+      delivery: pickupAt
+        ? `Walk-in collection, ${new Date(pickupAt).toLocaleString("en-NG", {
+            timeZone: "Africa/Lagos",
+            weekday: "short",
+            day: "numeric",
+            month: "short",
+            hour: "numeric",
+            minute: "2-digit",
+          })}`
+        : delivery.label,
     }),
   );
 
@@ -284,7 +328,7 @@ export async function editOrder(
 
   const { data: order, error: fetchError } = await supabase
     .from("orders")
-    .select("id, order_ref, product_id, quantity, unit_price, vat_rate, status")
+    .select("id, order_ref, product_id, quantity, unit_price, vat_rate, status, rider, delivery_fee, delivery_method")
     .eq("id", orderId)
     .single();
 
@@ -374,7 +418,11 @@ export async function editOrder(
     }
   }
 
-  const deliveryFee = d.rider === "Own Rider" ? d.deliveryFee : 0;
+  // BNP delivery (dispatch, GIG, UPS, walk-in) is priced when the order is
+  // created and billed to the merchant, so it can't be changed here.
+  const bnpDelivery = order.delivery_method !== null && order.delivery_method !== "own_rider";
+  const rider = bnpDelivery ? order.rider : d.rider;
+  const deliveryFee = bnpDelivery ? Number(order.delivery_fee) : d.rider === "Own Rider" ? d.deliveryFee : 0;
   const vatRate = partner?.charges_vat ? productVatRate : 0;
   const totals = computeOrderTotals({
     unitPrice: order.unit_price,
@@ -394,7 +442,8 @@ export async function editOrder(
       delivery_address: d.deliveryAddress || null,
       notes: d.notes || null,
       quantity: d.quantity,
-      rider: d.rider,
+      rider,
+      ...(bnpDelivery ? {} : { delivery_method: d.rider === "Own Rider" ? ("own_rider" as const) : null }),
       status: d.status,
       subtotal: totals.subtotal,
       discount_type: d.discountType ?? null,
