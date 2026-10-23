@@ -19,6 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { EmptyState, OrderStatusBadge, Panel } from "@/components/dashboard/ui";
+import { DeliveryProgressTag } from "@/components/dashboard/delivery-progress";
 import { groupOrdersByRef } from "@/lib/orders";
 import { createOrder, deleteOrderGroups } from "./actions";
 import type { ActionResult } from "@/lib/schemas/order";
@@ -341,7 +342,10 @@ function OrderGroupRow({
               </div>
               <div className="flex flex-col items-end gap-2">
                 {allSameStatus ? (
-                  <OrderStatusBadge status={first.status} />
+                  <div className="flex items-center gap-1.5">
+                    <DeliveryProgressTag order={first} />
+                    <OrderStatusBadge status={first.status} />
+                  </div>
                 ) : (
                   <span className="inline-flex items-center rounded-full bg-mist/20 px-2.5 py-0.5 text-[10px] font-bold tracking-wide text-graphite uppercase">
                     Mixed status

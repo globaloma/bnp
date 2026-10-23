@@ -14,6 +14,7 @@ import { requestDeliveryConfirmation } from "@/lib/delivery-feedback";
 import { alertFulfillmentCenters } from "@/lib/notifications";
 import { sendQueuedLowStockAlerts } from "@/lib/low-stock-email";
 import { priceDelivery } from "@/lib/delivery-pricing";
+import type { DeliveryProgress } from "@/lib/delivery-progress";
 import type { DeliveryMethod } from "@/lib/delivery-methods";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bnpfulfillment.com";
@@ -572,5 +573,27 @@ export async function deleteOrderGroup(orderRef: string): Promise<ActionResult> 
   revalidatePath("/dashboard/orders");
   revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+/** For the merchant's own dispatched orders: on the way, or a failed attempt. */
+export async function setDeliveryProgress(
+  orderRef: string,
+  progress: DeliveryProgress,
+  note?: string,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Your session expired, sign in again." };
+  const { error } = await supabase.rpc("set_delivery_progress", {
+    p_partner: user.id,
+    p_order_ref: orderRef,
+    p_progress: progress,
+    p_note: note ?? null,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/dashboard/orders");
   return { ok: true };
 }

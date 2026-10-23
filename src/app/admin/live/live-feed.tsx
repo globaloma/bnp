@@ -6,6 +6,7 @@ import { naira } from "@/lib/format";
 import { methodLabel } from "@/lib/delivery-methods";
 import { cn } from "@/lib/utils";
 import { OrderStatusBadge, StatCard } from "@/components/dashboard/ui";
+import { DeliveryProgressTag } from "@/components/dashboard/delivery-progress";
 import type { Order } from "@/types/db";
 
 export type FeedLine = Pick<
@@ -21,6 +22,8 @@ export type FeedLine = Pick<
   | "channel"
   | "location"
   | "delivery_method"
+  | "delivery_progress"
+  | "delivery_failed_attempts"
   | "placed_at"
   | "updated_at"
 >;
@@ -36,6 +39,8 @@ type Feed = {
   channel: Order["channel"];
   location: Order["location"];
   method: Order["delivery_method"];
+  progress: Order["delivery_progress"];
+  attempts: number;
   placedAt: string;
   updatedAt: string;
 };
@@ -62,6 +67,8 @@ function group(lines: FeedLine[]): Feed[] {
         channel: l.channel,
         location: l.location,
         method: l.delivery_method,
+        progress: l.delivery_progress,
+        attempts: l.delivery_failed_attempts ?? 0,
         placedAt: l.placed_at,
         updatedAt: l.updated_at,
       });
@@ -72,6 +79,8 @@ function group(lines: FeedLine[]): Feed[] {
     if (l.updated_at > f.updatedAt) {
       f.updatedAt = l.updated_at;
       f.status = l.status;
+      f.progress = l.delivery_progress;
+      f.attempts = l.delivery_failed_attempts ?? 0;
     }
     if (l.placed_at < f.placedAt) f.placedAt = l.placed_at;
     if (!f.method && l.delivery_method) f.method = l.delivery_method;
@@ -214,7 +223,12 @@ export function LiveFeed({
                     {naira(f.total)}
                   </td>
                   <td className="px-4 py-2.5">
-                    <OrderStatusBadge status={f.status} />
+                    <div className="flex items-center gap-1.5">
+                      <OrderStatusBadge status={f.status} />
+                      <DeliveryProgressTag
+                        order={{ status: f.status, delivery_progress: f.progress, delivery_failed_attempts: f.attempts }}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}

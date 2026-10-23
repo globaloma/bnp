@@ -353,7 +353,7 @@ export const pricing = {
       features: [
         "Storage at ₦10,000 per m² per month",
         "No separate insurance charge",
-        "One monthly invoice, with 3 days to pay",
+        "One monthly invoice, with 3 business days to pay",
         "Self-serve dashboard and email support",
         "BNP riders, your own riders or customer pickup",
         "Your own online store",
@@ -392,7 +392,7 @@ export const planComparison = [
   { feature: "Storage", standard: "₦10,000 per m² per month", enterprise: "₦10,000 per m² per month, negotiable at volume" },
   { feature: "Insurance", standard: "No separate charge", enterprise: "0.25% of month-end stock value" },
   { feature: "How you pay", standard: "One invoice at the end of each month", enterprise: "Pre-funded wallet, charges deducted automatically" },
-  { feature: "Time to pay", standard: "3 days after the invoice", enterprise: "Keep your wallet above an agreed minimum" },
+  { feature: "Time to pay", standard: "3 business days after the invoice", enterprise: "Keep your wallet above an agreed minimum" },
   { feature: "Support", standard: "Self-serve dashboard and email support", enterprise: "A dedicated account manager" },
   { feature: "Delivery options", standard: "BNP riders, your own riders or customer pickup", enterprise: "BNP riders, your own riders or customer pickup" },
   { feature: "Add-on services", standard: "Core services included", enterprise: "Tailored add-ons for your brand" },
@@ -558,7 +558,7 @@ export const faq = {
         },
         {
           q: "How do I pay the fees?",
-          a: "On Standard, you get one invoice at the start of each month for the month before, and have 3 days to pay it online. On Enterprise, you keep a funded wallet and charges are deducted automatically. Either way, every charge is listed on your dashboard.",
+          a: "On Standard, you get one invoice at the start of each month for the month before, and have 3 business days to pay it online. On Enterprise, you keep a funded wallet and charges are deducted automatically. Either way, every charge is listed on your dashboard.",
         },
       ],
     },

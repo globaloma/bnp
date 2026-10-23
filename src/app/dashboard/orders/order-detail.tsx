@@ -20,7 +20,9 @@ import {
   deleteOrderGroup,
   getOrderPaymentLink,
   updateOrderStatus,
+  setDeliveryProgress,
 } from "./actions";
+import { DeliveryProgressControl } from "@/components/dashboard/delivery-progress";
 import type { ActionResult } from "@/lib/schemas/order";
 
 const fieldClass =
@@ -49,6 +51,8 @@ export function OrderDetail({
   const [payingOnline, setPayingOnline] = useState(false);
 
   const first = lines[0];
+  // Any goods line still out for delivery carries the delivery progress.
+  const dispatched = lines.find((l) => l.status === "Dispatched" && l.product_id) ?? null;
   const canDeleteOrder = lines.every(
     (l) => merchantCanEdit(l.status) || l.status === "Cancelled",
   );
@@ -154,6 +158,14 @@ export function OrderDetail({
         ) : null}
         {first.notes ? (
           <div className="mt-1 text-graphite italic">&ldquo;{first.notes}&rdquo;</div>
+        ) : null}
+        {dispatched ? (
+          <div className="mt-2 border-t border-stone pt-2">
+            <DeliveryProgressControl
+              order={dispatched}
+              onSet={(progress, note) => setDeliveryProgress(orderRef, progress, note)}
+            />
+          </div>
         ) : null}
       </div>
 

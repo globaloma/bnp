@@ -10,7 +10,8 @@ import { ORDER_STATUSES, LOCATIONS } from "@/types/db";
 import { naira, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { EmptyState, OrderStatusBadge, Panel } from "@/components/dashboard/ui";
-import { updateOrderStatusAsFc } from "./actions";
+import { setDeliveryProgressAsFc, updateOrderStatusAsFc } from "./actions";
+import { DeliveryProgressControl, DeliveryProgressTag } from "@/components/dashboard/delivery-progress";
 import type { OrderWithMerchant } from "@/lib/data/fulfillment-center";
 import { buildReceiptPdf, shareReceiptOnWhatsApp } from "@/lib/receipt-pdf";
 import { EmailReceiptForm } from "@/components/dashboard/email-receipt-form";
@@ -207,7 +208,10 @@ function OrderRow({
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <OrderStatusBadge status={order.status} />
+          <div className="flex items-center gap-1.5">
+            <DeliveryProgressTag order={order} />
+            <OrderStatusBadge status={order.status} />
+          </div>
           <select
             value={order.status}
             disabled={isPending}
@@ -223,6 +227,15 @@ function OrderRow({
           </select>
         </div>
       </div>
+
+      {order.status === "Dispatched" ? (
+        <div className="mt-3 border-t border-stone pt-3">
+          <DeliveryProgressControl
+            order={order}
+            onSet={(progress, note) => setDeliveryProgressAsFc(order.partner_id, order.order_ref, progress, note)}
+          />
+        </div>
+      ) : null}
 
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-stone pt-3">
         <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-mist">

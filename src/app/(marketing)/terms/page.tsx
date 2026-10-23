@@ -90,7 +90,7 @@ const sections: LegalSection[] = [
           <li>
             <strong>Standard:</strong> a fulfillment fee of 7% of the total value of items sold in a
             month, with no separate insurance charge. We send one invoice at the start of each month
-            for the month before. If it isn&apos;t paid within 3 days, we may pause new orders and
+            for the month before. If it isn&apos;t paid within 3 business days (Monday to Friday), we may pause new orders and
             new stock intake until it is.
           </li>
           <li>
@@ -292,7 +292,7 @@ export default function TermsPage() {
   return (
     <LegalPage
       title="Terms of Service"
-      updated="22 October 2026"
+      updated="23 October 2026"
       intro={
         <p>
           These terms explain how {company.name} works, what we provide, what we expect from you

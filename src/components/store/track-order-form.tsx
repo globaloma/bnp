@@ -210,7 +210,15 @@ function OrderStatusCard({ order }: { order: TrackedOrder }) {
             : "There was a problem with this order. The seller will contact you to sort it out."}
         </Notice>
       ) : (
-        <Timeline stage={order.stage} isPickup={isPickup} />
+        <>
+          <Timeline stage={order.stage} isPickup={isPickup} onTheWay={order.progress === "in_transit"} />
+          {order.stage === "Dispatched" && order.progress === "failed" ? (
+            <Notice tone="wait">
+              We tried to deliver your order, but the delivery didn&apos;t go through. We&apos;ll try again soon, or the
+              seller will contact you to arrange it.
+            </Notice>
+          ) : null}
+        </>
       )}
 
       <div className="mt-6 border-t border-stone pt-4">
@@ -240,7 +248,15 @@ function OrderStatusCard({ order }: { order: TrackedOrder }) {
   );
 }
 
-function Timeline({ stage, isPickup }: { stage: TrackedOrder["stage"]; isPickup: boolean }) {
+function Timeline({
+  stage,
+  isPickup,
+  onTheWay,
+}: {
+  stage: TrackedOrder["stage"];
+  isPickup: boolean;
+  onTheWay: boolean;
+}) {
   // Customers see four steps; the warehouse's Reserved and Picking both
   // read as "Confirmed" to them.
   const steps = [
@@ -248,7 +264,7 @@ function Timeline({ stage, isPickup }: { stage: TrackedOrder["stage"]; isPickup:
     { label: "Packed", icon: Package },
     isPickup
       ? { label: "Ready for pickup", icon: Store }
-      : { label: "Dispatched", icon: Truck },
+      : { label: stage === "Dispatched" && onTheWay ? "On the way" : "Dispatched", icon: Truck },
     isPickup ? { label: "Collected", icon: Check } : { label: "Delivered", icon: Home },
   ];
   const current =

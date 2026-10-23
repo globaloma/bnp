@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { requestDeliveryConfirmation } from "@/lib/delivery-feedback";
+import { emailDeliveryFailed } from "@/lib/delivery-failure-email";
+import type { DeliveryProgress } from "@/lib/delivery-progress";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionResult } from "@/lib/schemas/order";
 import type { OrderStatus } from "@/types/db";
@@ -45,5 +47,25 @@ export async function updateOrderStatusAsFc(
   revalidatePath("/fc/picking");
   revalidatePath("/fc/putaway");
   revalidatePath("/fc");
+  return { ok: true };
+}
+
+/** On the way, or a failed delivery attempt (with the reason). Emails the merchant on a failure. */
+export async function setDeliveryProgressAsFc(
+  partnerId: string,
+  orderRef: string,
+  progress: DeliveryProgress,
+  note?: string,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_delivery_progress", {
+    p_partner: partnerId,
+    p_order_ref: orderRef,
+    p_progress: progress,
+    p_note: note ?? null,
+  });
+  if (error) return { ok: false, error: error.message };
+  if (progress === "failed") after(() => emailDeliveryFailed(partnerId, orderRef));
+  revalidatePath("/fc/orders");
   return { ok: true };
 }

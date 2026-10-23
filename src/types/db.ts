@@ -230,6 +230,11 @@ export type Order = {
   tracking_number: string | null;
   pickup_at: string | null;
   dispatched_at: string | null;
+  /** Where a dispatched parcel is on the road (migration 0031). */
+  delivery_progress: "in_transit" | "failed" | null;
+  delivery_progress_at: string | null;
+  delivery_failed_attempts: number;
+  delivery_failure_note: string | null;
   subtotal: number;
   placed_at: string;
   created_at: string;

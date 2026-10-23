@@ -12,6 +12,8 @@ export type TrackedOrder = {
   orderRef: string;
   placedAt: string;
   stage: OrderStatus;
+  /** While dispatched: on the way, or a delivery attempt failed. */
+  progress: "in_transit" | "failed" | null;
   paymentStatus: OrderPaymentStatus;
   rider: OrderRider | null;
   location: string | null;
@@ -24,6 +26,7 @@ type Row = {
   order_ref: string;
   placed_at: string;
   status: OrderStatus;
+  delivery_progress: "in_transit" | "failed" | null;
   payment_status: OrderPaymentStatus;
   payment_ref: string | null;
   rider: OrderRider | null;
@@ -81,7 +84,7 @@ export async function findTrackedOrder(
   const { data } = await admin
     .from("orders")
     .select(
-      "order_ref, placed_at, status, payment_status, payment_ref, rider, location, delivery_address, customer_phone, product_id, product_name, quantity, total",
+      "order_ref, placed_at, status, delivery_progress, payment_status, payment_ref, rider, location, delivery_address, customer_phone, product_id, product_name, quantity, total",
     )
     .eq("partner_id", partner.id)
     .eq("order_ref", ref)
@@ -107,6 +110,7 @@ export async function findTrackedOrder(
     orderRef: latest.order_ref,
     placedAt: latest.placed_at,
     stage: overallStage(itemRows.map((r) => r.status)),
+    progress: itemRows.find((r) => r.status === "Dispatched")?.delivery_progress ?? null,
     paymentStatus: latest.payment_status,
     rider: latest.rider,
     location: latest.location,

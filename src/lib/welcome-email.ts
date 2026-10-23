@@ -42,7 +42,7 @@ export async function sendWelcomeEmail(partnerId: string): Promise<void> {
 
   const plan = enterprise
     ? `You're on the <strong>Enterprise plan</strong>. Storage, the 9% fee and insurance come out of your wallet as they happen, so top up before your first orders. Your account manager will be in touch to agree your wallet minimum.`
-    : `You're on the <strong>Standard plan</strong>. You get one invoice at the start of each month for storage and 7% of the month's sales, with 3 days to pay.`;
+    : `You're on the <strong>Standard plan</strong>. You get one invoice at the start of each month for storage and 7% of the month's sales, with 3 business days to pay.`;
 
   const sent = await sendAlertEmail({
     to: [partner.email],

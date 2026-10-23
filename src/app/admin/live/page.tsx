@@ -6,7 +6,7 @@ import { LiveFeed, type FeedLine } from "./live-feed";
 export const metadata: Metadata = { title: "Live orders" };
 
 const LINE_FIELDS =
-  "id, partner_id, order_ref, customer_name, product_id, quantity, total, status, channel, location, delivery_method, placed_at, updated_at";
+  "id, partner_id, order_ref, customer_name, product_id, quantity, total, status, channel, location, delivery_method, delivery_progress, delivery_failed_attempts, placed_at, updated_at";
 
 /** Start of today in Lagos time (UTC+1), as an ISO string. */
 function startOfToday() {
