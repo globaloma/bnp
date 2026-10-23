@@ -1,5 +1,6 @@
 "use client";
 
+import { unitPrice } from "@/lib/product-price";
 import { Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -31,7 +32,7 @@ export function AddToCart({
       {
         productId: product.id,
         name: displayName(product),
-        price: product.sale_price,
+        price: unitPrice(product),
         vat: product.vat,
         shippingFee: product.shipping_fee,
         pickupEnabled: product.pickup_enabled,

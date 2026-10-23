@@ -53,6 +53,7 @@ export function ExportButtons({
                 Stock: p.stock,
                 CostPrice: p.cost_price,
                 SalePrice: p.sale_price,
+                PromoPrice: p.promo_price ?? "",
                 VAT: p.vat,
                 LastMoved: p.last_moved_at,
               })),

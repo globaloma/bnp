@@ -6,6 +6,7 @@ import { Plus, Boxes, Eye, EyeOff, Pencil, Printer, Upload, Download } from "luc
 import { toast } from "sonner";
 import { LOCATIONS, type Product, type WarehouseLocation } from "@/types/db";
 import { daysSince, naira } from "@/lib/format";
+import { onPromo, unitPrice } from "@/lib/product-price";
 import { STALE_DAYS_THRESHOLD, LOW_STOCK_THRESHOLD } from "@/types/db";
 import { isLowStock } from "@/lib/low-stock";
 import { cn } from "@/lib/utils";
@@ -224,7 +225,14 @@ function ProductCard({ item, merchantName }: { item: Product; merchantName: stri
         </div>
         <div className="flex items-center justify-between text-xs">
           <span className="font-semibold text-success">
-            {naira(item.sale_price)}
+            {onPromo(item) ? (
+              <>
+                {naira(unitPrice(item))}{" "}
+                <span className="font-normal text-mist line-through">{naira(item.sale_price)}</span>
+              </>
+            ) : (
+              naira(item.sale_price)
+            )}
           </span>
           <span className="text-mist">Cost {naira(item.cost_price)}</span>
         </div>
@@ -476,6 +484,26 @@ function ProductForm({
         </div>
       </div>
 
+      <div>
+        <label className={labelClass}>Promo price (₦)</label>
+        <input
+          name="promoPrice"
+          type="number"
+          min="0"
+          step="0.01"
+          defaultValue={base?.promo_price ?? ""}
+          className={fieldClass}
+          placeholder="Leave blank for no promo"
+        />
+        {errors?.promoPrice ? (
+          <p className="mt-1 text-xs text-destructive">{errors.promoPrice[0]}</p>
+        ) : (
+          <p className="mt-1 text-[11px] text-mist">
+            Customers pay this instead of the sale price until you clear it. Your store shows both.
+          </p>
+        )}
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className={labelClass}>VAT (%)</label>
@@ -679,9 +707,9 @@ function ProductForm({
 }
 
 const CSV_TEMPLATE_HEADER =
-  "sku,name,variant,category,cost_price,sale_price,vat,stock,location,shipping_fee,pickup_enabled,image_url,description,declared_value,weight_kg";
+  "sku,name,variant,category,cost_price,sale_price,vat,stock,location,shipping_fee,pickup_enabled,image_url,description,declared_value,weight_kg,promo_price";
 const CSV_TEMPLATE_EXAMPLE =
-  "ATB-RED,Ankara Tote,Red,Bags,4000,7500,7.5,20,Abuja,1200,false,,Hand-sewn Ankara print tote with inner pocket,6000,0.4";
+  "ATB-RED,Ankara Tote,Red,Bags,4000,7500,7.5,20,Abuja,1200,false,,Hand-sewn Ankara print tote with inner pocket,6000,0.4,";
 
 function downloadCsvTemplate() {
   const blob = new Blob([`${CSV_TEMPLATE_HEADER}\n${CSV_TEMPLATE_EXAMPLE}\n`], {
@@ -726,6 +754,16 @@ function parseCsvRows(rows: Record<string, string>[]): {
       errors.push(`Row ${line}: unknown location "${row.location}", defaulted to Abuja`);
     }
 
+    let promo: number | null | undefined;
+    if (row.promo_price !== undefined) {
+      const promoText = row.promo_price.trim();
+      promo = promoText ? Number(promoText) : null;
+      if (promo !== null && (!Number.isFinite(promo) || promo < 0 || promo >= salePrice)) {
+        errors.push(`Row ${line}: promo_price "${row.promo_price}" has to be lower than sale_price, left unchanged`);
+        promo = undefined;
+      }
+    }
+
     const weightText = row.weight_kg?.trim();
     const weight = weightText ? Number(weightText) : undefined;
     if (weight !== undefined && (!Number.isFinite(weight) || weight < 0 || weight > 10000)) {
@@ -738,6 +776,7 @@ function parseCsvRows(rows: Record<string, string>[]): {
       category: row.category?.trim() || undefined,
       cost_price: row.cost_price ? Number(row.cost_price) : undefined,
       sale_price: salePrice,
+      promo_price: promo,
       vat: row.vat ? Number(row.vat) : undefined,
       stock: row.stock ? Number(row.stock) : undefined,
       location: location && (LOCATIONS as string[]).includes(location) ? location : undefined,

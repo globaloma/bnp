@@ -70,7 +70,7 @@ export default async function StorePage({ params }: PageProps<"/store/[slug]">) 
   const { data: rawProducts } = await supabase
     .from("storefront_products")
     .select(
-      "id, partner_id, name, sku, category, sale_price, vat, stock, location, shipping_fee, pickup_enabled, image_url, description, variant, group_id",
+      "id, partner_id, name, sku, category, sale_price, promo_price, vat, stock, location, shipping_fee, pickup_enabled, image_url, description, variant, group_id",
     )
     .eq("partner_id", partner.id)
     .returns<StorefrontProduct[]>();

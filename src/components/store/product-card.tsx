@@ -1,5 +1,6 @@
 "use client";
 
+import { onPromo, unitPrice } from "@/lib/product-price";
 import { useState } from "react";
 import Link from "next/link";
 import { Boxes } from "lucide-react";
@@ -76,7 +77,10 @@ export function ProductCard({
 
         <div className="mt-2 flex items-center justify-between">
           <span className="text-base font-semibold text-success">
-            {naira(product.sale_price)}
+            {naira(unitPrice(product))}
+            {onPromo(product) ? (
+              <span className="ml-1.5 text-xs font-normal text-mist line-through">{naira(product.sale_price)}</span>
+            ) : null}
           </span>
           {outOfStock ? (
             <span className="text-xs font-semibold text-destructive">Out of stock</span>

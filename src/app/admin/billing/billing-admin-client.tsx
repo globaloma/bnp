@@ -410,3 +410,94 @@ export function AdjustWallet({ merchants }: { merchants: { id: string; name: str
     </Panel>
   );
 }
+
+export type InsuranceRow = {
+  id: string;
+  name: string;
+  stockValue: number;
+  /** Products in stock with no declared value, so not insured. */
+  missing: number;
+  history: { period: string | null; basis: number | null; amount: number }[];
+};
+
+export function InsuranceTable({ rows, rate }: { rows: InsuranceRow[]; rate: number }) {
+  return (
+    <section>
+      <h2 className="mb-1 text-sm font-semibold uppercase tracking-[0.08em] text-graphite">Insurance</h2>
+      <p className="mb-3 text-sm text-graphite">
+        Enterprise merchants pay {Math.round(rate * 10000) / 100}% of their stock value at month end, taken from the
+        wallet on the 1st. The estimate uses today&apos;s stock at declared values.
+      </p>
+      {rows.length === 0 ? (
+        <p className="rounded-lg border border-stone bg-card px-4 py-5 text-sm text-mist">No Enterprise merchants yet.</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {rows.map((r) => (
+            <InsuranceCard key={r.id} row={r} rate={rate} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function InsuranceCard({ row, rate }: { row: InsuranceRow; rate: number }) {
+  const [open, setOpen] = useState(false);
+  const estimate = Math.round(row.stockValue * rate * 100) / 100;
+  const last = row.history[0];
+  return (
+    <div className="rounded-lg border border-stone bg-card p-4">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+        <span className="min-w-40 font-semibold text-navy">{row.name}</span>
+        <span className="text-graphite">
+          Stock value <strong className="text-navy">{naira(row.stockValue)}</strong>
+        </span>
+        <span className="text-graphite">
+          Next charge about <strong className="text-navy">{naira(estimate)}</strong>
+        </span>
+        <span className="text-graphite">
+          Last charge{" "}
+          <strong className="text-navy">
+            {last ? `${naira(last.amount)} (${last.period ? monthName(last.period) : "-"})` : "none yet"}
+          </strong>
+        </span>
+        {row.missing > 0 ? (
+          <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-destructive">
+            {row.missing} product{row.missing === 1 ? "" : "s"} with no declared value
+          </span>
+        ) : null}
+        {row.history.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="ml-auto text-xs font-semibold text-teal-700 hover:underline"
+          >
+            {open ? "Hide history" : `History (${row.history.length})`}
+          </button>
+        ) : null}
+      </div>
+      {open ? (
+        <table className="mt-3 w-full border-t border-stone text-sm">
+          <thead>
+            <tr className="text-left text-[11px] uppercase tracking-[0.08em] text-mist">
+              <th className="py-2 font-semibold">Month</th>
+              <th className="py-2 text-right font-semibold">Stock value at month end</th>
+              <th className="py-2 text-right font-semibold">Charged</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-stone">
+            {row.history.map((h, i) => (
+              <tr key={i}>
+                <td className="py-1.5 text-navy">{h.period ? monthName(h.period) : "-"}</td>
+                <td className="py-1.5 text-right text-graphite tabular-nums">
+                  {h.basis === null ? "-" : naira(h.basis)}
+                </td>
+                <td className="py-1.5 text-right font-semibold text-navy tabular-nums">{naira(h.amount)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : null}
+    </div>
+  );
+}

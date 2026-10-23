@@ -68,6 +68,8 @@ export type Product = {
   category: string | null;
   cost_price: number;
   sale_price: number;
+  /** Lower price customers pay while set (migration 0030). */
+  promo_price: number | null;
   vat: number;
   stock: number;
   location: WarehouseLocation;
@@ -127,7 +129,7 @@ export type Invoice = {
 export type BillingCharge = {
   id: string;
   partner_id: string;
-  kind: "storage" | "insurance" | "fulfillment" | "adjustment";
+  kind: "storage" | "insurance" | "fulfillment" | "adjustment" | "delivery";
   period: string | null;
   order_ref: string | null;
   basis: number | null;
@@ -253,6 +255,7 @@ export type StorefrontProduct = {
   sku: string | null;
   category: string | null;
   sale_price: number;
+  promo_price: number | null;
   vat: number;
   stock: number;
   location: WarehouseLocation;

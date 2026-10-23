@@ -21,6 +21,8 @@ type CartContextValue = {
   addItem: (item: Omit<CartItem, "quantity">, quantity?: number) => void;
   removeItem: (productId: string) => void;
   setQuantity: (productId: string, quantity: number) => void;
+  /** Brings saved prices up to date, e.g. after a promo starts or ends. */
+  refreshPrices: (prices: Record<string, number>) => void;
   clear: () => void;
   count: number;
   subtotal: number;
@@ -87,6 +89,14 @@ export function CartProvider({ slug, children }: { slug: string; children: React
     );
   }
 
+  function refreshPrices(prices: Record<string, number>) {
+    setItems((prev) => {
+      const stale = prev.some((i) => prices[i.productId] !== undefined && prices[i.productId] !== i.price);
+      if (!stale) return prev;
+      return prev.map((i) => (prices[i.productId] !== undefined ? { ...i, price: prices[i.productId] } : i));
+    });
+  }
+
   function clear() {
     setItems([]);
     // Remove the saved copy too: a child calling clear() on mount (e.g. the
@@ -108,7 +118,7 @@ export function CartProvider({ slug, children }: { slug: string; children: React
 
   return (
     <CartContext.Provider
-      value={{ items, addItem, removeItem, setQuantity, clear, count, subtotal, vatTotal }}
+      value={{ items, addItem, removeItem, setQuantity, refreshPrices, clear, count, subtotal, vatTotal }}
     >
       {children}
     </CartContext.Provider>

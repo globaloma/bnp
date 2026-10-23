@@ -1,7 +1,9 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { sendWelcomeEmail } from "@/lib/welcome-email";
 import type { PartnerStatus } from "@/types/db";
 
 type ActionResult = { ok: true } | { ok: false; error: string };
@@ -19,6 +21,9 @@ export async function setPartnerStatus(
   });
 
   if (error) return { ok: false, error: error.message };
+
+  // First approval only; sendWelcomeEmail skips anyone already welcomed.
+  if (status === "active") after(() => sendWelcomeEmail(partnerId));
 
   revalidatePath("/admin/partners");
   return { ok: true };

@@ -1,3 +1,4 @@
+import { onPromo, unitPrice } from "@/lib/product-price";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -16,7 +17,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bnpfulfillment.com
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const PRODUCT_COLUMNS =
-  "id, partner_id, name, sku, category, sale_price, vat, stock, location, shipping_fee, pickup_enabled, image_url, description, variant, group_id";
+  "id, partner_id, name, sku, category, sale_price, promo_price, vat, stock, location, shipping_fee, pickup_enabled, image_url, description, variant, group_id";
 
 async function loadProduct(slug: string, productId: string) {
   if (!UUID.test(productId)) return null;
@@ -52,7 +53,7 @@ export async function generateMetadata({
   const { partner, product } = loaded;
   const description =
     product.description?.slice(0, 160) ??
-    `${product.name} from ${partner.business_name}, ${naira(product.sale_price)}.`;
+    `${product.name} from ${partner.business_name}, ${naira(unitPrice(product))}.`;
 
   // Falls back to the site default, which a page-level openGraph would
   // otherwise drop.
@@ -66,14 +67,14 @@ export async function generateMetadata({
     description,
     alternates: { canonical: path },
     openGraph: {
-      title: `${product.name} · ${naira(product.sale_price)}`,
+      title: `${product.name} · ${naira(unitPrice(product))}`,
       description,
       url: path,
       images,
     },
     twitter: {
       card: "summary_large_image",
-      title: `${product.name} · ${naira(product.sale_price)}`,
+      title: `${product.name} · ${naira(unitPrice(product))}`,
       description,
       images,
     },
@@ -138,7 +139,7 @@ export default async function ProductPage({
       "@type": "Offer",
       url: productUrl,
       priceCurrency: "NGN",
-      price: product.sale_price.toFixed(2),
+      price: unitPrice(product).toFixed(2),
       availability:
         product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       seller: { "@type": "Organization", name: partner.business_name },
@@ -211,8 +212,11 @@ export default async function ProductPage({
 
           <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <span className="text-2xl font-semibold text-success">
-              {naira(product.sale_price)}
+              {naira(unitPrice(product))}
             </span>
+            {onPromo(product) ? (
+              <span className="text-base text-mist line-through">{naira(product.sale_price)}</span>
+            ) : null}
             <span className={cn("text-sm font-semibold", stockLabel.tone)}>
               {stockLabel.text}
             </span>

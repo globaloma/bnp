@@ -1,5 +1,6 @@
 "use server";
 
+import { unitPrice } from "@/lib/product-price";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -50,7 +51,7 @@ export async function importOrders(rows: ImportRow[], options: { create: boolean
     supabase.from("partners").select("business_name, charges_vat").eq("id", user.id).single(),
     supabase
       .from("products")
-      .select("id, name, variant, sku, barcode, sale_price, vat, stock, location")
+      .select("id, name, variant, sku, barcode, sale_price, promo_price, vat, stock, location")
       .eq("partner_id", user.id),
   ]);
   type P = NonNullable<typeof products>[number];
@@ -78,7 +79,7 @@ export async function importOrders(rows: ImportRow[], options: { create: boolean
       const vatRates = lines.map(({ product }) => (partner?.charges_vat ? product.vat : 0));
       const totals = computeMultiLineTotals({
         lines: lines.map(({ product, quantity }, i) => ({
-          unitPrice: product.sale_price,
+          unitPrice: unitPrice(product),
           quantity,
           vatRate: vatRates[i],
         })),
@@ -110,7 +111,7 @@ export async function importOrders(rows: ImportRow[], options: { create: boolean
             product_id: product.id,
             product_name: product.name,
             quantity,
-            unit_price: product.sale_price,
+            unit_price: unitPrice(product),
             subtotal: t.subtotal,
             discount_type: null,
             discount_value: 0,

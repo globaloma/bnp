@@ -1,5 +1,6 @@
 "use client";
 
+import { onPromo, unitPrice } from "@/lib/product-price";
 import { STATUS_ACCENT } from "@/lib/order-status";
 import { useActionState, useMemo, useState, useTransition } from "react";
 import { Plus, PackageSearch, Search, Trash2 } from "lucide-react";
@@ -425,7 +426,7 @@ function CreateOrderForm({
   const totals = chosen.length
     ? computeMultiLineTotals({
         lines: chosen.map(({ product, quantity }) => ({
-          unitPrice: product.sale_price,
+          unitPrice: unitPrice(product),
           quantity,
           vatRate: chargesVat ? product.vat : 0,
         })),
@@ -495,7 +496,7 @@ function CreateOrderForm({
                 <option value="">Select a product</option>
                 {products.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name}, {naira(p.sale_price)} ({p.location})
+                    {p.name}, {naira(unitPrice(p))}{onPromo(p) ? " promo" : ""} ({p.location})
                   </option>
                 ))}
               </select>

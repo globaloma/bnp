@@ -1,5 +1,6 @@
 "use server";
 
+import { unitPrice } from "@/lib/product-price";
 import { redirect } from "next/navigation";
 import { checkoutSchema, type ActionResult } from "@/lib/schemas/checkout";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -70,7 +71,7 @@ export async function startCheckout(
   const { data: products } = await admin
     .from("products")
     .select(
-      "id, partner_id, name, variant, sale_price, vat, stock, shipping_fee, pickup_enabled, published, location, weight_kg",
+      "id, partner_id, name, variant, sale_price, promo_price, vat, stock, shipping_fee, pickup_enabled, published, location, weight_kg",
     )
     .in("id", productIds);
 
@@ -101,7 +102,7 @@ export async function startCheckout(
     }
     const vatRate = partner.charges_vat ? product.vat : 0;
     const totals = computeOrderTotals({
-      unitPrice: product.sale_price,
+      unitPrice: unitPrice(product),
       quantity: item.quantity,
       vatRate,
     });
@@ -109,7 +110,7 @@ export async function startCheckout(
       productId: product.id,
       name: displayName(product),
       quantity: item.quantity,
-      unitPrice: product.sale_price,
+      unitPrice: unitPrice(product),
       vatRate,
       subtotal: totals.subtotal,
       vatAmount: totals.vatAmount,

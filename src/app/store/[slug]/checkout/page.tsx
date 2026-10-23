@@ -1,3 +1,4 @@
+import { unitPrice } from "@/lib/product-price";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/public";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -25,7 +26,7 @@ export default async function CheckoutPage({
   const admin = createAdminClient();
   const { data: products } = await admin
     .from("products")
-    .select("id, location, weight_kg")
+    .select("id, location, weight_kg, sale_price, promo_price")
     .eq("partner_id", partner.id)
     .eq("published", true);
 
@@ -34,11 +35,12 @@ export default async function CheckoutPage({
     await Promise.all(hubs.map(async (hub) => [hub, await loadDeliveryOptions(admin, hub, partner.id)] as const)),
   ) as Partial<Record<WarehouseLocation, DeliveryOptions>>;
   const weights = Object.fromEntries((products ?? []).map((p) => [p.id, Number(p.weight_kg) || 0]));
+  const prices = Object.fromEntries((products ?? []).map((p) => [p.id, unitPrice(p)]));
 
   return (
     <div className="container-page max-w-lg py-8">
       <h1 className="mb-5 text-xl font-semibold text-navy">Checkout</h1>
-      <CheckoutForm slug={slug} options={options} weights={weights} />
+      <CheckoutForm slug={slug} options={options} weights={weights} prices={prices} />
     </div>
   );
 }

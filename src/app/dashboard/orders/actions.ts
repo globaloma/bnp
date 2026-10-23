@@ -1,5 +1,6 @@
 "use server";
 
+import { unitPrice } from "@/lib/product-price";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { computeMultiLineTotals, computeOrderTotals, generateOrderRef } from "@/lib/orders";
@@ -137,7 +138,7 @@ export async function createOrder(
 
   const { data: products, error: productError } = await supabase
     .from("products")
-    .select("id, name, sale_price, vat, stock, location, weight_kg")
+    .select("id, name, sale_price, promo_price, vat, stock, location, weight_kg")
     .in("id", [...quantities.keys()]);
 
   if (productError || !products || products.length !== quantities.size) {
@@ -193,7 +194,7 @@ export async function createOrder(
   }
   const totals = computeMultiLineTotals({
     lines: lines.map(({ product, quantity }, i) => ({
-      unitPrice: product.sale_price,
+      unitPrice: unitPrice(product),
       quantity,
       vatRate: vatRates[i],
     })),
@@ -215,7 +216,7 @@ export async function createOrder(
         product_id: product.id,
         product_name: product.name,
         quantity,
-        unit_price: product.sale_price,
+        unit_price: unitPrice(product),
         subtotal: t.subtotal,
         discount_type: d.discountType ?? null,
         discount_value: t.discountValue,

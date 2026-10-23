@@ -6,6 +6,11 @@ export const productSchema = z.object({
   category: z.string().trim().max(80).optional(),
   costPrice: z.coerce.number().min(0).default(0),
   salePrice: z.coerce.number().min(0.01, "Enter a sale price"),
+  // Optional lower price customers pay while it's set. Blank = no promo.
+  promoPrice: z
+    .union([z.literal(""), z.coerce.number().min(0, "Enter 0 or more")])
+    .optional()
+    .transform((v) => (v === "" || v === undefined ? null : v)),
   vat: z.coerce.number().min(0).max(100).default(7.5),
   // Units the merchant is sending to the warehouse with a new product. They
   // become an announced delivery; on-hand only changes when it's scanned in.
@@ -39,6 +44,9 @@ export const productSchema = z.object({
   imageUrl: z.string().trim().max(600).optional(),
   description: z.string().trim().max(2000, "Keep the description under 2,000 characters").optional(),
   published: z.coerce.boolean().default(true),
+}).refine((d) => d.promoPrice === null || d.promoPrice < d.salePrice, {
+  message: "The promo price has to be lower than the sale price",
+  path: ["promoPrice"],
 });
 
 export type ProductInput = z.infer<typeof productSchema>;

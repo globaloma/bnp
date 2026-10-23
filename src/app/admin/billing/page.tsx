@@ -6,8 +6,10 @@ import {
   AdjustWallet,
   DeclaredRequests,
   EnterpriseTable,
+  InsuranceTable,
   InvoicesTable,
   RunBilling,
+  type InsuranceRow,
   type DeclaredRequestRow,
   type MerchantRow,
 } from "./billing-admin-client";
@@ -16,7 +18,8 @@ export const metadata: Metadata = { title: "Billing" };
 
 export default async function AdminBillingPage() {
   const supabase = await createClient();
-  const [{ data: settings }, { data: merchants }, { data: invoices }, { data: requests }] = await Promise.all([
+  const [{ data: settings }, { data: merchants }, { data: invoices }, { data: requests }, { data: stock }, { data: insurance }] =
+    await Promise.all([
     supabase.from("billing_settings").select("*").single(),
     supabase
       .from("partners")
@@ -31,6 +34,13 @@ export default async function AdminBillingPage() {
       .select("*, product:products(name, variant, sku, on_hand), partner:partners(business_name)")
       .order("requested_at", { ascending: false })
       .limit(50),
+    supabase.from("products").select("partner_id, on_hand, declared_value").gt("on_hand", 0).limit(20000),
+    supabase
+      .from("billing_charges")
+      .select("partner_id, period, basis, amount")
+      .eq("kind", "insurance")
+      .order("period", { ascending: false })
+      .limit(1000),
   ]);
 
   const rows: MerchantRow[] = (merchants ?? []).map((m) => ({
@@ -46,6 +56,21 @@ export default async function AdminBillingPage() {
     active: m.status === "active",
   }));
   const names = new Map(rows.map((r) => [r.id, r.name]));
+
+  const insuranceRows: InsuranceRow[] = rows
+    .filter((r) => r.plan === "enterprise")
+    .map((r) => {
+      const mine = (stock ?? []).filter((p) => p.partner_id === r.id);
+      return {
+        id: r.id,
+        name: r.name,
+        stockValue: mine.reduce((s, p) => s + p.on_hand * Number(p.declared_value ?? 0), 0),
+        missing: mine.filter((p) => p.declared_value === null).length,
+        history: (insurance ?? [])
+          .filter((c) => c.partner_id === r.id)
+          .map((c) => ({ period: c.period, basis: c.basis === null ? null : Number(c.basis), amount: Number(c.amount) })),
+      };
+    });
 
   type Req = {
     id: string;
@@ -81,6 +106,7 @@ export default async function AdminBillingPage() {
         <EnterpriseTable rows={rows} rates={{ storage: Number(settings?.storage_rate ?? 10000), enterprise: Number(settings?.enterprise_rate ?? 0.09) }} />
         <InvoicesTable invoices={(invoices ?? []) as Invoice[]} names={Object.fromEntries(names)} />
         <DeclaredRequests rows={requestRows} />
+        <InsuranceTable rows={insuranceRows} rate={Number(settings?.insurance_rate ?? 0.0025)} />
         <AdjustWallet merchants={rows.map((r) => ({ id: r.id, name: r.name, balance: r.balance }))} />
       </div>
     </>

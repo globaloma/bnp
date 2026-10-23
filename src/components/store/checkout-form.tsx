@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Store, Truck } from "lucide-react";
 import { naira } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -31,12 +31,18 @@ export function CheckoutForm({
   slug,
   options: optionsByHub,
   weights,
+  prices,
 }: {
   slug: string;
   options: Partial<Record<WarehouseLocation, DeliveryOptions>>;
   weights: Record<string, number>;
+  /** Today's price per product, so a basket saved before a promo changed shows what will be charged. */
+  prices: Record<string, number>;
 }) {
-  const { items, subtotal, vatTotal } = useCart();
+  const { items, subtotal, vatTotal, refreshPrices } = useCart();
+  useEffect(() => {
+    refreshPrices(prices);
+  }, [items, prices, refreshPrices]);
   const boundAction = startCheckout.bind(null, slug);
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
     boundAction,

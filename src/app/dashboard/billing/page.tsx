@@ -23,6 +23,14 @@ function beforeFirstRun(startMonth: string) {
   return Date.now() < firstRunDate(startMonth).getTime();
 }
 
+/** When the next monthly deduction runs: the 1st of next month, 00:05 WAT. */
+function nextDeduction(startMonth: string | undefined) {
+  const now = new Date();
+  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 12));
+  const first = startMonth ? firstRunDate(startMonth) : next;
+  return (first > next ? first : next).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" });
+}
+
 function monthName(date: string) {
   return new Date(date + "T12:00:00Z").toLocaleDateString("en-NG", { month: "long", year: "numeric" });
 }
@@ -34,8 +42,14 @@ export default async function BillingPage() {
   const enterprise = partner.plan_type === "enterprise";
 
   const supabase = await createClient();
-  const [{ data: settings }, { data: invoices }, { data: charges }, { data: products }, { data: requests }] =
-    await Promise.all([
+  const [
+    { data: settings },
+    { data: invoices },
+    { data: charges },
+    { data: products },
+    { data: requests },
+    { data: insuranceRows },
+  ] = await Promise.all([
       supabase.from("billing_settings").select("*").single(),
       supabase.from("invoices").select("*").eq("partner_id", partner.id).order("period", { ascending: false }),
       supabase
@@ -54,6 +68,13 @@ export default async function BillingPage() {
         .select("product_id, requested_value, status")
         .eq("partner_id", partner.id)
         .eq("status", "pending"),
+      supabase
+        .from("billing_charges")
+        .select("*")
+        .eq("partner_id", partner.id)
+        .eq("kind", "insurance")
+        .order("period", { ascending: false })
+        .limit(24),
     ]);
 
   const startMonth = settings?.start_month as string | undefined;
@@ -154,6 +175,12 @@ export default async function BillingPage() {
             />
             <StatCard label="Storage" value={`${partner.storage_sqm} m²`} sub={`${naira(storageMonthly)} a month`} accent="teal" />
             <StatCard label="Wallet balance" value={naira(partner.wallet_balance)} sub="Can pay invoices" accent="gold" />
+            <StatCard
+              label="Stock value"
+              value={naira(stockValue)}
+              sub={missing ? `${missing} product${missing === 1 ? "" : "s"} with no value yet` : "At your declared values"}
+              accent="success"
+            />
           </>
         )}
       </div>
@@ -179,6 +206,10 @@ export default async function BillingPage() {
               values. Insurance is 0.25% of the value at month end, about{" "}
               <strong className="text-navy">{naira(insuranceMonthly)}</strong> a month at today&apos;s stock.
             </p>
+            <p className="mt-2 text-xs text-graphite">
+              Next deduction: <strong className="text-navy">{nextDeduction(startMonth)}</strong>, from your wallet,
+              based on your stock at the end of this month.
+            </p>
             {missing > 0 ? (
               <p className="mt-2 text-xs font-semibold text-destructive">
                 {missing} product{missing === 1 ? " has" : "s have"} no declared value, so {missing === 1 ? "it isn't" : "they aren't"} insured yet.
@@ -199,6 +230,13 @@ export default async function BillingPage() {
           <ChargesTable charges={(charges ?? []) as BillingCharge[]} />
         </section>
       )}
+
+      {enterprise ? (
+        <section className="mb-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.08em] text-graphite">Insurance history</h2>
+          <InsuranceHistory rows={(insuranceRows ?? []) as BillingCharge[]} />
+        </section>
+      ) : null}
 
       <section>
         <h2 className="mb-1 text-sm font-semibold uppercase tracking-[0.08em] text-graphite">Declared stock values</h2>
@@ -221,6 +259,7 @@ function ChargesTable({ charges }: { charges: BillingCharge[] }) {
     insurance: "Insurance",
     fulfillment: "Fulfillment (9%)",
     adjustment: "Adjustment",
+    delivery: "Delivery",
   };
   return (
     <div className="overflow-x-auto rounded-lg border border-stone bg-card">
@@ -244,6 +283,48 @@ function ChargesTable({ charges }: { charges: BillingCharge[] }) {
               <td className="px-4 py-2.5 text-right font-semibold whitespace-nowrap text-navy tabular-nums">
                 {c.amount < 0 ? "+" : ""}
                 {naira(Math.abs(Number(c.amount)))}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function InsuranceHistory({ rows }: { rows: BillingCharge[] }) {
+  if (rows.length === 0) {
+    return (
+      <p className="rounded-lg border border-stone bg-card px-4 py-5 text-sm text-mist">
+        No insurance charges yet. The first one is taken at the start of the month after billing begins.
+      </p>
+    );
+  }
+  return (
+    <div className="overflow-x-auto rounded-lg border border-stone bg-card">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-stone text-left text-[11px] uppercase tracking-[0.08em] text-mist">
+            <th className="px-4 py-2.5 font-semibold">Month</th>
+            <th className="px-4 py-2.5 text-right font-semibold">Stock value at month end</th>
+            <th className="px-4 py-2.5 text-right font-semibold">Rate</th>
+            <th className="px-4 py-2.5 text-right font-semibold">Charged</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-stone">
+          {rows.map((r) => (
+            <tr key={r.id}>
+              <td className="px-4 py-2.5 font-semibold whitespace-nowrap text-navy">
+                {r.period ? monthName(r.period) : "-"}
+              </td>
+              <td className="px-4 py-2.5 text-right whitespace-nowrap text-graphite tabular-nums">
+                {r.basis === null ? "-" : naira(Number(r.basis))}
+              </td>
+              <td className="px-4 py-2.5 text-right whitespace-nowrap text-graphite tabular-nums">
+                {r.rate === null ? "-" : `${Math.round(Number(r.rate) * 10000) / 100}%`}
+              </td>
+              <td className="px-4 py-2.5 text-right font-semibold whitespace-nowrap text-navy tabular-nums">
+                {naira(Number(r.amount))}
               </td>
             </tr>
           ))}

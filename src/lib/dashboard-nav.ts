@@ -9,6 +9,7 @@ import {
   FileBarChart,
   Bell,
   Users,
+  Radio,
   MessageSquareWarning,
   Archive,
   Truck,
@@ -61,6 +62,7 @@ export const fcDashboardNav: DashboardNavItem[] = [
 ];
 
 export const adminDashboardNav: DashboardNavItem[] = [
+  { href: "/admin/live", label: "Live orders", icon: Radio },
   { href: "/admin/partners", label: "Partners", icon: Users },
   { href: "/admin/billing", label: "Billing", icon: Banknote },
   { href: "/admin/delivery", label: "Delivery rates", icon: Truck },

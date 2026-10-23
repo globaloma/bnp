@@ -20,6 +20,8 @@ export type ProductCsvRow = {
   category?: string;
   cost_price?: number;
   sale_price: number;
+  /** null clears the promo; undefined (no column) leaves it alone. */
+  promo_price?: number | null;
   vat?: number;
   stock?: number;
   location?: WarehouseLocation;
@@ -51,6 +53,7 @@ export async function addProduct(
     category: formData.get("category") || undefined,
     costPrice: formData.get("costPrice") || 0,
     salePrice: formData.get("salePrice"),
+    promoPrice: formData.get("promoPrice") ?? "",
     vat: formData.get("vat") || 7.5,
     incoming: formData.get("incoming") || 0,
     location: formData.get("location"),
@@ -105,6 +108,7 @@ export async function addProduct(
     category: d.category || null,
     cost_price: d.costPrice,
     sale_price: d.salePrice,
+    promo_price: d.promoPrice,
     vat: d.vat,
     location: d.location,
     low_stock_threshold: d.lowStockThreshold,
@@ -167,6 +171,7 @@ export async function editProduct(
     category: formData.get("category") || undefined,
     costPrice: formData.get("costPrice") || 0,
     salePrice: formData.get("salePrice"),
+    promoPrice: formData.get("promoPrice") ?? "",
     vat: formData.get("vat") || 7.5,
     incoming: formData.get("incoming") || 0,
     location: formData.get("location"),
@@ -202,6 +207,7 @@ export async function editProduct(
       category: d.category || null,
       cost_price: d.costPrice,
       sale_price: d.salePrice,
+      promo_price: d.promoPrice,
       vat: d.vat,
       location: d.location,
       low_stock_threshold: d.lowStockThreshold,
@@ -260,6 +266,7 @@ export async function importProducts(
     category: r.category || null,
     cost_price: r.cost_price ?? 0,
     sale_price: r.sale_price,
+    ...(r.promo_price !== undefined ? { promo_price: r.promo_price } : {}),
     vat: r.vat ?? 7.5,
     variant: r.variant?.trim().slice(0, 60) || null,
     location: r.location && (LOCATIONS as string[]).includes(r.location) ? r.location : "Abuja",
@@ -278,7 +285,16 @@ export async function importProducts(
     .from("products")
     .upsert(payload, { onConflict: "partner_id,sku" });
 
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    if (error.message.includes("products_promo_price_check")) {
+      return {
+        ok: false,
+        error:
+          "A product's promo price would be the same as or more than its new sale price. Lower or clear the promo_price for that product and try again.",
+      };
+    }
+    return { ok: false, error: error.message };
+  }
 
   // Declared values lock once set, so the file can only fill in missing ones.
   for (const r of rows) {
