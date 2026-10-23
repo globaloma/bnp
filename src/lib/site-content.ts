@@ -347,7 +347,7 @@ export const pricing = {
       id: "standard",
       name: "Standard",
       tagline: "For growing Nigerian brands",
-      audience: "SME sellers with under 5,000 products, selling in Nigeria.",
+      audience: "SME sellers with under 5,000 products.",
       fee: "7%",
       feeUnit: "of monthly sales, all-inclusive",
       features: [
@@ -387,7 +387,7 @@ export const pricing = {
 
 /** Side-by-side comparison on the pricing page (Technical Specification v2, section 2.1). */
 export const planComparison = [
-  { feature: "Best for", standard: "SME sellers, under 5,000 products, selling in Nigeria", enterprise: "High-volume and international brands, 5,000+ products" },
+  { feature: "Best for", standard: "SME sellers, under 5,000 products", enterprise: "High-volume and international brands, 5,000+ products" },
   { feature: "Fulfillment fee", standard: "7% of monthly sales, all-inclusive", enterprise: "9% of monthly sales" },
   { feature: "Storage", standard: "₦10,000 per m² per month", enterprise: "₦10,000 per m² per month, negotiable at volume" },
   { feature: "Insurance", standard: "No separate charge", enterprise: "0.25% of month-end stock value" },
