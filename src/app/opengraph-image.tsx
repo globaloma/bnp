@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { company } from "@/lib/site-content";
 
@@ -9,7 +11,9 @@ export const alt = `${company.name}: storage, fulfillment and delivery across Ab
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default function OpengraphImage() {
+export default async function OpengraphImage() {
+  const png = await readFile(join(process.cwd(), "public/brand/bnp-icon.png"));
+  const icon = `data:image/png;base64,${png.toString("base64")}`;
   return new ImageResponse(
     (
       <div
@@ -25,19 +29,8 @@ export default function OpengraphImage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-          <svg width="88" height="88" viewBox="0 0 40 40" fill="none">
-            <rect width="40" height="40" rx="10" fill="#2E8B9A" />
-            <path
-              d="M11 15.5 20 11l9 4.5v9L20 29l-9-4.5v-9Z"
-              fill="#F8F5F0"
-              fillOpacity="0.12"
-              stroke="#F8F5F0"
-              strokeWidth="1.6"
-              strokeLinejoin="round"
-            />
-            <path d="m11 15.5 9 4.5 9-4.5M20 20v9" stroke="#F8F5F0" strokeWidth="1.6" strokeLinejoin="round" />
-            <circle cx="24.5" cy="14" r="2.4" fill="#E8A020" />
-          </svg>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={icon} width={88} height={88} alt="" />
           <div style={{ display: "flex", flexDirection: "column" }}>
             <div style={{ fontSize: 44, fontWeight: 700 }}>{company.name}</div>
             <div style={{ fontSize: 20, letterSpacing: 4, color: "#3aa0b2" }}>OPERATIONS PARTNER</div>

@@ -33,11 +33,11 @@ export function WhyUs() {
 
         <div className="relative min-h-80 lg:min-h-full">
           <Image
-            src="/images/marketing/warehouse-staff.jpg"
-            alt="A BNP warehouse team member checking stock on a tablet"
+            src="/images/marketing/bnp-team-full.jpg"
+            alt="The BNP Fulfillment team"
             fill
             sizes="(min-width: 1024px) 50vw, 100vw"
-            className="object-cover"
+            className="object-cover object-[center_70%] lg:object-center"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-navy/40 to-transparent lg:from-navy/60" />
           <div className="absolute right-6 bottom-6 left-6 rounded-xl bg-white/95 p-5 shadow-xl backdrop-blur sm:right-auto sm:max-w-xs">

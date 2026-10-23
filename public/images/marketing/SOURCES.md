@@ -28,3 +28,6 @@ commercial use, no attribution required).
 | `stock-check.jpg` | https://www.pexels.com/photo/5025639/ |
 | `warehouse-floor.jpg` | https://www.pexels.com/photo/4481259/ |
 | `online-store.jpg` | https://www.pexels.com/photo/6214476/ |
+
+Added 2026-10-23: `bnp-team-full.jpg` and `bnp-team-wide.jpg` are BNP's own team
+photo, supplied by BNP.

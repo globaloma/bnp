@@ -236,7 +236,7 @@ export const services = {
     {
       slug: "returns",
       icon: "Undo2",
-      image: "/images/marketing/warehouse-staff.jpg",
+      image: "/images/marketing/bnp-team-wide.jpg",
       title: "Returns and claims",
       body: "Returned items are checked and put back on the shelf or set aside. Damage claims come with photos, a full record and a written outcome.",
       bullets: [
@@ -495,7 +495,7 @@ export const hub = {
       city: "USA",
       area: "Texas",
       status: "Operational",
-      image: "/images/marketing/warehouse-staff.jpg",
+      image: "/images/marketing/bnp-team-wide.jpg",
       points: [
         "Serve diaspora customers",
         "Ideal for African export goods",
