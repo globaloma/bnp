@@ -45,7 +45,6 @@ export const nav = {
 // ---------------------------------------------------------------------------
 
 export const hero = {
-  eyebrow: "Fulfillment for Nigerian brands",
   title: "Your stock on our shelves. Your orders at their door.",
   subtitle:
     "BNP stores your inventory in Abuja, packs every order the day it comes in and delivers it to your customer. You keep selling. We handle everything after the sale.",

@@ -61,11 +61,7 @@ export function HomeHero() {
 
         <div className="container-page grid items-center gap-12 pt-20 pb-40 sm:pt-28 lg:grid-cols-[1.35fr_1fr] lg:pb-48">
           <Reveal>
-            <span className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-gold-300">
-              <span className="size-1.5 rounded-full bg-gold" />
-              {hero.eyebrow}
-            </span>
-            <h1 className="mt-6 font-display text-[2.6rem] leading-[1.04] font-extrabold tracking-tight text-balance text-white sm:text-6xl lg:text-[4.2rem]">
+            <h1 className="font-display text-[2.6rem] leading-[1.04] font-extrabold tracking-tight text-balance text-white sm:text-6xl lg:text-[4.2rem]">
               {hero.title}
             </h1>
             <p className="mt-6 max-w-xl text-base leading-relaxed text-white/75 sm:text-lg">
