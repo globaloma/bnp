@@ -679,9 +679,9 @@ function ProductForm({
 }
 
 const CSV_TEMPLATE_HEADER =
-  "sku,name,variant,category,cost_price,sale_price,vat,stock,location,shipping_fee,pickup_enabled,image_url,description,declared_value";
+  "sku,name,variant,category,cost_price,sale_price,vat,stock,location,shipping_fee,pickup_enabled,image_url,description,declared_value,weight_kg";
 const CSV_TEMPLATE_EXAMPLE =
-  "ATB-RED,Ankara Tote,Red,Bags,4000,7500,7.5,20,Abuja,1200,false,,Hand-sewn Ankara print tote with inner pocket";
+  "ATB-RED,Ankara Tote,Red,Bags,4000,7500,7.5,20,Abuja,1200,false,,Hand-sewn Ankara print tote with inner pocket,6000,0.4";
 
 function downloadCsvTemplate() {
   const blob = new Blob([`${CSV_TEMPLATE_HEADER}\n${CSV_TEMPLATE_EXAMPLE}\n`], {
@@ -726,6 +726,12 @@ function parseCsvRows(rows: Record<string, string>[]): {
       errors.push(`Row ${line}: unknown location "${row.location}", defaulted to Abuja`);
     }
 
+    const weightText = row.weight_kg?.trim();
+    const weight = weightText ? Number(weightText) : undefined;
+    if (weight !== undefined && (!Number.isFinite(weight) || weight < 0 || weight > 10000)) {
+      errors.push(`Row ${line}: weight_kg "${row.weight_kg}" isn't a weight in kg, left unchanged`);
+    }
+
     valid.push({
       sku,
       name,
@@ -743,6 +749,7 @@ function parseCsvRows(rows: Record<string, string>[]): {
       // import knows the file has a description column.
       description: row.description !== undefined ? row.description.trim() : undefined,
       declared_value: row.declared_value ? Number(row.declared_value) : undefined,
+      weight_kg: weight !== undefined && Number.isFinite(weight) && weight >= 0 && weight <= 10000 ? weight : undefined,
     });
   });
 

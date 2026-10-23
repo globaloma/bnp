@@ -29,6 +29,8 @@ export type ProductCsvRow = {
   description?: string;
   /** Value per unit; only fills products that don't have one yet. */
   declared_value?: number;
+  /** Weight of one unit in kg, for delivery prices. Blank leaves it as is. */
+  weight_kg?: number;
   variant?: string;
   published?: boolean;
 };
@@ -265,6 +267,10 @@ export async function importProducts(
     pickup_enabled: r.pickup_enabled ?? false,
     image_url: r.image_url || null,
     ...(hasDescription ? { description: r.description?.trim().slice(0, 2000) || null } : {}),
+    // A blank weight keeps whatever the product already has.
+    ...(r.weight_kg !== undefined && Number.isFinite(r.weight_kg) && r.weight_kg >= 0 && r.weight_kg <= 10000
+      ? { weight_kg: r.weight_kg }
+      : {}),
     published: r.published ?? true,
   }));
 
