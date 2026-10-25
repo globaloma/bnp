@@ -14,7 +14,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bnpfulfillment.com
 export async function generateMetadata(): Promise<Metadata> {
   const origin = await getShopOrigin();
   return {
-    title: { default: "BNP Shop: shop Nigerian brands, delivered by BNP", template: "%s | BNP Shop" },
+    title: { absolute: "BNP Shop: shop Nigerian brands, delivered by BNP", template: "%s | BNP Shop" },
     description:
       "Shop products from Nigerian brands in one place. Every order is stored, packed and delivered by BNP Fulfillment.",
     metadataBase: new URL(origin.endsWith("/marketplace") ? SITE_URL : origin),
