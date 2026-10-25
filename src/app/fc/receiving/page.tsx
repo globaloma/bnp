@@ -51,7 +51,7 @@ export default async function ReceivingPage() {
     <>
       <PageHeader
         title="Receiving"
-        description="Deliveries merchants have told us are on the way. Open one to scan the items in as they arrive; each scan adds to on-hand stock."
+        description="Deliveries merchants have told us are on the way. Open one to scan the items in as they arrive; scanned items wait for putaway and become sellable once they are in a bin."
       />
       <ReceivingClient
         open={summarize(open)}
