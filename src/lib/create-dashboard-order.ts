@@ -109,8 +109,15 @@ export async function createDashboardOrder(
   let pickupAt: string | null = null;
   if (method === "walk_in") {
     const when = d.pickupAt ? new Date(`${d.pickupAt}:00+01:00`) : null;
-    if (!when || Number.isNaN(when.getTime()) || when.getTime() < Date.now()) {
+    if (!when || Number.isNaN(when.getTime())) {
       return { ok: false, error: "Choose when the customer will collect.", fieldErrors: { pickupAt: ["Choose a time"] } };
+    }
+    if (when.getTime() < Date.now()) {
+      return {
+        ok: false,
+        error: "That collection time has already passed.",
+        fieldErrors: { pickupAt: ["Choose a time later than now (Nigeria time)"] },
+      };
     }
     pickupAt = when.toISOString();
   }

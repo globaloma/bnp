@@ -25,6 +25,11 @@ const labelClass = "mb-1 block text-xs font-semibold text-graphite";
 const fieldClass =
   "h-10 w-full rounded-md border border-stone bg-white px-3 text-sm text-navy outline-none focus:border-teal focus:ring-2 focus:ring-teal/20";
 
+/** Now in Nigeria time as a datetime-local value, the earliest collection time. */
+function nowInLagos() {
+  return new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16);
+}
+
 /** What the merchant pays BNP for this choice, or null if it can't be priced. */
 export function choiceFee(options: DeliveryOptions, choice: DeliveryChoice): number | null {
   if (choice.method === "own_rider") return choice.ownFee;
@@ -149,6 +154,7 @@ export function DeliveryPicker({
               <label className={labelClass}>Collection date and time</label>
               <input
                 type="datetime-local"
+                min={nowInLagos()}
                 value={choice.pickupAt}
                 onChange={(e) => set({ pickupAt: e.target.value })}
                 className={fieldClass}
