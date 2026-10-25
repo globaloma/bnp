@@ -67,6 +67,16 @@ export async function customerSignUp(_prev: AccountResult | null, formData: Form
           : error.message,
     };
   }
+  // Supabase answers a sign-up for an email that already has an account
+  // with a stand-in user that has no identities, and sends nothing. That
+  // email may be a BNP business login, which can't double as a shop account.
+  if (data.user && (data.user.identities ?? []).length === 0) {
+    return {
+      ok: false,
+      error:
+        "This email already has an account. Sign in instead, or if it's your BNP business login, use a different email for your shop account.",
+    };
+  }
   if (!data.session) {
     return { ok: true, message: `We sent a confirmation link to ${d.email}. Open it to finish creating your account.` };
   }
