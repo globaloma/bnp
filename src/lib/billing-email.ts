@@ -80,6 +80,20 @@ function render(n: Notice, name: string): { subject: string; html: string } | nu
           { label: "Top up wallet", href: "/dashboard/wallet" },
         ),
       };
+    case "wallet_locked":
+      return {
+        subject: "New orders are on hold: please top up your BNP wallet",
+        html: wrap(
+          "New orders on hold",
+          `${hi} at the end of ${month(p.period)} your wallet balance was ${money(p.balance)}, which isn't above your agreed minimum of ${money(p.minimum)}. New orders are on hold until you top up. Orders already placed are not affected, and new orders open again as soon as your balance is above the minimum.`,
+          { label: "Top up wallet", href: "/dashboard/wallet" },
+        ),
+      };
+    case "wallet_unlocked":
+      return {
+        subject: "You can create orders again",
+        html: wrap("Orders open again", `${hi} thank you for topping up. Your wallet is above your minimum, so you can create new orders again.`),
+      };
     case "orders_resumed":
       return {
         subject: "Your BNP orders have resumed",
@@ -129,6 +143,17 @@ export async function sendQueuedBillingNotices(): Promise<number> {
     await sendAlertEmail({ to: [partner.email], ...message });
     sent++;
     // The team hears about Enterprise pauses too, so someone can follow up.
+    if (n.kind === "wallet_locked") {
+      await sendAlertEmail({
+        to: TEAM,
+        subject: `New orders blocked for ${partner.business_name}`,
+        html: wrap(
+          "Enterprise wallet not funded at month end",
+          `${escapeHtml(partner.business_name)}'s wallet (${money(n.payload.balance)}) wasn't above its minimum of ${money(n.payload.minimum)} at month end, so they can't create new orders until they top up. Admins can still create orders for them, or lift the block on the Billing page.`,
+          { label: "Open billing", href: "/admin/billing" },
+        ),
+      });
+    }
     if (n.kind === "orders_paused") {
       await sendAlertEmail({
         to: TEAM,

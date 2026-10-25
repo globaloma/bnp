@@ -30,6 +30,14 @@ export async function runBilling(period: string): Promise<Result> {
   );
 }
 
+export async function setWalletLock(partnerId: string, locked: boolean): Promise<Result> {
+  if (!uuid.safeParse(partnerId).success) return { ok: false, error: "Merchant not found." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_set_wallet_lock", { p_partner: partnerId, p_locked: locked });
+  if (error) return { ok: false, error: friendly(error.message) };
+  return done(locked ? "Orders blocked" : "Block lifted: they can create orders again");
+}
+
 export async function setEnterpriseTerms(partnerId: string, minimum: number, manager: string): Promise<Result> {
   if (!uuid.safeParse(partnerId).success) return { ok: false, error: "Merchant not found." };
   const supabase = await createClient();

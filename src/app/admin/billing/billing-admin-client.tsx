@@ -8,7 +8,7 @@ import { naira } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/dashboard/ui";
-import { adjustWallet, decideDeclaredValue, invoiceAction, runBilling, setEnterpriseTerms } from "./actions";
+import { adjustWallet, decideDeclaredValue, invoiceAction, runBilling, setEnterpriseTerms, setWalletLock } from "./actions";
 
 const field = "h-9 rounded-md border border-stone bg-white px-2.5 text-sm text-navy";
 
@@ -87,6 +87,7 @@ export type MerchantRow = {
   manager: string | null;
   locked: boolean;
   paused: boolean;
+  walletLocked: boolean;
   active: boolean;
 };
 
@@ -138,6 +139,21 @@ function MerchantCard({ row, rates }: { row: MerchantRow; rates: { storage: numb
         {row.paused ? (
           <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-destructive">
             Orders paused: wallet at minimum
+          </span>
+        ) : null}
+        {row.walletLocked && row.plan === "enterprise" ? (
+          <span className="flex items-center gap-2">
+            <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-destructive">
+              New orders blocked: wallet not funded at month end
+            </span>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => run(() => setWalletLock(row.id, false))}
+              className="text-xs font-semibold text-teal-700 hover:underline disabled:opacity-50"
+            >
+              Lift block
+            </button>
           </span>
         ) : null}
       </div>

@@ -43,6 +43,9 @@ export type Partner = {
   billing_locked: boolean;
   /** Enterprise: wallet at or below the minimum, so picking and dispatch pause. */
   orders_paused: boolean;
+  /** Enterprise: wallet not funded above the minimum at month end, so new orders are blocked (0032). */
+  wallet_locked: boolean;
+  wallet_locked_at: string | null;
   wallet_alert: "ok" | "low" | "floor";
   slug: string;
   charges_vat: boolean;
@@ -235,6 +238,8 @@ export type Order = {
   delivery_progress_at: string | null;
   delivery_failed_attempts: number;
   delivery_failure_note: string | null;
+  /** Set when an admin created the order for the merchant (0032). */
+  created_by: string | null;
   subtotal: number;
   placed_at: string;
   created_at: string;

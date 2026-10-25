@@ -5,6 +5,7 @@ import {
   deliveredToday,
   isFulfillmentRestricted,
   ordersToday,
+  restrictionMessage,
   pendingReview,
   revenueInFlight,
 } from "@/lib/dashboard-metrics";
@@ -39,7 +40,7 @@ export default async function OrdersPage() {
 
       {restricted ? (
         <div className="mb-5 rounded-lg bg-destructive px-4 py-3 text-sm font-semibold text-white">
-          Your account is paused because an invoice is overdue. Pay it on the Billing page to create new orders.
+          {restrictionMessage(partner)}
         </div>
       ) : null}
 

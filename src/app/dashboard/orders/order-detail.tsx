@@ -134,7 +134,14 @@ export function OrderDetail({
   return (
     <div className="flex max-h-[75vh] flex-col gap-4 overflow-y-auto pr-1">
       <div className="rounded-lg border border-stone bg-card p-3 text-xs">
-        <div className="font-semibold text-navy">{first.customer_name}</div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-semibold text-navy">{first.customer_name}</span>
+          {first.created_by ? (
+            <span className="rounded-full bg-teal/10 px-2 py-0.5 text-[10px] font-semibold text-teal-700">
+              Created by BNP
+            </span>
+          ) : null}
+        </div>
         {first.customer_phone ? <div className="text-mist">{first.customer_phone}</div> : null}
         {first.customer_email ? <div className="text-mist">{first.customer_email}</div> : null}
         {first.delivery_address ? (

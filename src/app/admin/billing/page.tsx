@@ -24,7 +24,7 @@ export default async function AdminBillingPage() {
     supabase
       .from("partners")
       .select(
-        "id, business_name, plan_type, storage_sqm, wallet_balance, wallet_buffer, account_manager, billing_locked, orders_paused, status",
+        "id, business_name, plan_type, storage_sqm, wallet_balance, wallet_buffer, account_manager, billing_locked, orders_paused, wallet_locked, status",
       )
       .eq("role", "merchant")
       .order("business_name"),
@@ -53,6 +53,7 @@ export default async function AdminBillingPage() {
     manager: m.account_manager,
     locked: m.billing_locked,
     paused: m.orders_paused,
+    walletLocked: m.wallet_locked,
     active: m.status === "active",
   }));
   const names = new Map(rows.map((r) => [r.id, r.name]));

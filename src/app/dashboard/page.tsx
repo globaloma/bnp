@@ -6,6 +6,7 @@ import { AlertTriangle, PackageSearch } from "lucide-react";
 import { getAuthedPartner, getDashboardData } from "@/lib/data/partner";
 import {
   isFulfillmentRestricted,
+  restrictionMessage,
   lowStockProducts,
   staleProducts,
   walletAvailable,
@@ -56,7 +57,7 @@ export default async function DashboardOverviewPage() {
       {restricted ? (
         <div className="mb-5 flex items-center gap-3 rounded-lg bg-destructive px-4 py-3 text-sm font-semibold text-white">
           <AlertTriangle className="size-4 shrink-0" />
-          Your account is paused because an invoice is overdue. Pay it on the Billing page to resume.
+          {restrictionMessage(partner)}
         </div>
       ) : null}
 

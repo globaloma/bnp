@@ -56,14 +56,14 @@ export async function startCheckout(
 
   const { data: partner } = await admin
     .from("partners")
-    .select("id, status, charges_vat, billing_locked")
+    .select("id, status, charges_vat, billing_locked, wallet_locked, plan_type")
     .eq("slug", slug)
     .maybeSingle();
 
   if (!partner || partner.status !== "active") {
     return { ok: false, error: "This store is not available right now." };
   }
-  if (partner.billing_locked) {
+  if (partner.billing_locked || (partner.wallet_locked && partner.plan_type === "enterprise")) {
     return { ok: false, error: "This store isn't taking orders right now. Please try again later." };
   }
 

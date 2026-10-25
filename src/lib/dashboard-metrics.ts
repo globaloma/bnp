@@ -48,12 +48,23 @@ export function walletAvailable(partner: Partner): number {
 }
 
 /**
- * Standard merchants with an overdue invoice can't create orders until it's
- * paid (billing_locked, migration 0028). Enterprise merchants can still take
- * orders when their wallet hits the minimum; the warehouse just holds them.
+ * New orders are blocked when a Standard invoice is overdue (billing_locked,
+ * migration 0028) or when an Enterprise wallet wasn't funded above the
+ * minimum at month end (wallet_locked, migration 0032).
  */
 export function isFulfillmentRestricted(partner: Partner): boolean {
-  return partner.billing_locked;
+  return partner.billing_locked || (partner.plan_type === "enterprise" && partner.wallet_locked);
+}
+
+/** Why new orders are blocked, in the merchant's words, or null. */
+export function restrictionMessage(partner: Partner): string | null {
+  if (partner.billing_locked) {
+    return "Your account is paused because an invoice is overdue. Pay it on the Billing page to create new orders.";
+  }
+  if (partner.plan_type === "enterprise" && partner.wallet_locked) {
+    return "New orders are on hold because your wallet wasn't funded above your agreed minimum at month end. Top up your wallet to create orders again.";
+  }
+  return null;
 }
 
 /** Enterprise only: the wallet is close to, or at, the agreed minimum. */

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getAuthedPartner, getDashboardData } from "@/lib/data/partner";
-import { isFulfillmentRestricted, isWalletLow, walletAvailable } from "@/lib/dashboard-metrics";
+import { isFulfillmentRestricted, isWalletLow, restrictionMessage, walletAvailable } from "@/lib/dashboard-metrics";
 import { naira, formatDate } from "@/lib/format";
 import { PageHeader, Panel, EmptyState } from "@/components/dashboard/ui";
 import { Receipt } from "lucide-react";
@@ -49,7 +49,7 @@ export default async function WalletPage() {
         </div>
         {restricted ? (
           <p className="mt-3 text-xs font-semibold text-destructive">
-            Fulfillment access suspended until you top up.
+            {restrictionMessage(partner)}
           </p>
         ) : null}
       </div>

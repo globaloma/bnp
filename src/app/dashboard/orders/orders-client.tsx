@@ -373,16 +373,19 @@ function OrderGroupRow({
   );
 }
 
-function CreateOrderForm({
+export function CreateOrderForm({
   products,
   chargesVat,
   deliveryOptions,
   onDone,
+  action = createOrder,
 }: {
   products: Product[];
   chargesVat: boolean;
   deliveryOptions: Partial<Record<WarehouseLocation, DeliveryOptions>>;
   onDone: () => void;
+  /** Admins pass their own action that creates the order for a merchant. */
+  action?: (prev: ActionResult | null, formData: FormData) => Promise<ActionResult>;
 }) {
   const [lines, setLines] = useState<{ key: string; productId: string; quantity: number }[]>(
     () => [{ key: crypto.randomUUID(), productId: "", quantity: 1 }],
@@ -401,7 +404,7 @@ function CreateOrderForm({
 
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
     async (prev, formData) => {
-      const result = await createOrder(prev, formData);
+      const result = await action(prev, formData);
       if (result.ok) {
         toast.success("Order created");
         onDone();
