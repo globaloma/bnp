@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { OrderPaymentStatus, OrderRider, OrderStatus } from "@/types/db";
 
 // Public order lookup for /store/[slug]/track. Customers have no account,
-// and order refs are sequential per merchant (ORD-0041, ORD-0042...), so a
+// and an order ref (BNP-7K3M9P) is printed on receipts and labels, so a
 // ref alone would let anyone read anyone's order. The lookup needs the ref
 // AND the phone number given at checkout, and both kinds of miss return the
 // same "not found" so the page can't be used to confirm which refs exist.

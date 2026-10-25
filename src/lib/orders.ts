@@ -129,7 +129,8 @@ function randomRefCode(): string {
 }
 
 /**
- * A random order number like ORD-7K3M9P that this merchant hasn't used.
+ * A random order number like BNP-7K3M9P that this merchant hasn't used.
+ * Orders before 25 October 2026 start with ORD- instead; both stay valid.
  * Random rather than sequential so refs never repeat after an order is
  * deleted, can't collide between two simultaneous checkouts, and don't
  * reveal a merchant's order volume or let anyone guess other orders.
@@ -139,7 +140,7 @@ export async function generateOrderRef(
   partnerId: string,
 ): Promise<string> {
   for (let attempt = 0; attempt < 5; attempt++) {
-    const ref = `ORD-${randomRefCode()}`;
+    const ref = `BNP-${randomRefCode()}`;
     const { count, error } = await supabase
       .from("orders")
       .select("id", { count: "exact", head: true })

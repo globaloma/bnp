@@ -124,7 +124,7 @@ export function TrackOrderForm({ slug, initialRef }: { slug: string; initialRef:
             required
             value={orderRef}
             onChange={(e) => setOrderRef(e.target.value)}
-            placeholder="ORD-7K3M9P"
+            placeholder="BNP-7K3M9P"
             autoCapitalize="characters"
             className={fieldClass}
           />

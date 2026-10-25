@@ -20,8 +20,11 @@ export type QuarantineItem = {
   pending: number;
 };
 
-// Package labels look like BOXN-ORD-7KQ2MX; order numbers like ORD-7KQ2MX.
-const PACKAGE = /(^|-)ORD-/i;
+// Package labels look like BOXN-BNP-7KQ2MX; order numbers like BNP-7KQ2MX.
+// Orders before 25 October 2026 use ORD- instead. BNP- needs the full
+// 6-character code so a product barcode that happens to contain "BNP-"
+// isn't taken for a package.
+const PACKAGE = /(^|-)ORD-|(^|-)BNP-[2-9A-Z]{6}$/i;
 
 export function ReturnStation({ quarantine }: { quarantine: QuarantineItem[] }) {
   const [lines, setLines] = useState<ReturnLine[] | null>(null);
