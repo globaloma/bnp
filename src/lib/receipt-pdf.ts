@@ -5,6 +5,7 @@ import JsBarcode from "jsbarcode";
 import type { Order } from "@/types/db";
 import { formatDate } from "@/lib/format";
 import { company } from "@/lib/site-content";
+import { RECEIPT_LOGO } from "@/lib/receipt-logo";
 import { createClient } from "@/lib/supabase/client";
 import { buildReceiptShareMessage, normalizeNigerianPhone } from "@/lib/receipt";
 
@@ -55,17 +56,18 @@ export function buildReceiptPdf({
   const left = 14;
   const right = 196;
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.setTextColor(...NAVY);
-  doc.text(company.name, left, 20);
+  // Logo (icon with the name underneath), contact details beside it.
+  const logoHeight = 25;
+  const logoWidth = (logoHeight * RECEIPT_LOGO.width) / RECEIPT_LOGO.height;
+  doc.addImage(RECEIPT_LOGO.dataUrl, "JPEG", left, 11, logoWidth, logoHeight);
 
+  const contactX = left + logoWidth + 6;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor(...GRAPHITE);
-  doc.text(company.website, left, 26);
-  doc.text(company.email, left, 30.5);
-  doc.text(company.phoneDisplay, left, 35);
+  doc.text(company.website, contactX, 20);
+  doc.text(company.email, contactX, 24.5);
+  doc.text(company.phoneDisplay, contactX, 29);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
