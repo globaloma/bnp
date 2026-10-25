@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Download } from "lucide-react";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { naira } from "@/lib/format";
 import { methodLabel } from "@/lib/delivery-methods";
 import { cn } from "@/lib/utils";
 import { OrderStatusBadge, StatCard } from "@/components/dashboard/ui";
 import { DeliveryProgressTag } from "@/components/dashboard/delivery-progress";
+import { buildReceiptPdf } from "@/lib/receipt-pdf";
 import type { Order } from "@/types/db";
 
 export type FeedLine = Pick<
@@ -94,6 +97,49 @@ function when(iso: string) {
   return d.toDateString() === new Date().toDateString()
     ? t
     : `${d.toLocaleDateString("en-NG", { day: "numeric", month: "short" })}, ${t}`;
+}
+
+/** Every line of the order, fresh from the database, as the receipt PDF. */
+function ReceiptButton({ partnerId, orderRef, merchantName }: { partnerId: string; orderRef: string; merchantName: string }) {
+  const [busy, setBusy] = useState(false);
+  async function download() {
+    setBusy(true);
+    try {
+      const { data, error } = await createClient()
+        .from("orders")
+        .select("*")
+        .eq("partner_id", partnerId)
+        .eq("order_ref", orderRef)
+        .order("placed_at");
+      if (error || !data?.length) throw new Error("Could not load this order.");
+      const lines = (data as Order[]).map((l) => ({
+        ...l,
+        subtotal: Number(l.subtotal),
+        discount_amount: Number(l.discount_amount),
+        vat_amount: Number(l.vat_amount),
+        delivery_fee: Number(l.delivery_fee),
+        unit_price: Number(l.unit_price),
+        total: Number(l.total),
+      }));
+      buildReceiptPdf({ orderRef, lines, merchantName }).save(`${orderRef}.pdf`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not create the receipt");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={download}
+      disabled={busy}
+      title="Download receipt (PDF)"
+      className="inline-flex h-7 items-center gap-1.5 rounded-md border border-stone bg-card px-2.5 text-[11px] font-semibold whitespace-nowrap text-graphite transition-colors hover:border-teal/40 hover:text-teal-700 disabled:opacity-50"
+    >
+      <Download className="size-3.5" />
+      {busy ? "Creating" : "Receipt"}
+    </button>
+  );
 }
 
 export function LiveFeed({
@@ -202,6 +248,9 @@ export function LiveFeed({
                 <th className="px-4 py-2.5 font-semibold">Delivery</th>
                 <th className="px-4 py-2.5 text-right font-semibold">Total</th>
                 <th className="px-4 py-2.5 font-semibold">Status</th>
+                <th className="px-4 py-2.5 font-semibold">
+                  <span className="sr-only">Receipt</span>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone">
@@ -229,6 +278,13 @@ export function LiveFeed({
                         order={{ status: f.status, delivery_progress: f.progress, delivery_failed_attempts: f.attempts }}
                       />
                     </div>
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <ReceiptButton
+                      partnerId={f.partnerId}
+                      orderRef={f.ref}
+                      merchantName={merchants[f.partnerId] ?? "Merchant"}
+                    />
                   </td>
                 </tr>
               ))}
