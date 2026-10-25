@@ -1,5 +1,7 @@
 import { confirmPayment, confirmTransfer, confirmWalletTopup, verifyWebhookSignature } from "@/lib/paystack";
 import { confirmInvoicePayment } from "@/lib/invoice-payment";
+import { confirmMarketplacePayment } from "@/lib/marketplace/payment";
+import { defaultShopOrigin } from "@/lib/marketplace/shop";
 
 export async function POST(req: Request) {
   const rawBody = await req.text();
@@ -18,10 +20,12 @@ export async function POST(req: Request) {
 
   if (event.event === "charge.success" && event.data?.reference) {
     const reference = event.data.reference;
-    // Wallet top-ups start "WTU-", invoice payments "BIL-"; anything else
-    // is a storefront order reference.
+    // Wallet top-ups start "WTU-", BNP Shop payments "MKT-", invoice
+    // payments "BIL-"; anything else is a storefront order reference.
     const result = reference.startsWith("WTU-")
       ? await confirmWalletTopup(reference)
+      : reference.startsWith("MKT-")
+        ? await confirmMarketplacePayment(reference, defaultShopOrigin())
       : reference.startsWith("BIL-")
         ? await confirmInvoicePayment(reference)
         : await confirmPayment(reference);

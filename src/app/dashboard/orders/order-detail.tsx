@@ -53,9 +53,10 @@ export function OrderDetail({
   const first = lines[0];
   // Any goods line still out for delivery carries the delivery progress.
   const dispatched = lines.find((l) => l.status === "Dispatched" && l.product_id) ?? null;
-  const canDeleteOrder = lines.every(
-    (l) => merchantCanEdit(l.status) || l.status === "Cancelled",
-  );
+  // BNP Shop orders were paid to BNP by the customer, so only BNP changes them.
+  const shopOrder = first.channel === "marketplace";
+  const canDeleteOrder =
+    !shopOrder && lines.every((l) => merchantCanEdit(l.status) || l.status === "Cancelled");
   const subtotal = lines.reduce((sum, l) => sum + l.subtotal, 0);
   const discount = lines.reduce((sum, l) => sum + l.discount_amount, 0);
   const vat = lines.reduce((sum, l) => sum + l.vat_amount, 0);
@@ -136,6 +137,9 @@ export function OrderDetail({
       <div className="rounded-lg border border-stone bg-card p-3 text-xs">
         <div className="flex items-center justify-between gap-2">
           <span className="font-semibold text-navy">{first.customer_name}</span>
+          {shopOrder ? (
+            <span className="rounded-full bg-gold/20 px-2 py-0.5 text-[10px] font-semibold text-navy">BNP Shop</span>
+          ) : null}
           {first.created_by ? (
             <span className="rounded-full bg-teal/10 px-2 py-0.5 text-[10px] font-semibold text-teal-700">
               Created by BNP
@@ -166,7 +170,7 @@ export function OrderDetail({
         {first.notes ? (
           <div className="mt-1 text-graphite italic">&ldquo;{first.notes}&rdquo;</div>
         ) : null}
-        {dispatched ? (
+        {dispatched && !shopOrder ? (
           <div className="mt-2 border-t border-stone pt-2">
             <DeliveryProgressControl
               order={dispatched}
@@ -208,7 +212,7 @@ export function OrderDetail({
                   <span className="text-sm font-semibold text-navy">{naira(line.total)}</span>
                 </div>
               </div>
-              <div className="mt-2 flex gap-3">
+              <div className={shopOrder ? "hidden" : "mt-2 flex gap-3"}>
                 <button
                   type="button"
                   onClick={() => setEditingId(line.id)}
@@ -308,7 +312,12 @@ export function OrderDetail({
         ) : null}
       </div>
 
-      {!canDeleteOrder ? (
+      {shopOrder ? (
+        <p className="text-[11px] text-mist">
+          A BNP Shop order: the customer paid BNP, and we pick, pack and deliver it from your stock. The sale goes into your
+          wallet once it&apos;s delivered. To change or cancel it, contact the BNP team.
+        </p>
+      ) : !canDeleteOrder ? (
         <p className="text-[11px] text-mist">
           The warehouse has started on this order, so only its status can be updated here. To
           change or cancel it, contact the BNP team.

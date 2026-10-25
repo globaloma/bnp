@@ -81,7 +81,7 @@ export async function alertFulfillmentCenters(params: {
   orderRef: string;
   customerName: string;
   lines: { product_name: string; quantity: number; total: number }[];
-  source: "storefront" | "dashboard";
+  source: "storefront" | "dashboard" | "marketplace";
   /** e.g. "Walk-in collection, Tue 4 Nov, 2:00 pm" or "GIG Logistics (Lagos)". */
   delivery?: string;
 }) {
@@ -92,7 +92,9 @@ export async function alertFulfillmentCenters(params: {
   const how =
     params.source === "storefront"
       ? `has a new paid storefront order (${escapeHtml(params.orderRef)})`
-      : `created a new order (${escapeHtml(params.orderRef)}) in their dashboard`;
+      : params.source === "marketplace"
+        ? `has a new paid BNP Shop order (${escapeHtml(params.orderRef)})`
+        : `created a new order (${escapeHtml(params.orderRef)}) in their dashboard`;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bnpfulfillment.com";
 
   await sendAlertEmail({

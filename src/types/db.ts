@@ -12,10 +12,10 @@ export type OrderStatus =
   | "Damaged"
   | "Cancelled";
 export type OrderRider = "BNP Fleet" | "Own Rider" | "Pickup";
-export type OrderChannel = "dashboard" | "storefront";
+export type OrderChannel = "dashboard" | "storefront" | "marketplace";
 export type OrderPaymentStatus = "pending" | "paid" | "failed";
 export type OrderDiscountType = "fixed" | "percentage";
-export type WalletTxnType = "Top-up" | "Deduction" | "Reward" | "Adjustment";
+export type WalletTxnType = "Top-up" | "Deduction" | "Reward" | "Adjustment" | "Sale";
 export type ReturnStatus = "Under Review" | "Approved" | "Rejected" | "Resolved";
 
 export type Partner = {
@@ -59,6 +59,8 @@ export type Partner = {
   store_description: string | null;
   store_whatsapp: string | null;
   store_instagram: string | null;
+  /** Products appear on BNP Shop unless the merchant switches this off (0033). */
+  marketplace_enabled: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -240,6 +242,13 @@ export type Order = {
   delivery_failure_note: string | null;
   /** Set when an admin created the order for the merchant (0032). */
   created_by: string | null;
+  /** BNP Shop (marketplace) orders, migration 0033. */
+  customer_id: string | null;
+  checkout_ref: string | null;
+  /** Set when the merchant's wallet was credited for this delivered line. */
+  payout_at: string | null;
+  payout_amount: number | null;
+  payout_reversed_at: string | null;
   subtotal: number;
   placed_at: string;
   created_at: string;

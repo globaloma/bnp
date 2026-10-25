@@ -260,7 +260,7 @@ export function LiveFeed({
                   <td className="px-4 py-2.5 whitespace-nowrap">
                     <div className="font-mono text-xs font-semibold text-navy">{f.ref}</div>
                     <div className="text-[11px] text-mist">
-                      {f.channel === "storefront" ? "Store" : "Dashboard"} · {f.items} item{f.items === 1 ? "" : "s"}
+                      {f.channel === "storefront" ? "Store" : f.channel === "marketplace" ? "BNP Shop" : "Dashboard"} · {f.items} item{f.items === 1 ? "" : "s"}
                     </div>
                   </td>
                   <td className="px-4 py-2.5 text-navy">{merchants[f.partnerId] ?? "Merchant"}</td>

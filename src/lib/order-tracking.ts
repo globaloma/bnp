@@ -23,6 +23,7 @@ export type TrackedOrder = {
 };
 
 type Row = {
+  partner_id: string;
   order_ref: string;
   placed_at: string;
   status: OrderStatus;
@@ -63,6 +64,9 @@ function overallStage(statuses: OrderStatus[]): OrderStatus {
   return PROGRESS[Math.max(0, lowest)];
 }
 
+/** Passed as the store slug to look up BNP Shop (marketplace) orders instead. */
+export const SHOP_TRACK_SLUG = "@shop";
+
 export async function findTrackedOrder(
   slug: string,
   orderRef: string,
@@ -73,23 +77,25 @@ export async function findTrackedOrder(
   if (!ref || key.length < 7) return null;
 
   const admin = createAdminClient();
-  const { data: partner } = await admin
-    .from("partners")
-    .select("id")
-    .eq("slug", slug)
-    .eq("status", "active")
-    .maybeSingle();
-  if (!partner) return null;
-
-  const { data } = await admin
+  let query = admin
     .from("orders")
     .select(
-      "order_ref, placed_at, status, delivery_progress, payment_status, payment_ref, rider, location, delivery_address, customer_phone, product_id, product_name, quantity, total",
+      "partner_id, order_ref, placed_at, status, delivery_progress, payment_status, payment_ref, rider, location, delivery_address, customer_phone, product_id, product_name, quantity, total",
     )
-    .eq("partner_id", partner.id)
-    .eq("order_ref", ref)
-    .order("placed_at", { ascending: false })
-    .returns<Row[]>();
+    .eq("order_ref", ref);
+  if (slug === SHOP_TRACK_SLUG) {
+    query = query.eq("channel", "marketplace");
+  } else {
+    const { data: partner } = await admin
+      .from("partners")
+      .select("id")
+      .eq("slug", slug)
+      .eq("status", "active")
+      .maybeSingle();
+    if (!partner) return null;
+    query = query.eq("partner_id", partner.id);
+  }
+  const { data } = await query.order("placed_at", { ascending: false }).returns<Row[]>();
 
   const rows = (data ?? []).filter(
     (r) => r.customer_phone && phoneKey(r.customer_phone) === key,
@@ -99,8 +105,10 @@ export async function findTrackedOrder(
   // Keep only the most recent order with this ref, in case a ref was ever
   // reused after an older order was deleted.
   const latest = rows[0];
-  const group = rows.filter((r) =>
-    latest.payment_ref ? r.payment_ref === latest.payment_ref : r.placed_at === latest.placed_at,
+  const group = rows.filter(
+    (r) =>
+      r.partner_id === latest.partner_id &&
+      (latest.payment_ref ? r.payment_ref === latest.payment_ref : r.placed_at === latest.placed_at),
   );
 
   const items = group.filter((r) => r.product_id);

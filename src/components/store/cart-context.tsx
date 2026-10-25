@@ -14,6 +14,10 @@ export type CartItem = {
   imageUrl: string | null;
   stock: number;
   quantity: number;
+  // Marketplace carts hold several merchants' products.
+  partnerId?: string;
+  merchantName?: string;
+  weightKg?: number;
 };
 
 type CartContextValue = {
@@ -23,6 +27,9 @@ type CartContextValue = {
   setQuantity: (productId: string, quantity: number) => void;
   /** Brings saved prices up to date, e.g. after a promo starts or ends. */
   refreshPrices: (prices: Record<string, number>) => void;
+  /** Marketplace: drops items no longer for sale and updates stock limits. */
+  syncStock: (stock: Record<string, number>) => void;
+  hydrated: boolean;
   clear: () => void;
   count: number;
   subtotal: number;
@@ -97,6 +104,18 @@ export function CartProvider({ slug, children }: { slug: string; children: React
     });
   }
 
+  function syncStock(stock: Record<string, number>) {
+    setItems((prev) => {
+      const next = prev
+        .filter((i) => stock[i.productId] !== undefined && stock[i.productId] > 0)
+        .map((i) => ({ ...i, stock: stock[i.productId], quantity: Math.min(i.quantity, stock[i.productId]) }));
+      const same =
+        next.length === prev.length &&
+        next.every((i, n) => i.stock === prev[n].stock && i.quantity === prev[n].quantity);
+      return same ? prev : next;
+    });
+  }
+
   function clear() {
     setItems([]);
     // Remove the saved copy too: a child calling clear() on mount (e.g. the
@@ -118,7 +137,7 @@ export function CartProvider({ slug, children }: { slug: string; children: React
 
   return (
     <CartContext.Provider
-      value={{ items, addItem, removeItem, setQuantity, refreshPrices, clear, count, subtotal, vatTotal }}
+      value={{ items, addItem, removeItem, setQuantity, refreshPrices, syncStock, hydrated, clear, count, subtotal, vatTotal }}
     >
       {children}
     </CartContext.Provider>
