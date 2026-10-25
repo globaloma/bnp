@@ -4,8 +4,8 @@ import { createServerClient } from "@supabase/ssr";
 // BNP Shop, the customer marketplace in src/app/marketplace, is served two ways:
 //   * on shop.<domain> (shop.bnpfulfillment.com, shop.localhost:3100):
 //     "/p/123" is rewritten to "/marketplace/p/123", so shop URLs stay clean;
-//   * on the main domain under /marketplace, until the subdomain's DNS is set
-//     up (and as a fallback).
+//   * under /marketplace in local development; on the live main domain,
+//     /marketplace/... redirects to the subdomain.
 // The x-shop-base header tells the pages which prefix their links need: ""
 // on the subdomain, "/marketplace" on the main domain. Every other request
 // on the main domain passes straight through untouched.
@@ -70,6 +70,14 @@ export function proxy(request: NextRequest) {
   }
 
   if (isMarketplacePath(pathname)) {
+    // On the live site the shop has one address: send /marketplace/... to
+    // shop.bnpfulfillment.com/... (query kept, so payment and sign-up links
+    // made before the switch still land). Local development keeps /marketplace.
+    if (host.split(":")[0].endsWith("bnpfulfillment.com")) {
+      const target = new URL(`https://shop.bnpfulfillment.com${pathname.slice("/marketplace".length) || "/"}`);
+      target.search = search;
+      return NextResponse.redirect(target, 308);
+    }
     return withShopperSession(request, (req) => {
       const headers = new Headers(req.headers);
       headers.set("x-shop-base", "/marketplace");
