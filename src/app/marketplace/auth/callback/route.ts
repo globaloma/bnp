@@ -2,7 +2,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-// Where shop sign-up confirmation emails land: swaps the code in the link for
+// Where shop sign-up confirmation and password reset emails land: swaps the code in the link for
 // a session, then continues to `next` inside the shop. On shop.<domain> this
 // is /auth/callback (src/proxy.ts rewrites it here).
 export async function GET(request: NextRequest) {
@@ -22,5 +22,7 @@ export async function GET(request: NextRequest) {
   if (code) failed = Boolean((await supabase.auth.exchangeCodeForSession(code)).error);
   else if (tokenHash && type) failed = Boolean((await supabase.auth.verifyOtp({ type, token_hash: tokenHash })).error);
 
-  return NextResponse.redirect(failed ? `${origin}/account/login?error=link` : `${origin}${next}`);
+  // A dead reset link goes back to the reset form, where a new one is one click away.
+  const retry = next.startsWith("/account/reset-password") ? "/account/forgot-password" : "/account/login";
+  return NextResponse.redirect(failed ? `${origin}${retry}?error=link` : `${origin}${next}`);
 }

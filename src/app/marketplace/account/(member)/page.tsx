@@ -21,8 +21,8 @@ type Line = {
   total: number;
 };
 
-export default async function OrdersPage() {
-  const [base, supabase] = await Promise.all([getShopBase(), createClient()]);
+export default async function OrdersPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const [base, supabase, sp] = await Promise.all([getShopBase(), createClient(), searchParams]);
   const { data } = await supabase
     .from("orders")
     .select("partner_id, order_ref, placed_at, status, payment_status, product_id, product_name, quantity, total")
@@ -37,6 +37,9 @@ export default async function OrdersPage() {
 
   return (
     <div className="rounded-lg bg-white">
+      {sp.password === "updated" ? (
+        <p className="border-b border-stone bg-success/10 px-4 py-2.5 text-sm text-navy">Your password has been changed.</p>
+      ) : null}
       <h1 className="border-b border-stone px-4 py-3 text-lg font-semibold text-navy">Orders</h1>
       {orders.size === 0 ? (
         <div className="flex flex-col items-center px-6 py-12 text-center">

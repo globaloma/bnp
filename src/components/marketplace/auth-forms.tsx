@@ -3,7 +3,13 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { FormGuard } from "@/components/form-guard";
-import { customerSignIn, customerSignUp, type AccountResult } from "@/app/marketplace/account/actions";
+import {
+  customerSignIn,
+  customerSignUp,
+  requestShopPasswordReset,
+  updateShopPassword,
+  type AccountResult,
+} from "@/app/marketplace/account/actions";
 import { useShopHref } from "./shop-base";
 
 const field =
@@ -34,9 +40,14 @@ export function SignInForm({ next, linkError }: { next: string; linkError: boole
         <Error state={state} name="email" />
       </div>
       <div>
-        <label className={label} htmlFor="si-password">
-          Password
-        </label>
+        <div className="flex items-baseline justify-between">
+          <label className={label} htmlFor="si-password">
+            Password
+          </label>
+          <Link href={href("/account/forgot-password")} className="text-xs font-semibold text-teal-700 hover:underline">
+            Forgot password?
+          </Link>
+        </div>
         <input id="si-password" name="password" type="password" autoComplete="current-password" required className={field} />
         <Error state={state} name="password" />
       </div>
@@ -50,6 +61,86 @@ export function SignInForm({ next, linkError }: { next: string; linkError: boole
           Create an account
         </Link>
       </p>
+    </form>
+  );
+}
+
+export function ForgotPasswordForm({ linkError }: { linkError: boolean }) {
+  const href = useShopHref();
+  const [state, action, pending] = useActionState<AccountResult | null, FormData>(requestShopPasswordReset, null);
+  if (state?.ok) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="rounded-md bg-success/10 px-4 py-5 text-center text-sm text-navy">
+          <p className="font-semibold">Check your email</p>
+          <p className="mt-1 text-graphite">{state.message}</p>
+        </div>
+        <p className="text-center text-sm text-graphite">
+          <Link href={href("/account/login")} className="font-semibold text-teal-700 hover:underline">
+            Back to sign in
+          </Link>
+        </p>
+      </div>
+    );
+  }
+  return (
+    <form action={action} className="relative flex flex-col gap-4">
+      <FormGuard form="forgot" />
+      {linkError ? (
+        <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          That reset link has expired or was already used. Ask for a new one below.
+        </p>
+      ) : null}
+      <div>
+        <label className={label} htmlFor="fp-email">
+          Email
+        </label>
+        <input id="fp-email" name="email" type="email" autoComplete="email" required className={field} />
+        <Error state={state} name="email" />
+      </div>
+      {state && !state.ok && !state.fieldErrors ? <p className="text-xs text-destructive">{state.error}</p> : null}
+      <button type="submit" disabled={pending} className="h-11 rounded-md bg-gold text-sm font-bold text-navy hover:bg-gold-300 disabled:opacity-50">
+        {pending ? "Sending" : "Send reset link"}
+      </button>
+      <p className="text-center text-sm text-graphite">
+        Remembered it?{" "}
+        <Link href={href("/account/login")} className="font-semibold text-teal-700 hover:underline">
+          Sign in
+        </Link>
+      </p>
+      <p className="text-center text-xs text-mist">
+        BNP Fulfillment business login? Reset it on{" "}
+        <a href="https://www.bnpfulfillment.com/forgot-password" className="font-semibold text-teal-700 hover:underline">
+          bnpfulfillment.com
+        </a>
+        .
+      </p>
+    </form>
+  );
+}
+
+export function NewPasswordForm() {
+  const [state, action, pending] = useActionState<AccountResult | null, FormData>(updateShopPassword, null);
+  return (
+    <form action={action} className="flex flex-col gap-4">
+      <div>
+        <label className={label} htmlFor="np-password">
+          New password
+        </label>
+        <input id="np-password" name="password" type="password" autoComplete="new-password" minLength={8} required className={field} />
+        <Error state={state} name="password" />
+      </div>
+      <div>
+        <label className={label} htmlFor="np-confirm">
+          Type it again
+        </label>
+        <input id="np-confirm" name="confirmPassword" type="password" autoComplete="new-password" minLength={8} required className={field} />
+        <Error state={state} name="confirmPassword" />
+      </div>
+      {state && !state.ok && !state.fieldErrors ? <p className="text-xs text-destructive">{state.error}</p> : null}
+      <button type="submit" disabled={pending} className="h-11 rounded-md bg-gold text-sm font-bold text-navy hover:bg-gold-300 disabled:opacity-50">
+        {pending ? "Saving" : "Save new password"}
+      </button>
     </form>
   );
 }

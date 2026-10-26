@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { guardSubmission, withinRateLimit } from "@/lib/spam-guard";
 import { getCustomer } from "@/lib/marketplace/customer";
 import { getShopBase, getShopOrigin } from "@/lib/marketplace/shop";
@@ -119,6 +120,72 @@ export async function customerSignIn(_prev: AccountResult | null, formData: Form
     };
   }
   redirect(`${await getShopBase()}${safeNext(formData.get("next"))}`);
+}
+
+const RESET_SENT =
+  "If a shop account exists for that email, we've sent a link to reset your password. It can take a few minutes to arrive.";
+
+export async function requestShopPasswordReset(_prev: AccountResult | null, formData: FormData): Promise<AccountResult> {
+  const guard = await guardSubmission("forgot", formData);
+  if (!guard.ok && guard.reason !== "bot") return { ok: false, error: guard.message };
+  const parsed = z
+    .object({ email: z.string().trim().toLowerCase().email("Enter a valid email address") })
+    .safeParse({ email: formData.get("email") });
+  if (!parsed.success) {
+    return { ok: false, error: "Check the highlighted fields.", fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]> };
+  }
+  // Same reply as a real request, so bots can't tell they were caught.
+  if (!guard.ok) return { ok: true, message: RESET_SENT };
+  const email = parsed.data.email;
+  if (!(await withinRateLimit("forgot", email))) {
+    return { ok: false, error: "Too many reset requests. Please wait 15 minutes and try again." };
+  }
+
+  // Only shop accounts get a shop reset link. A BNP business login reset
+  // from here would land on the shop with an account that can't shop; those
+  // reset on bnpfulfillment.com instead.
+  const { data: customer } = await createAdminClient().from("customers").select("id").eq("email", email).maybeSingle();
+  if (customer) {
+    const supabase = await createClient();
+    const origin = await getShopOrigin();
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent("/account/reset-password")}`,
+    });
+    if (error && (error.code === "over_email_send_rate_limit" || error.status === 429)) {
+      return { ok: false, error: "Too many emails sent. Please wait a few minutes and try again." };
+    }
+  }
+  // Same message whether or not the account exists, so this form can't be
+  // used to find out which emails shop with us.
+  return { ok: true, message: RESET_SENT };
+}
+
+const newPasswordSchema = z
+  .object({
+    password: z.string().min(8, "Use at least 8 characters").max(72),
+    confirmPassword: z.string(),
+  })
+  .refine((v) => v.password === v.confirmPassword, { path: ["confirmPassword"], message: "The passwords don't match" });
+
+export async function updateShopPassword(_prev: AccountResult | null, formData: FormData): Promise<AccountResult> {
+  const parsed = newPasswordSchema.safeParse({
+    password: formData.get("password"),
+    confirmPassword: formData.get("confirmPassword"),
+  });
+  if (!parsed.success) {
+    return { ok: false, error: "Check the highlighted fields.", fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]> };
+  }
+  const customer = await getCustomer();
+  if (!customer) return { ok: false, error: "Your reset link has expired. Ask for a new one and try again." };
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+  if (error) {
+    return {
+      ok: false,
+      error: error.code === "same_password" ? "Your new password must be different from your old one." : error.message,
+    };
+  }
+  redirect(`${await getShopBase()}/account?password=updated`);
 }
 
 export async function customerSignOut() {
