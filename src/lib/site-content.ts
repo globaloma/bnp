@@ -223,7 +223,7 @@ export const services = {
     {
       slug: "walk-in",
       icon: "Footprints",
-      image: "/images/marketing/boxes-trolley.jpg",
+      image: "/images/marketing/walk-in-collection.jpg",
       title: "Walk in collection",
       body: "Our Jabi hub works as your Abuja address. Customers can walk in to collect their orders, so your brand has a real touchpoint in the capital.",
       bullets: [

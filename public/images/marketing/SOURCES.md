@@ -31,3 +31,6 @@ commercial use, no attribution required).
 
 Added 2026-10-23: `bnp-team-full.jpg` is BNP's own team
 photo, supplied by BNP.
+
+Added 2026-10-28: `walk-in-collection.jpg` (BNP branded boxes with the team),
+supplied by BNP.
