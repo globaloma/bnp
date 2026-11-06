@@ -30,6 +30,7 @@ export const nav = {
     { label: "Home", href: "/" },
     { label: "About", href: "/about" },
     { label: "Services", href: "/services" },
+    { label: "Training", href: "/training" },
     { label: "How it works", href: "/how-it-works" },
     { label: "Pricing", href: "/pricing" },
     { label: "FAQ", href: "/faq" },
@@ -326,6 +327,135 @@ export const steps = {
     "Your stock, delivered to our Jabi hub",
     "Your registration fee, refunded if you're not happy after the first month",
   ],
+} as const;
+
+// ---------------------------------------------------------------------------
+// Training and support
+// ---------------------------------------------------------------------------
+
+export const training = {
+  label: "Training and support",
+  title: "We set it up, then we train you to run it.",
+  description:
+    "BNP Fulfillment now trains merchants, their staff and their teams on how modern fulfillment works. We come in, set everything up for you, and teach your people the tools and the day to day, from receiving to returns and everything in between.",
+  intro: {
+    label: "Why training",
+    title: "Confidence from day one, not guesswork.",
+    description:
+      "Fulfillment only pays off when the people running it know what they are doing. Our training gives you and your team a clear, hands on grounding in every part of the process, so orders go out right, stock stays accurate and nothing slips through the cracks.",
+    image: "/images/marketing/merchant-laptop.jpg",
+    points: [
+      "Led by the BNP team that runs fulfillment every day",
+      "Hands on practice on the real tools, not slides",
+      "Plain language, no logistics jargon",
+      "A reference guide you keep after the session",
+    ],
+  },
+  modules: {
+    label: "What you'll learn",
+    title: "Every part of fulfillment, covered.",
+    description:
+      "A complete, step by step curriculum. By the end your team can run each stage on their own, confident that stock and orders stay accurate.",
+    items: [
+      {
+        icon: "MonitorSmartphone",
+        title: "The dashboard and tools",
+        body: "Sign in, read your numbers and move around the BNP dashboard with ease. We walk through every screen your team touches each day.",
+      },
+      {
+        icon: "Warehouse",
+        title: "Receiving and putaway",
+        body: "How stock arrives, gets counted, labelled with its own barcode and placed on the right shelf, so the screen always matches the shelf.",
+      },
+      {
+        icon: "PackageCheck",
+        title: "Picking and packing",
+        body: "Pick the exact item for each order, pack it safely for the journey and scan it so every parcel is checked before it leaves.",
+      },
+      {
+        icon: "BarChart3",
+        title: "Tracking stock and inventory",
+        body: "Read stock levels, see what is reserved against open orders and what is free to sell, and get ahead of low stock before you run out.",
+      },
+      {
+        icon: "Truck",
+        title: "Dispatch and delivery",
+        body: "Hand parcels to riders or carriers, add tracking numbers and follow each order through to a confirmed delivery.",
+      },
+      {
+        icon: "Undo2",
+        title: "Returns and claims",
+        body: "Take a return back in, restock or write off the item, and raise a claim the right way when something is damaged or lost.",
+      },
+      {
+        icon: "Store",
+        title: "Orders and your online store",
+        body: "Create orders, share your store link and understand how a customer order flows straight into the warehouse.",
+      },
+      {
+        icon: "FileBarChart",
+        title: "Reports and reconciliation",
+        body: "Pull the numbers that matter, check invoices and wallet charges, and reconcile what you sold against what you were billed.",
+      },
+    ],
+  },
+  process: {
+    label: "How the training works",
+    title: "A clear path from setup to self sufficient.",
+    description:
+      "We do not hand you a manual and wish you luck. We set the operation up with you and stay until your team can run it without us.",
+    image: "/images/marketing/warehouse-staff.jpg",
+    steps: [
+      {
+        title: "We assess your setup",
+        body: "A short call to understand your products, your team and how you sell, so the training fits your business.",
+      },
+      {
+        title: "We set it up with you",
+        body: "Our team sets up your account, loads your products and gets every tool ready for real orders.",
+      },
+      {
+        title: "Hands on training",
+        body: "We train you and your staff on the live system, step by step, until everyone is comfortable doing the work themselves.",
+      },
+      {
+        title: "Go live together",
+        body: "We stay with you through your first real orders, so any question is answered the moment it comes up.",
+      },
+      {
+        title: "Ongoing support",
+        body: "After training, our support team is a message away on WhatsApp whenever your team needs a hand.",
+      },
+    ],
+  },
+  audiences: {
+    label: "Who it is for",
+    title: "Built for you and everyone on your team.",
+    items: [
+      {
+        icon: "ShoppingBag",
+        title: "Merchants and founders",
+        body: "Understand the whole operation end to end, so you can make decisions with confidence and spot issues early.",
+      },
+      {
+        icon: "ClipboardList",
+        title: "Your in house staff",
+        body: "Give the people who manage your orders the skills to run fulfillment smoothly without waiting on you.",
+      },
+      {
+        icon: "Boxes",
+        title: "Your warehouse team",
+        body: "Train the hands on team on receiving, picking, packing and dispatch, the right way, from the start.",
+      },
+    ],
+  },
+  formats: ["On site at your location", "At our Abuja hub", "Live and remote"],
+  cta: {
+    title: "Ready to get your team trained?",
+    description:
+      "Book a free consultation and we will put together a training plan that fits your business and your team.",
+    primary: { label: "Book a consultation", href: "/contact" },
+  },
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -629,6 +759,7 @@ export const footer = {
       links: [
         { label: "About us", href: "/about" },
         { label: "How it works", href: "/how-it-works" },
+        { label: "Training", href: "/training" },
         { label: "Pricing", href: "/pricing" },
         { label: "FAQ", href: "/faq" },
         { label: "Contact", href: "/contact" },
