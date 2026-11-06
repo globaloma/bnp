@@ -7,9 +7,10 @@ import { cn } from "@/lib/utils";
 import { flatShippingFee, pickupAvailable, pickupLocations } from "@/lib/delivery";
 import type { WarehouseLocation } from "@/types/db";
 import {
-  DELIVERY_METHODS,
   availableMethods,
   carrierZones,
+  isCarrierMethod,
+  methodInfo,
   previewFee,
   type DeliveryMethod,
   type DeliveryOptions,
@@ -81,7 +82,7 @@ export function CheckoutForm({
         ? options.dispatchZones.map((z) => ({ value: z.name, label: `${z.name}: ${z.coverage ?? ""}`.trim() }))
         : method === "own_rider"
           ? options.ownZones.map((z) => ({ value: z.id, label: `${z.name}, ${z.fee > 0 ? naira(z.fee) : "Free"}` }))
-          : carrierZones(options, method === "gig" ? "GIG" : "UPS").map((z) => ({ value: z, label: z }));
+          : carrierZones(options, method).map((z) => ({ value: z, label: z }));
 
   if (items.length === 0) {
     return <p className="text-sm text-mist">Your cart is empty.</p>;
@@ -177,7 +178,7 @@ export function CheckoutForm({
               <label className={labelClass}>Delivery *</label>
               <div className="mb-3 grid grid-cols-2 gap-2">
                 {methods.map((id) => {
-                  const m = DELIVERY_METHODS.find((x) => x.id === id)!;
+                  const m = methodInfo(options!, id);
                   return (
                     <button
                       key={id}
@@ -204,7 +205,7 @@ export function CheckoutForm({
               </div>
             </>
           ) : null}
-          <label className={labelClass}>{method === "gig" || method === "ups" ? "Destination *" : "Delivery area *"}</label>
+          <label className={labelClass}>{isCarrierMethod(method, options?.carriers) ? "Destination *" : "Delivery area *"}</label>
           <select
             name="deliveryZone"
             required

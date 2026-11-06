@@ -6,10 +6,18 @@ import Papa from "papaparse";
 import { Download, Plus, Upload } from "lucide-react";
 import { toast } from "sonner";
 import type { WarehouseLocation } from "@/types/db";
+import type { Carrier } from "@/lib/delivery-methods";
 import { naira } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { saveDeliverySettings, saveDispatchZone, switchOffCarrier, testGig, uploadRateCard } from "./actions";
+import {
+  createCarrier,
+  saveDeliverySettings,
+  saveDispatchZone,
+  switchOffCarrier,
+  testGig,
+  uploadRateCard,
+} from "./actions";
 
 export type ZoneRow = {
   id: string;
@@ -189,7 +197,7 @@ const TEMPLATE =
   "Abuja,South-West Nigeria,0,5,8500,2026-11-01,\n" +
   "Abuja,South-West Nigeria,5,10,12500,2026-11-01,\n";
 
-export function CarrierRates({ carrier, rows }: { carrier: "UPS" | "GIG"; rows: RateCardRow[] }) {
+export function CarrierRates({ carrier, rows }: { carrier: Carrier; rows: RateCardRow[] }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
@@ -199,7 +207,7 @@ export function CarrierRates({ carrier, rows }: { carrier: "UPS" | "GIG"; rows: 
     const url = URL.createObjectURL(new Blob([TEMPLATE], { type: "text/csv" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${carrier.toLowerCase()}-rate-card-template.csv`;
+    a.download = `${carrier.code}-rate-card-template.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -211,7 +219,7 @@ export function CarrierRates({ carrier, rows }: { carrier: "UPS" | "GIG"; rows: 
       transformHeader: (h) => h.trim().toLowerCase(),
       complete: (parsed) => {
         startTransition(async () => {
-          const result = await uploadRateCard(carrier, parsed.data);
+          const result = await uploadRateCard(carrier.code, parsed.data);
           if (result.ok) {
             toast.success(result.message ?? "Rates uploaded.");
             router.refresh();
@@ -226,7 +234,7 @@ export function CarrierRates({ carrier, rows }: { carrier: "UPS" | "GIG"; rows: 
 
   function switchOff() {
     startTransition(async () => {
-      const result = await switchOffCarrier(carrier);
+      const result = await switchOffCarrier(carrier.code);
       if (result.ok) {
         toast.success(result.message ?? "Done.");
         router.refresh();
@@ -240,7 +248,7 @@ export function CarrierRates({ carrier, rows }: { carrier: "UPS" | "GIG"; rows: 
     <div className="rounded-lg border border-stone bg-card">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone px-4 py-3">
         <div>
-          <div className="font-semibold text-navy">{carrier === "GIG" ? "GIG Logistics" : "UPS"} rate card</div>
+          <div className="font-semibold text-navy">{carrier.label} rate card</div>
           <div className="text-xs text-graphite">
             {rows.length === 0
               ? "No live rates, so merchants and customers don't see this option."
@@ -267,8 +275,8 @@ export function CarrierRates({ carrier, rows }: { carrier: "UPS" | "GIG"; rows: 
         </div>
       </div>
       <p className="border-b border-stone px-4 py-2 text-[11px] text-mist">
-        Uploading replaces all live {carrier} rates. Put BNP&apos;s final price (with the buffer already added) in rate_ngn.
-        Weight bands include the minimum and stop just before the maximum.
+        Uploading replaces all live {carrier.label} rates. Put BNP&apos;s final price (with the buffer already added) in
+        rate_ngn. Weight bands include the minimum and stop just before the maximum.
       </p>
       {rows.length > 0 ? (
         <>
@@ -298,11 +306,57 @@ export function CarrierRates({ carrier, rows }: { carrier: "UPS" | "GIG"; rows: 
           </div>
           <div className="border-t border-stone px-4 py-2 text-right">
             <button type="button" onClick={switchOff} disabled={pending} className="text-xs font-semibold text-destructive hover:underline">
-              Stop offering {carrier}
+              Stop offering {carrier.label}
             </button>
           </div>
         </>
       ) : null}
+    </div>
+  );
+}
+
+/** Adds a new logistics company, which then gets its own rate-card card. */
+export function AddCarrier() {
+  const router = useRouter();
+  const [name, setName] = useState("");
+  const [pending, startTransition] = useTransition();
+
+  function add() {
+    const label = name.trim();
+    if (!label) return;
+    startTransition(async () => {
+      const result = await createCarrier(label);
+      if (result.ok) {
+        toast.success(result.message ?? "Carrier added.");
+        setName("");
+        router.refresh();
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
+
+  return (
+    <div className="rounded-lg border border-dashed border-stone bg-card p-4">
+      <div className="font-semibold text-navy">Add a logistics company</div>
+      <p className="mt-1 text-xs text-graphite">
+        Add any carrier, then upload its CSV rate card. It shows to merchants and customers once it has live rates.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") add();
+          }}
+          placeholder="Company name, e.g. DHL"
+          maxLength={60}
+          className={cn(fieldClass, "max-w-xs")}
+        />
+        <Button size="sm" onClick={add} disabled={pending || name.trim().length < 2}>
+          <Plus className="size-4" /> {pending ? "Adding" : "Add carrier"}
+        </Button>
+      </div>
     </div>
   );
 }

@@ -5,7 +5,15 @@ import Link from "next/link";
 import { Lock, MapPin, PackageCheck, Store, Truck } from "lucide-react";
 import { naira } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { carrierZones, DELIVERY_METHODS, previewFee, type DeliveryMethod, type DeliveryOptions } from "@/lib/delivery-methods";
+import {
+  availableMethods,
+  carrierZones,
+  isCarrierMethod,
+  methodInfo,
+  previewFee,
+  type DeliveryMethod,
+  type DeliveryOptions,
+} from "@/lib/delivery-methods";
 import { useGigQuote } from "@/lib/use-gig-quote";
 import { useCart, type CartItem } from "@/components/store/cart-context";
 import { startMarketplaceCheckout, type CheckoutResult } from "@/app/marketplace/checkout/actions";
@@ -23,20 +31,16 @@ const field =
 const label = "mb-1.5 block text-[11px] font-semibold tracking-[0.08em] text-graphite uppercase";
 
 function methodsFor(options: DeliveryOptions): Method[] {
-  const list: Method[] = [];
-  if (options.dispatchZones.length > 0) list.push("bnp_dispatch");
-  if (options.gigLive || options.rates.some((r) => r.carrier === "GIG")) list.push("gig");
-  if (options.rates.some((r) => r.carrier === "UPS")) list.push("ups");
-  if (options.walkIn) list.push("walk_in");
-  return list;
+  // Store methods, minus own_rider (the marketplace never uses a seller's rider).
+  return availableMethods(options, "store").filter((m) => m !== "own_rider") as Method[];
 }
 
 function zonesFor(options: DeliveryOptions, method: Method) {
   if (method === "bnp_dispatch") {
     return options.dispatchZones.map((z) => ({ value: z.name, label: z.coverage ? `${z.name}: ${z.coverage}` : z.name }));
   }
-  if (method === "gig" || method === "ups") {
-    return carrierZones(options, method === "gig" ? "GIG" : "UPS").map((z) => ({ value: z, label: z }));
+  if (isCarrierMethod(method, options.carriers)) {
+    return carrierZones(options, method).map((z) => ({ value: z, label: z }));
   }
   return [];
 }
@@ -306,7 +310,7 @@ export function MarketCheckoutForm({
                   <>
                     <div className="grid gap-2 sm:grid-cols-2">
                       {methods.map((m) => {
-                        const info = DELIVERY_METHODS.find((x) => x.id === m)!;
+                        const info = methodInfo(opts, m);
                         const Icon = m === "walk_in" ? Store : Truck;
                         return (
                           <button

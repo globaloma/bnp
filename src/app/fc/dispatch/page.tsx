@@ -4,12 +4,15 @@ import { getAuthedFulfillmentCenter } from "@/lib/data/fulfillment-center";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/dashboard/ui";
 import type { Order } from "@/types/db";
-import { methodLabel } from "@/lib/delivery-methods";
+import { isCarrierMethod, methodLabel, type Carrier } from "@/lib/delivery-methods";
 import { DispatchStation, type Parcel } from "./dispatch-station";
 
 export const metadata: Metadata = { title: "Dispatch" };
 
-function groupParcels(rows: (Order & { merchant: { business_name: string; code: string } | null })[]): Parcel[] {
+function groupParcels(
+  rows: (Order & { merchant: { business_name: string; code: string } | null })[],
+  carriers: Carrier[],
+): Parcel[] {
   const map = new Map<string, Parcel>();
   for (const r of rows) {
     const key = `${r.partner_id}:${r.order_ref}`;
@@ -29,9 +32,9 @@ function groupParcels(rows: (Order & { merchant: { business_name: string; code: 
       rider: r.rider,
       partnerId: r.partner_id,
       delivery: r.delivery_method
-        ? `${methodLabel(r.delivery_method)}${r.delivery_zone ? `, ${r.delivery_zone}` : ""}`
+        ? `${methodLabel(r.delivery_method, carriers)}${r.delivery_zone ? `, ${r.delivery_zone}` : ""}`
         : r.rider,
-      carrier: r.delivery_method === "gig" || r.delivery_method === "ups",
+      carrier: isCarrierMethod(r.delivery_method, carriers),
       tracking: r.tracking_number,
       pickupAt: r.pickup_at,
       location: r.location,
@@ -49,7 +52,7 @@ export default async function DispatchPage() {
   const supabase = await createClient();
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
-  const [{ data: packed }, { data: sent }] = await Promise.all([
+  const [{ data: packed }, { data: sent }, { data: carriers }] = await Promise.all([
     supabase
       .from("orders")
       .select("*, merchant:partners(business_name, code)")
@@ -61,7 +64,9 @@ export default async function DispatchPage() {
       .eq("status", "Dispatched")
       .gte("updated_at", startOfDay.toISOString())
       .order("updated_at", { ascending: false }),
+    supabase.from("carriers").select("code, label"),
   ]);
+  const carrierList: Carrier[] = (carriers ?? []).map((c) => ({ code: c.code as string, label: c.label as string }));
 
   type Row = Order & { merchant: { business_name: string; code: string } | null };
   return (
@@ -71,8 +76,8 @@ export default async function DispatchPage() {
         description="Scan each package label as the rider collects it. The order becomes Dispatched and the stock leaves the warehouse."
       />
       <DispatchStation
-        packed={groupParcels((packed ?? []) as Row[])}
-        sentToday={groupParcels((sent ?? []) as Row[])}
+        packed={groupParcels((packed ?? []) as Row[], carrierList)}
+        sentToday={groupParcels((sent ?? []) as Row[], carrierList)}
       />
     </>
   );

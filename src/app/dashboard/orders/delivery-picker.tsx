@@ -2,9 +2,10 @@
 
 import { MapPin } from "lucide-react";
 import {
-  DELIVERY_METHODS,
   availableMethods,
   carrierZones,
+  isCarrierMethod,
+  methodInfo,
   previewFee,
   type DeliveryMethod,
   type DeliveryOptions,
@@ -58,7 +59,7 @@ export function DeliveryPicker({
 }) {
   const methods = availableMethods(options, "merchant");
   const set = (patch: Partial<DeliveryChoice>) => onChange({ ...choice, ...patch });
-  const isCarrier = choice.method === "gig" || choice.method === "ups";
+  const isCarrier = isCarrierMethod(choice.method, options.carriers);
 
   return (
     <fieldset className="rounded-lg border border-stone bg-white p-3">
@@ -71,7 +72,7 @@ export function DeliveryPicker({
 
       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
         {methods.map((id) => {
-          const m = DELIVERY_METHODS.find((x) => x.id === id)!;
+          const m = methodInfo(options, id);
           const active = choice.method === id;
           return (
             <button
@@ -125,7 +126,7 @@ export function DeliveryPicker({
                 className={cn(fieldClass, "appearance-none")}
               >
                 <option value="">Choose</option>
-                {carrierZones(options, choice.method === "gig" ? "GIG" : "UPS").map((z) => (
+                {carrierZones(options, choice.method).map((z) => (
                   <option key={z}>{z}</option>
                 ))}
               </select>

@@ -41,7 +41,9 @@ const schema = z.object({
   delivery: z.partialRecord(
     z.enum(["Abuja", "Lagos"]),
     z.object({
-      method: z.enum(["bnp_dispatch", "gig", "ups", "walk_in"]),
+      // Any reserved method or carrier code; re-validated below against the
+      // methods actually offered for the hub (offered.get(hub).includes(...)).
+      method: z.string().trim().min(2).max(20),
       zone: z.string().trim().max(120).default(""),
     }),
   ),

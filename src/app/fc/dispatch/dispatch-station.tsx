@@ -20,7 +20,7 @@ export type Parcel = {
   partnerId: string;
   /** e.g. "GIG Logistics, South-West Nigeria". */
   delivery: string;
-  /** GIG or UPS, which need the carrier's tracking number. */
+  /** An external carrier (GIG, UPS, or a custom one), which needs the carrier's tracking number. */
   carrier: boolean;
   tracking: string | null;
   pickupAt: string | null;

@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WarehouseLocation } from "@/types/db";
-import { methodLabel, riderFor, type DeliveryMethod, type DeliveryOptions } from "@/lib/delivery-methods";
+import { isCarrierMethod, methodLabel, riderFor, type DeliveryMethod, type DeliveryOptions } from "@/lib/delivery-methods";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { gigConfigured, gigPrice, gigStations } from "@/lib/gig";
 
@@ -15,7 +15,7 @@ export async function loadDeliveryOptions(
   partnerId: string,
 ): Promise<DeliveryOptions> {
   const today = new Date().toISOString().slice(0, 10);
-  const [{ data: zones }, { data: rates }, { data: own }] = await Promise.all([
+  const [{ data: zones }, { data: rates }, { data: own }, { data: carrierRows }] = await Promise.all([
     supabase
       .from("dispatch_zones")
       .select("name, coverage, rate, note")
@@ -29,6 +29,7 @@ export async function loadDeliveryOptions(
       .eq("is_active", true)
       .lte("effective_from", today),
     supabase.from("delivery_zones").select("id, name, fee").eq("partner_id", partnerId).order("created_at"),
+    supabase.from("carriers").select("code, label").eq("active", true).order("sort").order("label"),
   ]);
   // Live GIG destinations; if GIG can't be reached, GIG falls back to any
   // uploaded rate card rather than breaking the order form.
@@ -46,12 +47,13 @@ export async function loadDeliveryOptions(
     rates: (rates ?? [])
       .filter((r) => !r.effective_to || r.effective_to >= today)
       .map((r) => ({
-        carrier: r.carrier as "UPS" | "GIG",
+        carrier: r.carrier as string,
         zone: r.destination_zone as string,
         min: Number(r.weight_min_kg),
         max: Number(r.weight_max_kg),
         rate: Number(r.rate),
       })),
+    carriers: (carrierRows ?? []).map((c) => ({ code: c.code as string, label: c.label as string })),
     ownZones: (own ?? []).map((z) => ({ id: z.id, name: z.name, fee: Number(z.fee) })),
     walkIn: hub === "Abuja",
     gigLive,
@@ -132,6 +134,14 @@ export async function priceDelivery(
 
   if (method !== "walk_in" && !zone) return { ok: false, error: "Choose the delivery area." };
 
+  // Name the carrier from the registry so a custom logistics company reads right
+  // on the order line (e.g. "DHL (Lagos)"), not a titlecased code.
+  let carrierName = methodLabel(method);
+  if (isCarrierMethod(method)) {
+    const { data: carrier } = await supabase.from("carriers").select("label").eq("code", method).maybeSingle();
+    if (carrier?.label) carrierName = carrier.label;
+  }
+
   if (method === "gig" && gigConfigured() && hub !== "USA") {
     const weightKg = Math.round((input.weightKg ?? 0) * 100) / 100;
     const fee = await liveGigFee(hub, zone, weightKg);
@@ -140,7 +150,7 @@ export async function priceDelivery(
     await createAdminClient()
       .from("delivery_quotes")
       .insert({ partner_id: partnerId, method: "gig", hub, zone, weight_kg: weightKg, amount: fee });
-    return { ok: true, delivery: { ...base, fee, zone, label: `${methodLabel(method)} (${zone})` } };
+    return { ok: true, delivery: { ...base, fee, zone, label: `${carrierName} (${zone})` } };
   }
 
   const { data, error } = await supabase.rpc("delivery_quote", {
@@ -152,8 +162,8 @@ export async function priceDelivery(
   if (error) return { ok: false, error: "Couldn't price this delivery. Try again." };
   if (data === null || data === undefined) {
     if (method === "walk_in") return { ok: false, error: "Walk-in collection is only at our Abuja hub." };
-    if (method === "gig" || method === "ups") {
-      return { ok: false, error: `${methodLabel(method)} has no rate for this area and weight. Choose another option.` };
+    if (isCarrierMethod(method)) {
+      return { ok: false, error: `${carrierName} has no rate for this area and weight. Choose another option.` };
     }
     return { ok: false, error: "That delivery area isn't available." };
   }
@@ -164,7 +174,7 @@ export async function priceDelivery(
       ...base,
       fee,
       zone: zone || null,
-      label: method === "walk_in" ? "Walk-in collection" : `${methodLabel(method)} (${zone})`,
+      label: method === "walk_in" ? "Walk-in collection" : `${carrierName} (${zone})`,
     },
   };
 }

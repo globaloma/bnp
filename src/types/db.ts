@@ -226,8 +226,12 @@ export type Order = {
   vat_rate: number;
   vat_amount: number;
   delivery_fee: number;
-  /** Delivery options (migration 0029); null on older orders. */
-  delivery_method: "bnp_dispatch" | "gig" | "ups" | "walk_in" | "own_rider" | null;
+  /**
+   * Delivery options (migration 0029); null on older orders. Reserved methods
+   * are bnp_dispatch / walk_in / own_rider; anything else is a carrier code
+   * (gig, ups, or a custom logistics company from the carriers table, 0034).
+   */
+  delivery_method: "bnp_dispatch" | "walk_in" | "own_rider" | "gig" | "ups" | (string & {}) | null;
   delivery_zone: string | null;
   delivery_weight_kg: number | null;
   /** Who pays BNP for the delivery: merchant (on their bill) or customer (at checkout). */

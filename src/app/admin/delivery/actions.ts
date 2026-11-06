@@ -58,12 +58,47 @@ const rateRow = z
   })
   .refine((r) => r.weight_max_kg > r.weight_min_kg, "weight_max_kg must be more than weight_min_kg");
 
+// Reserved delivery methods a carrier code must never collide with.
+const RESERVED_METHODS = ["bnp_dispatch", "walk_in", "own_rider"];
+
+/** A carrier code (slug) from a company name, e.g. "DHL Express" -> "dhl_express". */
+function carrierCode(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 20);
+}
+
+/** Adds a logistics company so its rate card can be uploaded. */
+export async function createCarrier(name: string): Promise<Result> {
+  const label = name.trim();
+  if (label.length < 2 || label.length > 60) return { ok: false, error: "Enter the company name." };
+  const code = carrierCode(label);
+  if (code.length < 2) return { ok: false, error: "Use a name with at least two letters or numbers." };
+  if (RESERVED_METHODS.includes(code)) return { ok: false, error: "That name is reserved. Pick another." };
+
+  const supabase = await createClient();
+  const { data: isAdmin } = await supabase.rpc("is_admin");
+  if (!isAdmin) return { ok: false, error: "Admins only." };
+  const { error } = await supabase.from("carriers").insert({ code, label });
+  if (error) {
+    return { ok: false, error: error.code === "23505" ? "There's already a carrier with that name." : error.message };
+  }
+  revalidatePath("/admin/delivery");
+  return { ok: true, message: `${label} added. Upload its rate card to start offering it.` };
+}
+
 /**
  * Replaces a carrier's rate card: the rows in the file become the live rates
  * and that carrier's previous rates are switched off (kept for history).
  */
-export async function uploadRateCard(carrier: "UPS" | "GIG", rows: Record<string, string>[]): Promise<Result> {
-  if (carrier !== "UPS" && carrier !== "GIG") return { ok: false, error: "Pick UPS or GIG." };
+export async function uploadRateCard(carrier: string, rows: Record<string, string>[]): Promise<Result> {
+  const code = carrier.trim().toLowerCase();
+  const supabase = await createClient();
+  const { data: known } = await supabase.from("carriers").select("label, active").eq("code", code).maybeSingle();
+  if (!known) return { ok: false, error: "Unknown carrier. Add the company first." };
+  if (!known.active) return { ok: false, error: `${known.label} is switched off.` };
   if (rows.length === 0) return { ok: false, error: "The file has no rows." };
   if (rows.length > 5000) return { ok: false, error: "Keep the file under 5,000 rows." };
 
@@ -86,11 +121,10 @@ export async function uploadRateCard(carrier: "UPS" | "GIG", rows: Record<string
     clean.push(r.data);
   }
 
-  const supabase = await createClient();
   const batch = crypto.randomUUID();
   const { error: insertError } = await supabase.from("delivery_rate_cards").insert(
     clean.map((r) => ({
-      carrier,
+      carrier: code,
       origin_hub: r.origin_hub,
       destination_zone: r.destination_zone,
       weight_min_kg: r.weight_min_kg,
@@ -106,26 +140,28 @@ export async function uploadRateCard(carrier: "UPS" | "GIG", rows: Record<string
   const { error: offError } = await supabase
     .from("delivery_rate_cards")
     .update({ is_active: false })
-    .eq("carrier", carrier)
+    .eq("carrier", code)
     .eq("is_active", true)
     .neq("upload_batch", batch);
   if (offError) return { ok: false, error: offError.message };
 
   revalidatePath("/admin/delivery");
-  return { ok: true, message: `${clean.length} ${carrier} rate${clean.length === 1 ? "" : "s"} are now live.` };
+  return { ok: true, message: `${clean.length} ${known.label} rate${clean.length === 1 ? "" : "s"} are now live.` };
 }
 
-export async function switchOffCarrier(carrier: "UPS" | "GIG"): Promise<Result> {
-  if (carrier !== "UPS" && carrier !== "GIG") return { ok: false, error: "Pick UPS or GIG." };
+export async function switchOffCarrier(carrier: string): Promise<Result> {
+  const code = carrier.trim().toLowerCase();
   const supabase = await createClient();
+  const { data: known } = await supabase.from("carriers").select("label").eq("code", code).maybeSingle();
+  if (!known) return { ok: false, error: "Unknown carrier." };
   const { error } = await supabase
     .from("delivery_rate_cards")
     .update({ is_active: false })
-    .eq("carrier", carrier)
+    .eq("carrier", code)
     .eq("is_active", true);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/admin/delivery");
-  return { ok: true, message: `${carrier} is no longer offered.` };
+  return { ok: true, message: `${known.label} is no longer offered.` };
 }
 
 const settingsSchema = z.object({
