@@ -15,6 +15,13 @@ export const metadata: Metadata = {
   description: `Warehousing, pick and pack, last mile delivery, an online store and more. Everything ${company.name} handles for your brand after the sale.`,
 };
 
+// Portrait photos whose subjects sit high in the frame need the 4:3 crop
+// pinned near the top, otherwise object-cover centres and cuts their heads off.
+const imagePositions: Record<string, string> = {
+  delivery: "center 20%",
+  inventory: "center 20%",
+};
+
 export default function ServicesPage() {
   return (
     <>
@@ -57,6 +64,7 @@ export default function ServicesPage() {
                     fill
                     sizes="(min-width: 1024px) 36rem, 100vw"
                     className="object-cover"
+                    style={{ objectPosition: imagePositions[s.slug] }}
                   />
                 </div>
                 <span
