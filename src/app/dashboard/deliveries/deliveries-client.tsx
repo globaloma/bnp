@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { ChevronDown, Search, Truck, X } from "lucide-react";
+import { ChevronDown, Plus, Search, Truck, X } from "lucide-react";
 import { toast } from "sonner";
 import { LOCATIONS, type InboundDelivery, type InboundStatus, type WarehouseLocation } from "@/types/db";
-import { formatDate } from "@/lib/format";
+import { formatDate, naira } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -187,6 +187,11 @@ function DeliveryRow({ delivery: d }: { delivery: DeliveryWithLines }) {
   );
 }
 
+type NewProductDraft = { name: string; variant: string; sku: string; price: string; qty: string };
+type NewProductItem = { key: string; name: string; variant: string; sku: string; price: string; qty: number };
+
+const emptyDraft: NewProductDraft = { name: "", variant: "", sku: "", price: "", qty: "1" };
+
 function AnnounceDialog({ products }: { products: PickableProduct[] }) {
   const [open, setOpen] = useState(false);
   const [location, setLocation] = useState<WarehouseLocation>(() => products[0]?.location ?? "Abuja");
@@ -194,6 +199,10 @@ function AnnounceDialog({ products }: { products: PickableProduct[] }) {
   const [note, setNote] = useState("");
   const [query, setQuery] = useState("");
   const [qty, setQty] = useState<Record<string, number>>({});
+  // Products the merchant doesn't have yet, added inline for this delivery.
+  const [newItems, setNewItems] = useState<NewProductItem[]>([]);
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState<NewProductDraft>(emptyDraft);
   const [pending, startTransition] = useTransition();
 
   const here = useMemo(() => products.filter((p) => p.location === location), [products, location]);
@@ -208,13 +217,40 @@ function AnnounceDialog({ products }: { products: PickableProduct[] }) {
     );
   }, [here, query]);
   const chosen = here.filter((p) => (qty[p.id] ?? 0) > 0);
-  const totalUnits = chosen.reduce((s, p) => s + (qty[p.id] ?? 0), 0);
+  const newUnits = newItems.reduce((s, n) => s + n.qty, 0);
+  const totalUnits = chosen.reduce((s, p) => s + (qty[p.id] ?? 0), 0) + newUnits;
+  const productCount = chosen.length + newItems.length;
 
   function reset() {
     setQty({});
     setNote("");
     setExpectedOn("");
     setQuery("");
+    setNewItems([]);
+    setAdding(false);
+    setDraft(emptyDraft);
+  }
+
+  function addNewProduct() {
+    const name = draft.name.trim();
+    const quantity = Math.max(1, Math.min(100000, Math.floor(Number(draft.qty) || 0)));
+    if (name.length < 2) {
+      toast.error("Enter a name for the new product.");
+      return;
+    }
+    setNewItems((items) => [
+      ...items,
+      {
+        key: crypto.randomUUID(),
+        name,
+        variant: draft.variant.trim(),
+        sku: draft.sku.trim(),
+        price: draft.price.trim(),
+        qty: quantity,
+      },
+    ]);
+    setDraft(emptyDraft);
+    setAdding(false);
   }
 
   function submit() {
@@ -224,6 +260,13 @@ function AnnounceDialog({ products }: { products: PickableProduct[] }) {
         expectedOn,
         note,
         lines: chosen.map((p) => ({ productId: p.id, qty: qty[p.id] })),
+        newProducts: newItems.map((n) => ({
+          name: n.name,
+          variant: n.variant,
+          sku: n.sku,
+          price: n.price,
+          qty: n.qty,
+        })),
       });
       if (!result.ok) {
         toast.error(result.error);
@@ -260,6 +303,9 @@ function AnnounceDialog({ products }: { products: PickableProduct[] }) {
               onChange={(e) => {
                 setLocation(e.target.value as WarehouseLocation);
                 setQty({});
+                setNewItems([]);
+                setAdding(false);
+                setDraft(emptyDraft);
               }}
               className={cn(fieldClass, "appearance-none")}
             >
@@ -288,12 +334,12 @@ function AnnounceDialog({ products }: { products: PickableProduct[] }) {
           <div className="mb-1.5 flex items-center justify-between gap-2">
             <span className={cn(labelClass, "mb-0")}>Products</span>
             <span className="text-xs text-graphite">
-              {chosen.length} product{chosen.length === 1 ? "" : "s"}, {totalUnits} units
+              {productCount} product{productCount === 1 ? "" : "s"}, {totalUnits} units
             </span>
           </div>
           {here.length === 0 ? (
-            <p className="rounded-md border border-dashed border-stone p-4 text-sm text-graphite">
-              You have no products set up for the {location} warehouse yet. Add them on your Inventory page first.
+            <p className="rounded-md border border-dashed border-stone p-3 text-sm text-graphite">
+              No products set up for the {location} warehouse yet. Add new ones below and we&apos;ll create them for you.
             </p>
           ) : (
             <>
@@ -352,6 +398,108 @@ function AnnounceDialog({ products }: { products: PickableProduct[] }) {
               </ul>
             </>
           )}
+
+          {/* Products the merchant doesn't have in inventory yet */}
+          <div className="mt-3">
+            {newItems.length > 0 ? (
+              <ul className="mb-2 divide-y divide-stone overflow-hidden rounded-md border border-teal/40 bg-teal/5">
+                {newItems.map((n) => (
+                  <li key={n.key} className="flex items-center gap-3 px-3 py-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-semibold text-navy">
+                        {n.name}
+                        {n.variant ? <span className="font-normal text-graphite"> · {n.variant}</span> : null}
+                        <span className="ml-2 rounded bg-gold/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gold-700">
+                          New
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-mist">
+                        {n.sku ? <span className="font-mono">{n.sku} · </span> : null}
+                        {n.qty} units{n.price ? ` · ${naira(Number(n.price))} each` : ""}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setNewItems((items) => items.filter((it) => it.key !== n.key))}
+                      aria-label={`Remove ${n.name}`}
+                      className="text-mist hover:text-destructive"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+
+            {adding ? (
+              <div className="rounded-md border border-stone bg-stone/10 p-3">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <input
+                    autoFocus
+                    value={draft.name}
+                    onChange={(e) => setDraft((dr) => ({ ...dr, name: e.target.value }))}
+                    placeholder="Product name"
+                    maxLength={140}
+                    className={cn(fieldClass, "sm:col-span-2")}
+                  />
+                  <input
+                    value={draft.variant}
+                    onChange={(e) => setDraft((dr) => ({ ...dr, variant: e.target.value }))}
+                    placeholder="Variant, e.g. Red / Large (optional)"
+                    maxLength={60}
+                    className={fieldClass}
+                  />
+                  <input
+                    value={draft.sku}
+                    onChange={(e) => setDraft((dr) => ({ ...dr, sku: e.target.value }))}
+                    placeholder="SKU (optional)"
+                    maxLength={60}
+                    className={fieldClass}
+                  />
+                  <input
+                    value={draft.price}
+                    onChange={(e) => setDraft((dr) => ({ ...dr, price: e.target.value.replace(/[^0-9.]/g, "") }))}
+                    inputMode="decimal"
+                    placeholder="Sale price ₦ (optional)"
+                    className={fieldClass}
+                  />
+                  <input
+                    value={draft.qty}
+                    onChange={(e) => setDraft((dr) => ({ ...dr, qty: e.target.value.replace(/[^0-9]/g, "") }))}
+                    inputMode="numeric"
+                    placeholder="Quantity"
+                    className={fieldClass}
+                  />
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Button size="sm" onClick={addNewProduct} disabled={draft.name.trim().length < 2}>
+                    Add to delivery
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setAdding(false);
+                      setDraft(emptyDraft);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <span className="ml-auto text-[11px] text-mist">
+                    Added as a draft. Set the photo and publish it later on Inventory.
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAdding(true)}
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-teal-700 hover:underline"
+              >
+                <Plus className="size-4" /> Add a new product
+              </button>
+            )}
+          </div>
         </div>
 
         <div>
@@ -368,7 +516,7 @@ function AnnounceDialog({ products }: { products: PickableProduct[] }) {
           />
         </div>
 
-        <Button size="lg" onClick={submit} disabled={pending || chosen.length === 0}>
+        <Button size="lg" onClick={submit} disabled={pending || productCount === 0}>
           {pending ? "Announcing" : `Announce ${totalUnits} units`}
         </Button>
       </DialogContent>
