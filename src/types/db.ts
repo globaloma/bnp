@@ -35,8 +35,17 @@ export type Partner = {
   /** Merchant plan (Technical Specification v2, section 2). */
   plan_type: "standard" | "enterprise";
   plan_changed_at: string | null;
-  /** Floor space the warehouse has measured for this merchant, billed monthly. */
+  /**
+   * Billable floor space in m², billed monthly. Now derived from the crate and
+   * pallet counts below (migration 0035); a taller pallet stack raises it.
+   */
   storage_sqm: number;
+  /** Crates of small items in storage (0035). */
+  storage_crates: number;
+  /** Pallets of bulky/stacked items in storage (0035). */
+  storage_pallets: number;
+  /** How high the pallets are stacked, in metres; scales the pallet charge (0035). */
+  storage_pallet_height_m: number;
   /** Enterprise: name and contact of their account manager. */
   account_manager: string | null;
   /** Standard: an invoice is overdue, so new orders and deliveries pause. */
@@ -141,6 +150,15 @@ export type BillingCharge = {
   rate: number | null;
   amount: number;
   note: string | null;
+  /**
+   * Wallet-charge approval (0036). 'pending' = awaiting the merchant's approval;
+   * 'applied' = approved and deducted; 'auto_applied' = deducted after the grace
+   * window; 'cancelled' = voided. Older rows and per-order fees are 'applied'.
+   */
+  status: "pending" | "applied" | "auto_applied" | "cancelled";
+  approved_at: string | null;
+  /** When a pending charge auto-applies if not approved before then. */
+  auto_apply_at: string | null;
   created_at: string;
 };
 

@@ -680,7 +680,7 @@ export const faq = {
         },
         {
           q: "How is storage measured?",
-          a: "By the floor space your stock takes up on our shelves, in square metres. As a rough guide, about eight medium cartons fit in one square metre. Our quote calculator can estimate it for you.",
+          a: "By the space your stock takes up with us. Smaller items are kept in crates and bulkier items are stacked on pallets, where a taller stack counts for more. That adds up to a floor space in square metres, billed at ₦10,000 per square metre a month. As a rough guide, about eight medium cartons fit in one square metre, and our quote calculator can estimate it for you.",
         },
         {
           q: "How accurate is the online quote?",

@@ -108,6 +108,33 @@ function render(n: Notice, name: string): { subject: string; html: string } | nu
           { label: "See your billing", href: "/dashboard/billing" },
         ),
       };
+    case "charges_pending": {
+      const lines = [
+        Number(p.storage) > 0 ? `Storage: <strong>${money(p.storage)}</strong>` : null,
+        Number(p.insurance) > 0
+          ? `Insurance (0.25% of ${money(p.stock_value)} of stock): <strong>${money(p.insurance)}</strong>`
+          : null,
+      ]
+        .filter(Boolean)
+        .join("<br/>");
+      return {
+        subject: `Approve your BNP charges for ${month(p.period)}`,
+        html: wrap(
+          `Charges for ${month(p.period)} need your approval`,
+          `${hi} your monthly charges are ready and waiting for your approval before anything leaves your wallet:<br/>${lines}<br/><br/>Please review and approve them on your billing page. If you don't, they'll be applied automatically on <strong>${day(p.auto_apply_at)}</strong>. Fulfillment and delivery fees are still deducted as orders happen.`,
+          { label: "Review and approve", href: "/dashboard/billing" },
+        ),
+      };
+    }
+    case "charge_auto_applied":
+      return {
+        subject: "A BNP charge was applied automatically",
+        html: wrap(
+          "Charge applied",
+          `${hi} a charge of <strong>${money(p.amount)}</strong>${p.note ? ` (${escapeHtml(String(p.note))})` : ""} wasn't approved within the review window, so it has now been deducted from your wallet.`,
+          { label: "See your billing", href: "/dashboard/billing" },
+        ),
+      };
     case "declared_value_decided":
       return {
         subject: p.approved ? "Declared value change approved" : "Declared value change not approved",

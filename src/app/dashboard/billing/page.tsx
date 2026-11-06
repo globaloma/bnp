@@ -8,7 +8,7 @@ import { naira } from "@/lib/format";
 import { PageHeader, Panel, StatCard } from "@/components/dashboard/ui";
 import { Button } from "@/components/ui/button";
 import type { BillingCharge, Invoice } from "@/types/db";
-import { DeclaredValues, InvoiceList, type DeclaredRow } from "./billing-client";
+import { DeclaredValues, InvoiceList, PendingCharges, type DeclaredRow } from "./billing-client";
 
 export const metadata: Metadata = { title: "Billing" };
 
@@ -91,6 +91,16 @@ export default async function BillingPage() {
   const missing = declared.filter((d) => d.value === null && d.onHand > 0).length;
   const storageMonthly = Number(partner.storage_sqm) * Number(settings?.storage_rate ?? 10000);
   const insuranceMonthly = Math.round(stockValue * Number(settings?.insurance_rate ?? 0.0025) * 100) / 100;
+  const storageBreakdown = [
+    partner.storage_crates > 0 ? `${partner.storage_crates} crate${partner.storage_crates === 1 ? "" : "s"}` : null,
+    partner.storage_pallets > 0
+      ? `${partner.storage_pallets} pallet${partner.storage_pallets === 1 ? "" : "s"}${
+          partner.storage_pallet_height_m > 0 ? ` at ${partner.storage_pallet_height_m} m` : ""
+        }`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
   const unpaid = ((invoices ?? []) as Invoice[]).filter((i) => i.status === "unpaid");
 
   return (
@@ -99,7 +109,7 @@ export default async function BillingPage() {
         title="Billing"
         description={
           enterprise
-            ? "Your Enterprise plan: charges come out of your wallet as they happen."
+            ? "Your Enterprise plan: order fees come out of your wallet as orders happen; monthly storage and insurance wait for your approval first."
             : "Your Standard plan: one invoice at the start of each month."
         }
         action={
@@ -161,7 +171,7 @@ export default async function BillingPage() {
             <StatCard
               label="Next month's fixed charges"
               value={naira(storageMonthly + insuranceMonthly)}
-              sub={`Storage ${naira(storageMonthly)} + insurance ${naira(insuranceMonthly)}`}
+              sub={`Storage ${naira(storageMonthly)}${storageBreakdown ? ` (${storageBreakdown})` : ""} + insurance ${naira(insuranceMonthly)}`}
               accent="success"
             />
           </>
@@ -173,7 +183,12 @@ export default async function BillingPage() {
               sub={unpaid.length ? `${unpaid.length} unpaid invoice${unpaid.length === 1 ? "" : "s"}` : "All paid"}
               accent={unpaid.length ? "destructive" : "success"}
             />
-            <StatCard label="Storage" value={`${partner.storage_sqm} m²`} sub={`${naira(storageMonthly)} a month`} accent="teal" />
+            <StatCard
+              label="Storage"
+              value={`${partner.storage_sqm} m²`}
+              sub={`${naira(storageMonthly)} a month${storageBreakdown ? ` · ${storageBreakdown}` : ""}`}
+              accent="teal"
+            />
             <StatCard label="Wallet balance" value={naira(partner.wallet_balance)} sub="Can pay invoices" accent="gold" />
             <StatCard
               label="Stock value"
@@ -207,8 +222,8 @@ export default async function BillingPage() {
               <strong className="text-navy">{naira(insuranceMonthly)}</strong> a month at today&apos;s stock.
             </p>
             <p className="mt-2 text-xs text-graphite">
-              Next deduction: <strong className="text-navy">{nextDeduction(startMonth)}</strong>, from your wallet,
-              based on your stock at the end of this month.
+              Next charge: <strong className="text-navy">{nextDeduction(startMonth)}</strong>, based on your stock at
+              the end of this month. You approve it before it leaves your wallet.
             </p>
             {missing > 0 ? (
               <p className="mt-2 text-xs font-semibold text-destructive">
@@ -225,16 +240,29 @@ export default async function BillingPage() {
           <InvoiceList invoices={(invoices ?? []) as Invoice[]} walletBalance={partner.wallet_balance} />
         </section>
       ) : (
-        <section className="mb-8">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.08em] text-graphite">Charges</h2>
-          <ChargesTable charges={(charges ?? []) as BillingCharge[]} />
-        </section>
+        <>
+          {((charges ?? []) as BillingCharge[]).some((c) => c.status === "pending") ? (
+            <section className="mb-8">
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.08em] text-graphite">
+                Awaiting your approval
+              </h2>
+              <PendingCharges
+                charges={((charges ?? []) as BillingCharge[]).filter((c) => c.status === "pending")}
+                walletBalance={partner.wallet_balance}
+              />
+            </section>
+          ) : null}
+          <section className="mb-8">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.08em] text-graphite">Charges</h2>
+            <ChargesTable charges={((charges ?? []) as BillingCharge[]).filter((c) => c.status !== "pending")} />
+          </section>
+        </>
       )}
 
       {enterprise ? (
         <section className="mb-8">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.08em] text-graphite">Insurance history</h2>
-          <InsuranceHistory rows={(insuranceRows ?? []) as BillingCharge[]} />
+          <InsuranceHistory rows={((insuranceRows ?? []) as BillingCharge[]).filter((c) => c.status !== "pending")} />
         </section>
       ) : null}
 

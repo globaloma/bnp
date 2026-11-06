@@ -63,6 +63,19 @@ export async function payInvoiceOnline(invoiceId: string): Promise<{ ok: false; 
   redirect(url);
 }
 
+/** Approves a pending wallet charge, which then deducts from the wallet. */
+export async function approveCharge(
+  chargeId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!uuid.safeParse(chargeId).success) return { ok: false, error: "Charge not found." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("approve_charge", { p_charge: chargeId });
+  if (error) return { ok: false, error: friendly(error.message) };
+  revalidatePath("/dashboard/billing");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
 const requestSchema = z.object({
   productId: z.string().uuid(),
   value: z.coerce.number().min(0, "Enter the value per unit").max(1_000_000_000),

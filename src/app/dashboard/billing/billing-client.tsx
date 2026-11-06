@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CreditCard, Lock, Wallet } from "lucide-react";
 import { toast } from "sonner";
-import type { Invoice } from "@/types/db";
+import type { BillingCharge, Invoice } from "@/types/db";
 import { naira } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { payInvoiceFromWallet, payInvoiceOnline, requestDeclaredValueChange } from "./actions";
+import { approveCharge, payInvoiceFromWallet, payInvoiceOnline, requestDeclaredValueChange } from "./actions";
+
+const CHARGE_LABEL: Record<BillingCharge["kind"], string> = {
+  storage: "Storage",
+  insurance: "Insurance",
+  fulfillment: "Fulfillment (9%)",
+  adjustment: "Adjustment",
+  delivery: "Delivery",
+};
 
 /** Unpaid and past its due date. */
 function isOverdue(inv: Invoice) {
@@ -27,6 +35,63 @@ function monthName(date: string) {
 }
 function shortDate(date: string) {
   return new Date(date).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
+}
+
+/** Charges awaiting the merchant's approval before they deduct from the wallet. */
+export function PendingCharges({ charges, walletBalance }: { charges: BillingCharge[]; walletBalance: number }) {
+  if (charges.length === 0) return null;
+  const total = charges.reduce((s, c) => s + Number(c.amount), 0);
+  return (
+    <div className="rounded-lg border border-gold/50 bg-gold/5">
+      <div className="border-b border-gold/30 px-4 py-3 text-sm text-graphite">
+        These charges are waiting for your approval. Nothing leaves your wallet until you approve each one. If you
+        don&apos;t, each is applied automatically on its date. Delivery and fulfillment fees are not affected.
+      </div>
+      <ul className="divide-y divide-gold/20">
+        {charges.map((c) => (
+          <PendingChargeRow key={c.id} charge={c} />
+        ))}
+      </ul>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gold/30 px-4 py-3 text-sm">
+        <span className="text-graphite">
+          Total awaiting approval: <strong className="text-navy">{naira(total)}</strong>
+        </span>
+        <span className="text-graphite">
+          Wallet balance <strong className="text-navy">{naira(walletBalance)}</strong>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function PendingChargeRow({ charge }: { charge: BillingCharge }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  function approve() {
+    startTransition(async () => {
+      const result = await approveCharge(charge.id);
+      if (result.ok) {
+        toast.success("Charge approved and paid from your wallet.");
+        router.refresh();
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+      <div className="min-w-0">
+        <div className="font-semibold text-navy">{naira(charge.amount)}</div>
+        <div className="text-xs text-graphite">
+          {charge.note ?? CHARGE_LABEL[charge.kind]}
+          {charge.auto_apply_at ? ` · auto-applies ${shortDate(charge.auto_apply_at)}` : ""}
+        </div>
+      </div>
+      <Button size="sm" onClick={approve} disabled={pending}>
+        {pending ? "Approving" : "Approve and pay"}
+      </Button>
+    </li>
+  );
 }
 
 export function InvoiceList({ invoices, walletBalance }: { invoices: Invoice[]; walletBalance: number }) {

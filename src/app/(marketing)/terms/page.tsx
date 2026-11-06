@@ -84,7 +84,9 @@ const sections: LegalSection[] = [
         <p>
           Merchants choose one of two plans. Both pay a <strong>registration fee</strong> of ₦50,000
           a year, covering account setup, onboarding, dashboard access and the online store, and{" "}
-          <strong>storage</strong> of ₦10,000 per square metre of space used, per month.
+          <strong>storage</strong> of ₦10,000 per square metre of space used, per month. Space is measured as the
+          crates and pallets your stock occupies (a taller pallet stack counts for more), which add up to that square
+          metre figure.
         </p>
         <ul>
           <li>
