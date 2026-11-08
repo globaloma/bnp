@@ -398,6 +398,119 @@ export async function deleteProducts(ids: string[]): Promise<ActionResult> {
   return { ok: true };
 }
 
+// Bulk pricing for the inventory table's selection: set one sale price, apply a
+// percentage discount as the promo, or clear the promo. Pricing only — stock is
+// untouched.
+export type PricingOp =
+  | { type: "sale"; salePrice: number }
+  | { type: "discount"; percent: number }
+  | { type: "clearPromo" };
+
+export async function updateProductsPricing(ids: string[], op: PricingOp): Promise<ActionResult> {
+  if (ids.length === 0) return { ok: false, error: "Nothing selected." };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Your session expired, sign in again." };
+
+  if (op.type === "sale") {
+    if (!(op.salePrice > 0)) return { ok: false, error: "Enter a sale price greater than zero." };
+    // Clear any promo too, so it can't be left at or above the new sale price
+    // (the products_promo_price_check constraint).
+    const { error } = await supabase
+      .from("products")
+      .update({ sale_price: Math.round(op.salePrice * 100) / 100, promo_price: null })
+      .in("id", ids)
+      .eq("partner_id", user.id);
+    if (error) return { ok: false, error: error.message };
+  } else if (op.type === "clearPromo") {
+    const { error } = await supabase
+      .from("products")
+      .update({ promo_price: null })
+      .in("id", ids)
+      .eq("partner_id", user.id);
+    if (error) return { ok: false, error: error.message };
+  } else {
+    if (!(op.percent > 0) || op.percent >= 100) {
+      return { ok: false, error: "Enter a discount between 1 and 99%." };
+    }
+    const { data: rows, error: readErr } = await supabase
+      .from("products")
+      .select("id, sale_price")
+      .in("id", ids)
+      .eq("partner_id", user.id);
+    if (readErr) return { ok: false, error: readErr.message };
+    // Each product's promo is a share off ITS own sale price. Group by the
+    // resulting promo so we issue one update per distinct value, not per row.
+    const groups = new Map<number, string[]>();
+    for (const r of rows ?? []) {
+      const promo = Math.round(r.sale_price * (1 - op.percent / 100) * 100) / 100;
+      if (!(promo >= 0 && promo < r.sale_price)) continue; // skip prices too small to discount
+      groups.set(promo, [...(groups.get(promo) ?? []), r.id]);
+    }
+    for (const [promo, groupIds] of groups) {
+      const { error } = await supabase
+        .from("products")
+        .update({ promo_price: promo })
+        .in("id", groupIds)
+        .eq("partner_id", user.id);
+      if (error) return { ok: false, error: error.message };
+    }
+  }
+
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+// Bulk restock: announce one inbound delivery covering every selected product
+// (adds the same number of units to each). Reuses the same announce flow as the
+// Add-product form and CSV import, so the warehouse is emailed and stock only
+// becomes on-hand once it's received and put away.
+export async function restockProducts(
+  ids: string[],
+  qty: number,
+): Promise<ActionResult & { announced?: string }> {
+  if (ids.length === 0) return { ok: false, error: "Nothing selected." };
+  if (!(qty > 0)) return { ok: false, error: "Enter how many units to add." };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Your session expired, sign in again." };
+
+  const { data: products, error } = await supabase
+    .from("products")
+    .select("id, name, variant, location")
+    .in("id", ids)
+    .eq("partner_id", user.id);
+  if (error) return { ok: false, error: error.message };
+  if (!products || products.length === 0) return { ok: false, error: "No products found." };
+
+  const { data: merchant } = await supabase
+    .from("partners")
+    .select("id, business_name")
+    .eq("id", user.id)
+    .single();
+  if (!merchant) return { ok: false, error: "Merchant not found." };
+
+  const lines = products.map((p) => ({
+    productId: p.id as string,
+    qty: Math.floor(qty),
+    location: p.location as WarehouseLocation,
+    label: p.variant ? `${p.name} (${p.variant})` : (p.name as string),
+  }));
+
+  const announced = await announceDeliveries(supabase, merchant, lines);
+  if (!announced.ok) return { ok: false, error: announced.error };
+
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard/deliveries");
+  revalidatePath("/dashboard");
+  return { ok: true, announced: announced.refs.join(", ") };
+}
+
 export async function setChargesVat(chargesVat: boolean): Promise<ActionResult> {
   const supabase = await createClient();
   const {

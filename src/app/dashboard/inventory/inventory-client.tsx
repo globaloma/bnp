@@ -18,6 +18,8 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
+  Tag,
+  PackagePlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { LOCATIONS, type Product, type WarehouseLocation } from "@/types/db";
@@ -45,6 +47,8 @@ import {
   toggleProductPublished,
   setProductsPublished,
   deleteProducts,
+  updateProductsPricing,
+  restockProducts,
   type ProductCsvRow,
 } from "./actions";
 import type { ActionResult } from "@/lib/schemas/product";
@@ -648,8 +652,51 @@ function BulkBar({
 }) {
   const [pending, startTransition] = useTransition();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [priceOpen, setPriceOpen] = useState(false);
+  const [restockOpen, setRestockOpen] = useState(false);
+  const [priceMode, setPriceMode] = useState<"sale" | "discount" | "clear">("sale");
+  const [saleVal, setSaleVal] = useState("");
+  const [pctVal, setPctVal] = useState("");
+  const [qtyVal, setQtyVal] = useState("");
   const ids = items.map((p) => p.id);
   const labelItems = items.filter((p) => p.barcode);
+
+  function applyPricing() {
+    const op =
+      priceMode === "sale"
+        ? { type: "sale" as const, salePrice: Number(saleVal) }
+        : priceMode === "discount"
+          ? { type: "discount" as const, percent: Number(pctVal) }
+          : { type: "clearPromo" as const };
+    startTransition(async () => {
+      const result = await updateProductsPricing(ids, op);
+      if (result.ok) {
+        toast.success(`Pricing updated for ${ids.length} product${ids.length === 1 ? "" : "s"}`);
+        setPriceOpen(false);
+        setSaleVal("");
+        setPctVal("");
+        onClear();
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
+
+  function applyRestock() {
+    startTransition(async () => {
+      const result = await restockProducts(ids, Number(qtyVal));
+      if (result.ok) {
+        toast.success(
+          result.announced ? `Restock announced to the warehouse (${result.announced})` : "Restock announced",
+        );
+        setRestockOpen(false);
+        setQtyVal("");
+        onClear();
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
 
   function setPublished(published: boolean) {
     startTransition(async () => {
@@ -719,6 +766,119 @@ function BulkBar({
           <Download className="size-4" />
           Export
         </Button>
+
+        <Button size="sm" variant="outline" disabled={pending} onClick={() => setPriceOpen(true)}>
+          <Tag className="size-4" />
+          Price
+        </Button>
+        <Dialog open={priceOpen} onOpenChange={setPriceOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>
+                Update price for {items.length} product{items.length === 1 ? "" : "s"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                {(["sale", "discount", "clear"] as const).map((m) => (
+                  <label key={m} className="flex items-center gap-2 text-sm text-navy">
+                    <input
+                      type="radio"
+                      name="priceMode"
+                      checked={priceMode === m}
+                      onChange={() => setPriceMode(m)}
+                      className="accent-navy"
+                    />
+                    {m === "sale" ? "Set sale price" : m === "discount" ? "Apply a discount" : "Clear promo price"}
+                  </label>
+                ))}
+              </div>
+              {priceMode === "sale" ? (
+                <div>
+                  <label className={labelClass}>New sale price (₦)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={saleVal}
+                    onChange={(e) => setSaleVal(e.target.value)}
+                    placeholder="e.g. 7500"
+                    className={fieldClass}
+                  />
+                  <p className="mt-1 text-[11px] text-mist">Applies to every selected product and clears any existing promo.</p>
+                </div>
+              ) : priceMode === "discount" ? (
+                <div>
+                  <label className={labelClass}>Discount (%)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="99"
+                    value={pctVal}
+                    onChange={(e) => setPctVal(e.target.value)}
+                    placeholder="e.g. 10"
+                    className={fieldClass}
+                  />
+                  <p className="mt-1 text-[11px] text-mist">Sets each product&apos;s promo price to that much off its own sale price.</p>
+                </div>
+              ) : (
+                <p className="text-sm text-graphite">
+                  Removes the promo price from the selected products, so they go back to full sale price.
+                </p>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setPriceOpen(false)} disabled={pending}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={applyPricing}
+                  disabled={pending || (priceMode === "sale" && !saleVal) || (priceMode === "discount" && !pctVal)}
+                >
+                  {pending ? "Saving" : "Apply"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Button size="sm" variant="outline" disabled={pending} onClick={() => setRestockOpen(true)}>
+          <PackagePlus className="size-4" />
+          Restock
+        </Button>
+        <Dialog open={restockOpen} onOpenChange={setRestockOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>
+                Restock {items.length} product{items.length === 1 ? "" : "s"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className={labelClass}>Units to add to each</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={qtyVal}
+                  onChange={(e) => setQtyVal(e.target.value)}
+                  placeholder="e.g. 50"
+                  className={fieldClass}
+                />
+              </div>
+              <p className="text-[11px] text-mist">
+                Announces an inbound delivery for the selected products (one per warehouse). The warehouse is
+                emailed to receive it; stock becomes available once it&apos;s received and put away.
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setRestockOpen(false)} disabled={pending}>
+                  Cancel
+                </Button>
+                <Button onClick={applyRestock} disabled={pending || !qtyVal}>
+                  {pending ? "Announcing" : "Announce delivery"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
           <DialogTrigger
             render={
