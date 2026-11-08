@@ -68,11 +68,15 @@ export function ScanStation({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [code, setCode] = useState("");
-  const [qty, setQty] = useState(1);
+  // Held as text so the box can be cleared and retyped (erase the "1", type
+  // "25") instead of snapping back to the minimum on every keystroke. The
+  // numeric value is derived and clamped only where it is actually used.
+  const [qtyText, setQtyText] = useState("1");
   const [busy, setBusy] = useState(false);
   const [last, setLast] = useState<ScanResult | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const counter = useRef(0);
+  const qty = Math.max(1, Math.min(10000, Math.floor(Number(qtyText) || 1)));
 
   const refocus = useCallback(() => {
     if (!disabled) inputRef.current?.focus({ preventScroll: true });
@@ -104,7 +108,7 @@ export function ScanStation({
     setLast(result);
     setHistory((h) => [{ id: ++counter.current, code: value, qty, result }, ...h].slice(0, 12));
     // A larger quantity is for one bulk scan; go back to 1 afterwards.
-    if (result.ok) setQty(1);
+    if (result.ok) setQtyText("1");
     setBusy(false);
     refocus();
   }
@@ -180,8 +184,9 @@ export function ScanStation({
               inputMode="numeric"
               min={1}
               max={10000}
-              value={qty}
-              onChange={(e) => setQty(Math.max(1, Math.min(10000, Math.floor(Number(e.target.value) || 1))))}
+              value={qtyText}
+              onChange={(e) => setQtyText(e.target.value.replace(/[^0-9]/g, ""))}
+              onBlur={() => setQtyText(String(qty))}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
