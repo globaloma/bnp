@@ -15,6 +15,9 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { LOCATIONS, type Product, type WarehouseLocation } from "@/types/db";
@@ -58,7 +61,40 @@ function stockBucket(p: Pick<Product, "stock" | "low_stock_threshold">): Exclude
   return "In stock";
 }
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE_OPTIONS = [20, 50, 100];
+
+type SortKey = "name" | "location" | "price" | "stock" | "published";
+type SortState = { key: SortKey; dir: "asc" | "desc" };
+
+function SortHeader({
+  label,
+  col,
+  sort,
+  onSort,
+}: {
+  label: string;
+  col: SortKey;
+  sort: SortState;
+  onSort: (key: SortKey) => void;
+}) {
+  const active = sort.key === col;
+  return (
+    <th className="px-3 py-2.5 font-semibold">
+      <button
+        type="button"
+        onClick={() => onSort(col)}
+        className="inline-flex items-center gap-1 transition-colors hover:text-navy"
+      >
+        {label}
+        {active ? (
+          sort.dir === "asc" ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />
+        ) : (
+          <ArrowUpDown className="size-3 opacity-40" />
+        )}
+      </button>
+    </th>
+  );
+}
 
 export function InventoryClient({
   products,
@@ -72,6 +108,8 @@ export function InventoryClient({
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
+  const [sort, setSort] = useState<SortState>({ key: "name", dir: "asc" });
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
@@ -101,6 +139,41 @@ export function InventoryClient({
     [products, locFilter, stockFilter, needle],
   );
 
+  const sorted = useMemo(() => {
+    const dir = sort.dir === "asc" ? 1 : -1;
+    const arr = [...visible];
+    arr.sort((a, b) => {
+      let cmp = 0;
+      switch (sort.key) {
+        case "name":
+          cmp = displayName(a).localeCompare(displayName(b));
+          break;
+        case "location":
+          cmp = a.location.localeCompare(b.location);
+          break;
+        case "price":
+          cmp = unitPrice(a) - unitPrice(b);
+          break;
+        case "stock":
+          cmp = a.stock - b.stock;
+          break;
+        case "published":
+          cmp = Number(a.published) - Number(b.published);
+          break;
+      }
+      // Fall back to name so the order is stable when the key ties.
+      if (cmp === 0) cmp = displayName(a).localeCompare(displayName(b));
+      return cmp * dir;
+    });
+    return arr;
+  }, [visible, sort]);
+
+  function toggleSort(key: SortKey) {
+    setSort((prev) =>
+      prev.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" },
+    );
+  }
+
   // When the filtered set changes, go back to the first page and drop any
   // selection so a bulk action never touches rows that are now hidden. This is
   // React's "adjust state during render" pattern — no effect, no extra paint.
@@ -112,9 +185,18 @@ export function InventoryClient({
     setSelected(new Set());
   }
 
-  const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  // Reordering or changing the page size keeps the same items, so only the
+  // page resets here — the selection is left intact.
+  const viewKey = `${sort.key}|${sort.dir}|${pageSize}`;
+  const [prevViewKey, setPrevViewKey] = useState(viewKey);
+  if (viewKey !== prevViewKey) {
+    setPrevViewKey(viewKey);
+    setPage(1);
+  }
+
+  const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
   const safePage = Math.min(page, pageCount);
-  const pageItems = visible.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const pageItems = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
   const pageIds = pageItems.map((p) => p.id);
   const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
 
@@ -240,7 +322,13 @@ export function InventoryClient({
       </div>
 
       {selectedItems.length > 0 ? (
-        <BulkBar items={selectedItems} merchantName={merchantName} onClear={() => setSelected(new Set())} />
+        <BulkBar
+          items={selectedItems}
+          total={visible.length}
+          merchantName={merchantName}
+          onSelectAll={() => setSelected(new Set(sorted.map((p) => p.id)))}
+          onClear={() => setSelected(new Set())}
+        />
       ) : null}
 
       {visible.length === 0 ? (
@@ -268,11 +356,11 @@ export function InventoryClient({
                       className="size-4 accent-navy"
                     />
                   </th>
-                  <th className="px-3 py-2.5 font-semibold">Product</th>
-                  <th className="px-3 py-2.5 font-semibold">Location</th>
-                  <th className="px-3 py-2.5 font-semibold">Price</th>
-                  <th className="px-3 py-2.5 font-semibold">Stock</th>
-                  <th className="px-3 py-2.5 font-semibold">Storefront</th>
+                  <SortHeader label="Product" col="name" sort={sort} onSort={toggleSort} />
+                  <SortHeader label="Location" col="location" sort={sort} onSort={toggleSort} />
+                  <SortHeader label="Price" col="price" sort={sort} onSort={toggleSort} />
+                  <SortHeader label="Stock" col="stock" sort={sort} onSort={toggleSort} />
+                  <SortHeader label="Storefront" col="published" sort={sort} onSort={toggleSort} />
                   <th className="px-3 py-2.5 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
@@ -291,9 +379,25 @@ export function InventoryClient({
           </div>
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            <span className="text-xs text-mist">
-              Showing {(safePage - 1) * PAGE_SIZE + 1}&ndash;{Math.min(safePage * PAGE_SIZE, visible.length)} of {visible.length}
-            </span>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1.5 text-xs text-graphite">
+                Rows
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  className="h-8 rounded-md border border-stone bg-white px-2 text-xs text-navy outline-none focus-visible:border-teal"
+                >
+                  {PAGE_SIZE_OPTIONS.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <span className="text-xs text-mist">
+                Showing {(safePage - 1) * pageSize + 1}&ndash;{Math.min(safePage * pageSize, visible.length)} of {visible.length}
+              </span>
+            </div>
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
@@ -531,11 +635,15 @@ function exportProductsCsv(items: Product[]) {
 
 function BulkBar({
   items,
+  total,
   merchantName,
+  onSelectAll,
   onClear,
 }: {
   items: Product[];
+  total: number;
   merchantName: string;
+  onSelectAll: () => void;
   onClear: () => void;
 }) {
   const [pending, startTransition] = useTransition();
@@ -573,6 +681,15 @@ function BulkBar({
   return (
     <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-navy/20 bg-navy/5 px-3 py-2">
       <span className="text-sm font-semibold text-navy">{items.length} selected</span>
+      {items.length < total ? (
+        <button
+          type="button"
+          onClick={onSelectAll}
+          className="text-xs font-semibold text-teal-700 hover:underline"
+        >
+          Select all {total}
+        </button>
+      ) : null}
       <div className="flex flex-wrap items-center gap-1.5">
         <Button size="sm" variant="outline" disabled={pending} onClick={() => setPublished(true)}>
           <Eye className="size-4" />
