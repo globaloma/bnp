@@ -706,10 +706,14 @@ function ProductForm({
   );
 }
 
-const CSV_TEMPLATE_HEADER =
-  "sku,name,variant,category,cost_price,sale_price,vat,stock,location,shipping_fee,pickup_enabled,image_url,description,declared_value,weight_kg,promo_price";
-const CSV_TEMPLATE_EXAMPLE =
-  "ATB-RED,Ankara Tote,Red,Bags,4000,7500,7.5,20,Abuja,1200,false,,Hand-sewn Ankara print tote with inner pocket,6000,0.4,";
+// The template keeps only the columns most merchants need: sku, name and
+// sale_price are required, the rest are handy. The importer still accepts the
+// advanced columns (cost_price, vat, location, shipping_fee, pickup_enabled,
+// image_url, description, declared_value, weight_kg, promo_price) when a file
+// has them, so Shopify-style exports and re-imports keep working — they're just
+// not in the starter template. Photos are added per product in the app, not here.
+const CSV_TEMPLATE_HEADER = "sku,name,variant,category,sale_price,stock";
+const CSV_TEMPLATE_EXAMPLE = "ATB-RED,Ankara Tote Bag,Red,Bags,7500,25";
 
 function downloadCsvTemplate() {
   const blob = new Blob([`${CSV_TEMPLATE_HEADER}\n${CSV_TEMPLATE_EXAMPLE}\n`], {
@@ -844,6 +848,11 @@ function ImportCsvForm({ onDone }: { onDone: () => void }) {
         <Download className="size-3.5" />
         Download CSV template
       </button>
+      <p className="text-xs leading-relaxed text-graphite">
+        Only <span className="font-mono">sku</span>, <span className="font-mono">name</span> and{" "}
+        <span className="font-mono">sale_price</span> are required. Add product photos after importing, from each
+        product&apos;s page.
+      </p>
       <p className="text-xs leading-relaxed text-graphite">
         The <span className="font-mono">stock</span> column is how many units you&apos;re sending us. We announce
         them to the warehouse as a delivery, and they show as on hand once they&apos;re scanned in.
