@@ -816,6 +816,25 @@ function ImportCsvForm({ onDone }: { onDone: () => void }) {
         // " sku" and "Sku" all match the column names we expect.
         transformHeader: (h) => h.replace(/^﻿/, "").trim().toLowerCase(),
       });
+
+      // If a required column is missing from the header row entirely, say so
+      // once — instead of repeating "missing sku" on every single row.
+      const headers = parsed.meta.fields ?? [];
+      const missingCols = ["sku", "name", "sale_price"].filter((c) => !headers.includes(c));
+      if (missingCols.length > 0) {
+        setRows([]);
+        setErrors([
+          `This file is missing the ${missingCols.join(", ")} column${missingCols.length > 1 ? "s" : ""}. ` +
+            `Download the CSV template above and keep its header row unchanged.`,
+        ]);
+        return;
+      }
+      if (parsed.data.length === 0) {
+        setRows([]);
+        setErrors(["No product rows found below the header. Add at least one product and try again."]);
+        return;
+      }
+
       const { valid, errors: rowErrors } = parseCsvRows(parsed.data);
       setRows(valid);
       setErrors(rowErrors);
