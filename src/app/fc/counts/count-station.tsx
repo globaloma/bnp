@@ -34,14 +34,16 @@ export function CountStation({ recent }: { recent: RecentCount[] }) {
   const router = useRouter();
   const [location, setLocation] = useWarehouseLocation();
   const [bin, setBin] = useState<CountBin | null>(null);
-  const [counted, setCounted] = useState(0);
+  // Held as text so the box can be cleared and retyped; derived number below.
+  const [countedText, setCountedText] = useState("0");
   const [note, setNote] = useState("");
   const [outcome, setOutcome] = useState<ScanResult | null>(null);
   const [pending, startTransition] = useTransition();
+  const counted = Math.max(0, Math.floor(Number(countedText) || 0));
 
   function reset() {
     setBin(null);
-    setCounted(0);
+    setCountedText("0");
     setNote("");
   }
 
@@ -53,7 +55,7 @@ export function CountStation({ recent }: { recent: RecentCount[] }) {
         return { ok: false, tone: "error", message: `Bin ${found.bin.code} already has a count waiting for a supervisor.` };
       }
       setBin(found.bin);
-      setCounted(0);
+      setCountedText("0");
       setOutcome(null);
       return {
         ok: true,
@@ -76,7 +78,7 @@ export function CountStation({ recent }: { recent: RecentCount[] }) {
       };
     }
     const next = counted + qty;
-    setCounted(next);
+    setCountedText(String(next));
     return { ok: true, tone: "success", message: `${next} counted.` };
   }
 
@@ -163,8 +165,9 @@ export function CountStation({ recent }: { recent: RecentCount[] }) {
                       type="number"
                       inputMode="numeric"
                       min={0}
-                      value={counted}
-                      onChange={(e) => setCounted(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                      value={countedText}
+                      onChange={(e) => setCountedText(e.target.value.replace(/[^0-9]/g, ""))}
+                      onBlur={() => setCountedText(String(counted))}
                       className="mt-1 block h-12 w-32 rounded-lg border-2 border-navy/20 bg-white text-center font-mono text-2xl text-navy"
                     />
                   </label>

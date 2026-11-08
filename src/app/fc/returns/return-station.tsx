@@ -168,10 +168,12 @@ function QuarantineList({ items }: { items: QuarantineItem[] }) {
 
 function QuarantineRow({ item }: { item: QuarantineItem }) {
   const [mode, setMode] = useState<"stock" | "writeoff" | null>(null);
-  const [qty, setQty] = useState(1);
+  // Held as text so the box can be cleared and retyped; clamped where used.
+  const [qtyText, setQtyText] = useState("1");
   const [reason, setReason] = useState("");
   const [pending, startTransition] = useTransition();
   const free = item.quarantined - item.pending;
+  const qty = Math.max(1, Math.min(free, Math.floor(Number(qtyText) || 1)));
 
   function send() {
     startTransition(async () => {
@@ -186,6 +188,7 @@ function QuarantineRow({ item }: { item: QuarantineItem }) {
         toast.success(result.message);
         setMode(null);
         setReason("");
+        setQtyText("1");
       } else {
         toast.error(result.message);
       }
@@ -226,8 +229,9 @@ function QuarantineRow({ item }: { item: QuarantineItem }) {
               type="number"
               min={1}
               max={free}
-              value={qty}
-              onChange={(e) => setQty(Math.max(1, Math.min(free, Math.floor(Number(e.target.value) || 1))))}
+              value={qtyText}
+              onChange={(e) => setQtyText(e.target.value.replace(/[^0-9]/g, ""))}
+              onBlur={() => setQtyText(String(qty))}
               className="mt-1 block h-9 w-20 rounded-md border border-stone bg-white px-2 text-sm text-navy"
             />
           </label>
