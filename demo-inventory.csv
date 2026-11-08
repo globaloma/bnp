@@ -1,0 +1,10 @@
+sku,name,variant,category,cost_price,sale_price,vat,stock,location,shipping_fee,pickup_enabled,image_url,description,declared_value,weight_kg,promo_price
+ATB-RED,Ankara Tote Bag,Red,Bags,4000,7500,7.5,25,Abuja,1200,false,,"Hand-sewn Ankara print tote with inner pocket",6000,0.4,6500
+ATB-BLU,Ankara Tote Bag,Blue,Bags,4000,7500,7.5,18,Abuja,1200,false,,"Hand-sewn Ankara print tote with inner pocket",6000,0.4,
+SHEA-200,Shea Butter 200g,,Skincare,1500,3200,7.5,60,Lagos,800,true,,"Raw unrefined shea butter, 200g tub",2500,0.25,2800
+SHEA-500,Shea Butter 500g,,Skincare,3000,6000,7.5,40,Lagos,800,true,,"Raw unrefined shea butter, 500g tub",4500,0.55,
+PALM-5L,Palm Oil 5L,,Groceries,6000,9500,0,30,Abuja,1500,true,,"Pure red palm oil, 5 litre keg",8000,5,8900
+HONEY-1L,Pure Honey 1L,,Groceries,4500,8000,0,22,Abuja,1000,false,,"100% natural honey, 1 litre jar",6500,1.3,
+TSHIRT-M,Cotton T-Shirt,Medium,Apparel,2500,5000,7.5,50,Lagos,900,false,,"Soft cotton crew-neck tee",3500,0.2,4200
+TSHIRT-L,Cotton T-Shirt,Large,Apparel,2500,5000,7.5,45,Lagos,900,false,,"Soft cotton crew-neck tee",3500,0.22,4200
+MUG-WHT,Ceramic Mug,White,Home,1200,2800,7.5,80,USA,600,false,,"350ml glossy ceramic mug",2000,0.35,

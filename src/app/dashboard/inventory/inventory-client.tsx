@@ -807,6 +807,10 @@ function ImportCsvForm({ onDone }: { onDone: () => void }) {
       const parsed = Papa.parse<Record<string, string>>(text, {
         header: true,
         skipEmptyLines: true,
+        // Tolerate files exported from Excel / Google Sheets: strip a UTF-8 BOM
+        // off the first header, and normalise case and stray spaces so "SKU",
+        // " sku" and "Sku" all match the column names we expect.
+        transformHeader: (h) => h.replace(/^﻿/, "").trim().toLowerCase(),
       });
       const { valid, errors: rowErrors } = parseCsvRows(parsed.data);
       setRows(valid);
