@@ -2,7 +2,20 @@
 
 import { useActionState, useMemo, useState, useTransition } from "react";
 import Papa from "papaparse";
-import { Plus, Boxes, Eye, EyeOff, Pencil, Printer, Upload, Download } from "lucide-react";
+import {
+  Plus,
+  Boxes,
+  Eye,
+  EyeOff,
+  Pencil,
+  Printer,
+  Upload,
+  Download,
+  Search,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { toast } from "sonner";
 import { LOCATIONS, type Product, type WarehouseLocation } from "@/types/db";
 import { daysSince, naira } from "@/lib/format";
@@ -27,6 +40,8 @@ import {
   editProduct,
   importProducts,
   toggleProductPublished,
+  setProductsPublished,
+  deleteProducts,
   type ProductCsvRow,
 } from "./actions";
 import type { ActionResult } from "@/lib/schemas/product";
@@ -43,6 +58,8 @@ function stockBucket(p: Pick<Product, "stock" | "low_stock_threshold">): Exclude
   return "In stock";
 }
 
+const PAGE_SIZE = 20;
+
 export function InventoryClient({
   products,
   merchantName,
@@ -52,6 +69,9 @@ export function InventoryClient({
 }) {
   const [locFilter, setLocFilter] = useState<"All" | WarehouseLocation>("All");
   const [stockFilter, setStockFilter] = useState<StockFilter>("All");
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
@@ -66,15 +86,60 @@ export function InventoryClient({
     "Out of stock": outCount,
   };
 
+  const needle = query.trim().toLowerCase();
   const visible = useMemo(
     () =>
       products.filter(
         (p) =>
           (locFilter === "All" || p.location === locFilter) &&
-          (stockFilter === "All" || stockBucket(p) === stockFilter),
+          (stockFilter === "All" || stockBucket(p) === stockFilter) &&
+          (needle === "" ||
+            p.name.toLowerCase().includes(needle) ||
+            (p.sku ?? "").toLowerCase().includes(needle) ||
+            (p.variant ?? "").toLowerCase().includes(needle)),
       ),
-    [products, locFilter, stockFilter],
+    [products, locFilter, stockFilter, needle],
   );
+
+  // When the filtered set changes, go back to the first page and drop any
+  // selection so a bulk action never touches rows that are now hidden. This is
+  // React's "adjust state during render" pattern — no effect, no extra paint.
+  const filterKey = `${locFilter}|${stockFilter}|${needle}`;
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey);
+    setPage(1);
+    setSelected(new Set());
+  }
+
+  const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pageItems = visible.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const pageIds = pageItems.map((p) => p.id);
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+
+  const selectedItems = useMemo(
+    () => visible.filter((p) => selected.has(p.id)),
+    [visible, selected],
+  );
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function togglePage() {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allPageSelected) pageIds.forEach((id) => next.delete(id));
+      else pageIds.forEach((id) => next.add(id));
+      return next;
+    });
+  }
 
   return (
     <div>
@@ -158,24 +223,120 @@ export function InventoryClient({
         </div>
       </div>
 
+      <div className="mb-3 flex items-center gap-2">
+        <div className="relative w-full max-w-xs">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-mist" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search name or SKU"
+            className={cn(fieldClass, "pl-9")}
+          />
+        </div>
+        <span className="ml-auto text-xs text-mist">
+          {visible.length} product{visible.length === 1 ? "" : "s"}
+        </span>
+      </div>
+
+      {selectedItems.length > 0 ? (
+        <BulkBar items={selectedItems} merchantName={merchantName} onClear={() => setSelected(new Set())} />
+      ) : null}
+
       {visible.length === 0 ? (
         <EmptyState
           icon={<Boxes className="size-8" />}
-          title="No products yet"
-          body="Add your first product to start tracking stock and creating orders against it."
+          title={needle || locFilter !== "All" || stockFilter !== "All" ? "No matching products" : "No products yet"}
+          body={
+            needle || locFilter !== "All" || stockFilter !== "All"
+              ? "Try clearing the search or filters."
+              : "Add your first product to start tracking stock and creating orders against it."
+          }
         />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {visible.map((item) => (
-            <ProductCard key={item.id} item={item} merchantName={merchantName} />
-          ))}
-        </div>
+        <>
+          <div className="overflow-x-auto rounded-lg border border-stone bg-card">
+            <table className="w-full min-w-[720px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-stone bg-stone/40 text-left text-[11px] uppercase tracking-[0.06em] text-graphite">
+                  <th className="w-10 px-3 py-2.5">
+                    <input
+                      type="checkbox"
+                      checked={allPageSelected}
+                      onChange={togglePage}
+                      aria-label="Select all on this page"
+                      className="size-4 accent-navy"
+                    />
+                  </th>
+                  <th className="px-3 py-2.5 font-semibold">Product</th>
+                  <th className="px-3 py-2.5 font-semibold">Location</th>
+                  <th className="px-3 py-2.5 font-semibold">Price</th>
+                  <th className="px-3 py-2.5 font-semibold">Stock</th>
+                  <th className="px-3 py-2.5 font-semibold">Storefront</th>
+                  <th className="px-3 py-2.5 text-right font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageItems.map((item) => (
+                  <ProductRow
+                    key={item.id}
+                    item={item}
+                    merchantName={merchantName}
+                    selected={selected.has(item.id)}
+                    onToggle={() => toggleOne(item.id)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs text-mist">
+              Showing {(safePage - 1) * PAGE_SIZE + 1}&ndash;{Math.min(safePage * PAGE_SIZE, visible.length)} of {visible.length}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={safePage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                <ChevronLeft className="size-4" />
+                Previous
+              </Button>
+              <span className="text-xs font-semibold text-graphite">
+                Page {safePage} of {pageCount}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={safePage >= pageCount}
+                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+              >
+                Next
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
 }
 
-function ProductCard({ item, merchantName }: { item: Product; merchantName: string }) {
+const actionBtnClass = "rounded-md p-1.5 text-graphite transition-colors hover:bg-stone hover:text-navy";
+
+function ProductRow({
+  item,
+  merchantName,
+  selected,
+  onToggle,
+}: {
+  item: Product;
+  merchantName: string;
+  selected: boolean;
+  onToggle: () => void;
+}) {
   const isLow = isLowStock(item);
   const isStale = daysSince(item.last_moved_at) > STALE_DAYS_THRESHOLD;
   const [published, setPublished] = useState(item.published);
@@ -197,159 +358,289 @@ function ProductCard({ item, merchantName }: { item: Product; merchantName: stri
   }
 
   return (
-    <div
-      className={cn(
-        "overflow-hidden rounded-lg border-t-[3px] border-stone bg-card shadow-sm",
-        isLow ? "border-t-destructive" : isStale ? "border-t-gold" : "border-t-teal",
-      )}
-    >
-      <div className="flex h-24 items-center justify-center bg-stone">
-        {item.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={item.image_url}
-            alt={item.name}
-            className="size-full object-cover"
-          />
-        ) : (
-          <Boxes className="size-8 text-mist" />
-        )}
-      </div>
-      <div className="p-3.5">
-        <div className="text-sm font-semibold text-navy">
-          {item.name}
-          {item.variant ? <span className="font-normal text-graphite"> · {item.variant}</span> : null}
-        </div>
-        <div className="mb-1.5 text-[11px] text-mist">
-          {item.sku || "No SKU"} · {item.location}
-        </div>
-        <div className="flex items-center justify-between text-xs">
-          <span className="font-semibold text-success">
-            {onPromo(item) ? (
-              <>
-                {naira(unitPrice(item))}{" "}
-                <span className="font-normal text-mist line-through">{naira(item.sale_price)}</span>
-              </>
+    <tr className={cn("border-b border-stone/70 align-middle last:border-0", selected && "bg-navy/5")}>
+      <td className="px-3 py-2.5">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggle}
+          aria-label={`Select ${item.name}`}
+          className="size-4 accent-navy"
+        />
+      </td>
+      <td className="px-3 py-2.5">
+        <div className="flex items-center gap-2.5">
+          <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-stone">
+            {item.image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={item.image_url} alt={item.name} className="size-full object-cover" />
             ) : (
-              naira(item.sale_price)
+              <Boxes className="size-4 text-mist" />
             )}
-          </span>
-          <span className="text-mist">Cost {naira(item.cost_price)}</span>
+          </div>
+          <div className="min-w-0">
+            <div className="truncate font-semibold text-navy">
+              {item.name}
+              {item.variant ? <span className="font-normal text-graphite"> · {item.variant}</span> : null}
+            </div>
+            <div className="truncate text-[11px] text-mist">{item.sku || "No SKU"}</div>
+            {item.staged > 0 ? (
+              <div className="text-[10px] font-semibold text-gold-300">{item.staged} being shelved</div>
+            ) : null}
+            {item.quarantined > 0 ? (
+              <div className="text-[10px] font-semibold text-destructive">{item.quarantined} in quarantine</div>
+            ) : null}
+          </div>
         </div>
-        <div className="mt-1 flex items-center justify-between text-[11px]">
-          <span className="text-graphite">VAT {item.vat}%</span>
-          <span className={cn(isLow && "font-bold text-destructive")}>
-            {item.stock} available{isLow ? " !" : ""}
-          </span>
+      </td>
+      <td className="px-3 py-2.5 text-graphite">{item.location}</td>
+      <td className="px-3 py-2.5">
+        <div className="font-semibold text-success">
+          {onPromo(item) ? (
+            <>
+              {naira(unitPrice(item))}{" "}
+              <span className="font-normal text-mist line-through">{naira(item.sale_price)}</span>
+            </>
+          ) : (
+            naira(item.sale_price)
+          )}
         </div>
-        <div className="mt-1 grid grid-cols-3 gap-1 rounded-md bg-stone/60 px-2 py-1 text-center text-[10px] text-graphite">
-          <span>
-            <span className="block font-semibold text-navy">{item.on_hand}</span>On-hand
-          </span>
-          <span>
-            <span className="block font-semibold text-navy">{item.allocated}</span>Reserved
-          </span>
-          <span>
-            <span className="block font-semibold text-navy">{item.stock}</span>Available
-          </span>
+        <div className="text-[11px] text-mist">VAT {item.vat}%</div>
+      </td>
+      <td className="px-3 py-2.5">
+        <div className={cn("font-semibold", isLow ? "text-destructive" : "text-navy")}>
+          {item.stock}
+          {isLow ? " !" : ""}
         </div>
-        {item.staged > 0 ? (
-          <div className="mt-1 text-[10px] font-semibold text-gold-300">
-            {item.staged} arrived, being shelved. Sellable once put away.
-          </div>
-        ) : null}
-        {item.quarantined > 0 ? (
-          <div className="mt-1 text-[10px] font-semibold text-destructive">
-            {item.quarantined} returned damaged, held in quarantine.
-          </div>
-        ) : null}
-        <Dialog open={editOpen} onOpenChange={setEditOpen}>
-          <DialogTrigger
-            render={
-              <button
-                type="button"
-                className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-teal-700 hover:underline"
-              />
-            }
-          >
-            <Pencil className="size-3" />
-            Edit
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Edit product</DialogTitle>
-            </DialogHeader>
-            <ProductForm product={item} onDone={() => setEditOpen(false)} />
-          </DialogContent>
-        </Dialog>
-        {item.barcode ? (
-          <PrintLabelsDialog
-            title={`Print labels for ${displayName(item)}`}
-            labels={[
-              {
-                barcode: item.barcode,
-                heading: displayName(item),
-                details: [merchantName],
-                onHand: item.on_hand,
-              },
-            ]}
-            fileName={`label-${item.barcode}.pdf`}
-            trigger={
-              <button
-                type="button"
-                className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-teal-700 hover:underline"
-              />
-            }
-          >
-            <Printer className="size-3" />
-            Print barcode labels
-          </PrintLabelsDialog>
-        ) : null}
-        <Dialog open={variantOpen} onOpenChange={setVariantOpen}>
-          <DialogTrigger
-            render={
-              <button
-                type="button"
-                className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-teal-700 hover:underline"
-              />
-            }
-          >
-            <Plus className="size-3" />
-            Add variant
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>New variant of {item.name}</DialogTitle>
-            </DialogHeader>
-            <p className="-mt-1 text-xs text-graphite">
-              Each colour or size is its own SKU with its own stock and barcode.
-            </p>
-            <ProductForm variantOf={item} onDone={() => setVariantOpen(false)} />
-          </DialogContent>
-        </Dialog>
-        {item.pickup_enabled ? (
-          <div className="mt-1.5 text-[10px] font-semibold text-success">
-            Pickup enabled
-          </div>
-        ) : null}
-        {isStale ? (
-          <div className="mt-1 text-[10px] font-semibold text-gold">
-            Stale, 30+ days
-          </div>
-        ) : null}
+        <div className="text-[11px] text-mist">
+          {item.on_hand} on-hand · {item.allocated} reserved
+        </div>
+        {isStale ? <div className="text-[10px] font-semibold text-gold">Stale 30+ days</div> : null}
+      </td>
+      <td className="px-3 py-2.5">
         <button
           type="button"
           onClick={handleTogglePublished}
           disabled={pending}
           className={cn(
-            "mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] font-semibold transition-colors disabled:opacity-60",
+            "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold transition-colors disabled:opacity-60",
             published
-              ? "border-stone text-graphite hover:border-teal/40"
+              ? "border-success/40 bg-success/10 text-success"
               : "border-gold/50 bg-gold/10 text-gold-300",
           )}
         >
           {published ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
-          {published ? "Visible on storefront" : "Hidden from storefront"}
+          {published ? "Visible" : "Hidden"}
+        </button>
+        {item.pickup_enabled ? (
+          <div className="mt-0.5 text-[10px] font-semibold text-success">Pickup</div>
+        ) : null}
+      </td>
+      <td className="px-3 py-2.5">
+        <div className="flex items-center justify-end gap-1">
+          <Dialog open={editOpen} onOpenChange={setEditOpen}>
+            <DialogTrigger render={<button type="button" title="Edit" className={actionBtnClass} />}>
+              <Pencil className="size-4" />
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Edit product</DialogTitle>
+              </DialogHeader>
+              <ProductForm product={item} onDone={() => setEditOpen(false)} />
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={variantOpen} onOpenChange={setVariantOpen}>
+            <DialogTrigger render={<button type="button" title="Add variant" className={actionBtnClass} />}>
+              <Plus className="size-4" />
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>New variant of {item.name}</DialogTitle>
+              </DialogHeader>
+              <p className="-mt-1 text-xs text-graphite">
+                Each colour or size is its own SKU with its own stock and barcode.
+              </p>
+              <ProductForm variantOf={item} onDone={() => setVariantOpen(false)} />
+            </DialogContent>
+          </Dialog>
+
+          {item.barcode ? (
+            <PrintLabelsDialog
+              title={`Print labels for ${displayName(item)}`}
+              labels={[
+                {
+                  barcode: item.barcode,
+                  heading: displayName(item),
+                  details: [merchantName],
+                  onHand: item.on_hand,
+                },
+              ]}
+              fileName={`label-${item.barcode}.pdf`}
+              trigger={<button type="button" title="Print barcode labels" className={actionBtnClass} />}
+            >
+              <Printer className="size-4" />
+            </PrintLabelsDialog>
+          ) : null}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+const EXPORT_HEADER =
+  "sku,name,variant,category,cost_price,sale_price,promo_price,vat,stock,location,shipping_fee,pickup_enabled,image_url,description";
+
+function csvCell(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  const s = String(value);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function exportProductsCsv(items: Product[]) {
+  const lines = items.map((p) =>
+    [
+      p.sku ?? "",
+      p.name,
+      p.variant ?? "",
+      p.category ?? "",
+      p.cost_price,
+      p.sale_price,
+      p.promo_price ?? "",
+      p.vat,
+      p.stock,
+      p.location,
+      p.shipping_fee ?? "",
+      p.pickup_enabled ? "true" : "false",
+      p.image_url ?? "",
+      p.description ?? "",
+    ]
+      .map(csvCell)
+      .join(","),
+  );
+  const blob = new Blob([`${EXPORT_HEADER}\n${lines.join("\n")}\n`], {
+    type: "text/csv;charset=utf-8;",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `inventory-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function BulkBar({
+  items,
+  merchantName,
+  onClear,
+}: {
+  items: Product[];
+  merchantName: string;
+  onClear: () => void;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const ids = items.map((p) => p.id);
+  const labelItems = items.filter((p) => p.barcode);
+
+  function setPublished(published: boolean) {
+    startTransition(async () => {
+      const result = await setProductsPublished(ids, published);
+      if (result.ok) {
+        toast.success(
+          published ? `${ids.length} shown on storefront` : `${ids.length} hidden from storefront`,
+        );
+        onClear();
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
+
+  function handleDelete() {
+    startTransition(async () => {
+      const result = await deleteProducts(ids);
+      if (result.ok) {
+        toast.success(`${ids.length} product${ids.length === 1 ? "" : "s"} deleted`);
+        setConfirmOpen(false);
+        onClear();
+      } else {
+        toast.error(result.error);
+      }
+    });
+  }
+
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-navy/20 bg-navy/5 px-3 py-2">
+      <span className="text-sm font-semibold text-navy">{items.length} selected</span>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Button size="sm" variant="outline" disabled={pending} onClick={() => setPublished(true)}>
+          <Eye className="size-4" />
+          Show
+        </Button>
+        <Button size="sm" variant="outline" disabled={pending} onClick={() => setPublished(false)}>
+          <EyeOff className="size-4" />
+          Hide
+        </Button>
+        {labelItems.length > 0 ? (
+          <PrintLabelsDialog
+            title={`Print labels for ${labelItems.length} product${labelItems.length === 1 ? "" : "s"}`}
+            labels={labelItems.map((p) => ({
+              barcode: p.barcode!,
+              heading: displayName(p),
+              details: [merchantName],
+              onHand: p.on_hand,
+            }))}
+            fileName={`labels-${labelItems.length}.pdf`}
+            trigger={<Button size="sm" variant="outline" />}
+          >
+            <Printer className="size-4" />
+            Print labels
+          </PrintLabelsDialog>
+        ) : null}
+        <Button size="sm" variant="outline" onClick={() => exportProductsCsv(items)}>
+          <Download className="size-4" />
+          Export
+        </Button>
+        <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <DialogTrigger
+            render={
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-destructive/40 text-destructive hover:bg-destructive/5"
+              />
+            }
+          >
+            <Trash2 className="size-4" />
+            Delete
+          </DialogTrigger>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>
+                Delete {items.length} product{items.length === 1 ? "" : "s"}?
+              </DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-graphite">
+              This permanently removes {items.length === 1 ? "this product" : "these products"} from your
+              inventory. A product still tied to an order can&apos;t be deleted.
+            </p>
+            <div className="mt-2 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={pending}>
+                Cancel
+              </Button>
+              <Button
+                className="bg-destructive text-white hover:bg-destructive/90"
+                onClick={handleDelete}
+                disabled={pending}
+              >
+                {pending ? "Deleting" : "Delete"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+        <button type="button" onClick={onClear} className="ml-1 text-xs font-semibold text-graphite hover:underline">
+          Clear
         </button>
       </div>
     </div>

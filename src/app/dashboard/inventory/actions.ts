@@ -370,6 +370,34 @@ export async function toggleProductPublished(
   return { ok: true };
 }
 
+// Bulk storefront visibility for the inventory table's selection. RLS already
+// scopes products to the signed-in merchant, so .in() only ever touches theirs.
+export async function setProductsPublished(
+  ids: string[],
+  published: boolean,
+): Promise<ActionResult> {
+  if (ids.length === 0) return { ok: false, error: "Nothing selected." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("products").update({ published }).in("id", ids);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+// Bulk delete for the inventory table's selection (same single-row delete,
+// applied to many). A product still referenced by an order is blocked by the
+// foreign key and surfaces as an error, same as deleteProduct.
+export async function deleteProducts(ids: string[]): Promise<ActionResult> {
+  if (ids.length === 0) return { ok: false, error: "Nothing selected." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("products").delete().in("id", ids);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
 export async function setChargesVat(chargesVat: boolean): Promise<ActionResult> {
   const supabase = await createClient();
   const {
