@@ -10,7 +10,7 @@ import { ORDER_STATUSES, LOCATIONS } from "@/types/db";
 import { naira, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { EmptyState, OrderStatusBadge, Panel } from "@/components/dashboard/ui";
-import { setDeliveryProgressAsFc, updateOrderStatusAsFc } from "./actions";
+import { setDeliveryBillingAsFc, setDeliveryProgressAsFc, updateOrderStatusAsFc } from "./actions";
 import { DeliveryProgressControl, DeliveryProgressTag } from "@/components/dashboard/delivery-progress";
 import type { OrderWithMerchant } from "@/lib/data/fulfillment-center";
 import { buildReceiptPdf, shareReceiptOnWhatsApp } from "@/lib/receipt-pdf";
@@ -190,6 +190,17 @@ function OrderRow({
     });
   }
 
+  function onBillingChange(billedTo: "merchant" | "customer" | "none") {
+    startTransition(async () => {
+      const result = await setDeliveryBillingAsFc(order.id, billedTo);
+      if (result.ok) toast.success("Delivery billing updated.");
+      else toast.error(result.error);
+    });
+  }
+
+  const hasDeliveryFee = Number(order.delivery_fee) > 0;
+  const billingLocked = order.status === "Delivered" || order.status === "Cancelled";
+
   return (
     <Panel accent={ACCENT[order.status]}>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -234,6 +245,29 @@ function OrderRow({
             order={order}
             onSet={(progress, note) => setDeliveryProgressAsFc(order.partner_id, order.order_ref, progress, note)}
           />
+        </div>
+      ) : null}
+
+      {hasDeliveryFee ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-stone pt-3">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-mist">
+            Delivery {naira(Number(order.delivery_fee))} — covered by
+          </span>
+          <select
+            value={order.delivery_billed_to}
+            disabled={isPending || billingLocked}
+            onChange={(e) => onBillingChange(e.target.value as "merchant" | "customer" | "none")}
+            className="h-8 rounded-md border border-stone bg-card px-2 text-xs disabled:opacity-50"
+          >
+            <option value="merchant">BNP (bill the merchant)</option>
+            <option value="customer">Customer paid</option>
+            <option value="none">Merchant handles it</option>
+          </select>
+          {order.delivery_billed_to === "merchant" ? (
+            <span className="rounded bg-gold/15 px-1.5 py-0.5 text-[10px] font-semibold text-gold-300">
+              On merchant invoice
+            </span>
+          ) : null}
         </div>
       ) : null}
 

@@ -44,6 +44,33 @@ export const productSchema = z.object({
   imageUrl: z.string().trim().max(600).optional(),
   description: z.string().trim().max(2000, "Keep the description under 2,000 characters").optional(),
   published: z.coerce.boolean().default(true),
+  // Carton / pallet configuration — feeds Enterprise storage billing
+  // (enterprise_storage_snapshot, migration 0038). All optional; blank = unset.
+  unitsPerCarton: z
+    .union([z.literal(""), z.coerce.number().int().min(1, "At least 1").max(1_000_000)])
+    .optional()
+    .transform((v) => (v === "" || v === undefined ? null : v)),
+  cartonsPerPallet: z
+    .union([z.literal(""), z.coerce.number().int().min(1, "At least 1").max(1_000_000)])
+    .optional()
+    .transform((v) => (v === "" || v === undefined ? null : v)),
+  cartonLcm: z
+    .union([z.literal(""), z.coerce.number().min(0, "Enter 0 or more").max(1000)])
+    .optional()
+    .transform((v) => (v === "" || v === undefined ? null : v)),
+  cartonWcm: z
+    .union([z.literal(""), z.coerce.number().min(0, "Enter 0 or more").max(1000)])
+    .optional()
+    .transform((v) => (v === "" || v === undefined ? null : v)),
+  cartonHcm: z
+    .union([z.literal(""), z.coerce.number().min(0, "Enter 0 or more").max(1000)])
+    .optional()
+    .transform((v) => (v === "" || v === undefined ? null : v)),
+  cartonWeightKg: z
+    .union([z.literal(""), z.coerce.number().min(0, "Enter 0 or more").max(100000)])
+    .optional()
+    .transform((v) => (v === "" || v === undefined ? null : v)),
+  storageConditions: z.string().trim().max(120).optional().or(z.literal("")),
 }).refine((d) => d.promoPrice === null || d.promoPrice < d.salePrice, {
   message: "The promo price has to be lower than the sale price",
   path: ["promoPrice"],

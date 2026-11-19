@@ -1,13 +1,35 @@
 import Link from "next/link";
 import { ArrowRight, Calculator, CheckCircle2 } from "lucide-react";
-import { nav, pricing } from "@/lib/site-content";
+import { pricing } from "@/lib/site-content";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { GuaranteeBanner } from "./guarantee";
 import { Reveal } from "./reveal";
 import { SectionHeading } from "./section-heading";
 
-/** The Standard and Enterprise plans on a navy band, each with a way in. */
+type ServiceItem = { name: string; desc: string };
+
+/** Core / Add-On service group on the Enterprise card — names and descriptions, no amounts. */
+function ServiceGroup({ title, items }: { title: string; items: readonly ServiceItem[] }) {
+  return (
+    <div>
+      <h4 className="text-xs font-bold uppercase tracking-[0.12em] text-gold-300">{title}</h4>
+      <ul className="mt-3 flex flex-col gap-3">
+        {items.map((s) => (
+          <li key={s.name} className="flex items-start gap-2.5">
+            <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-gold" />
+            <span className="text-[15px]">
+              <span className="font-semibold text-white">{s.name}</span>
+              <span className="block text-sm text-mist">{s.desc}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** The Standard and Enterprise plans on a navy band, each with its own calculator. */
 export function PricingCards({
   heading = true,
   compareLink = true,
@@ -37,53 +59,65 @@ export function PricingCards({
               className={cn(
                 "relative flex flex-col rounded-2xl p-8 sm:p-10",
                 plan.highlighted
-                  ? "bg-gold text-navy shadow-[0_30px_80px_-30px_rgba(232,160,32,0.6)]"
+                  ? "border border-gold/40 bg-white/[0.04] text-white shadow-[0_30px_80px_-30px_rgba(232,160,32,0.35)]"
                   : "border border-white/12 bg-white/[0.04] text-white",
               )}
             >
               {plan.highlighted ? (
-                <span className="absolute top-0 right-8 -translate-y-1/2 rounded-full bg-navy px-3.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-gold-300">
+                <span className="absolute top-0 right-8 -translate-y-1/2 rounded-full bg-gold px-3.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-navy">
                   Dedicated account manager
                 </span>
               ) : null}
               <h3 className="font-display text-3xl font-extrabold">{plan.name}</h3>
-              <p className={cn("mt-1 text-[15px] font-semibold", plan.highlighted ? "text-navy/80" : "text-gold-300")}>
-                {plan.tagline}
-              </p>
-              <p className={cn("mt-2 text-sm", plan.highlighted ? "text-navy/70" : "text-mist")}>{plan.audience}</p>
+              <p className="mt-1 text-[15px] font-semibold text-gold-300">{plan.tagline}</p>
+              <p className="mt-2 text-sm text-mist">{plan.audience}</p>
 
-              <div className="mt-6 flex items-baseline gap-2">
-                <span className="font-display text-6xl font-extrabold tracking-tight">{plan.fee}</span>
-                <span className={cn("text-sm", plan.highlighted ? "text-navy/75" : "text-mist")}>{plan.feeUnit}</span>
+              {plan.customPricing ? (
+                <p className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-[15px] font-medium text-white/90">
+                  {plan.pricingLine}
+                </p>
+              ) : (
+                <div className="mt-6 flex items-baseline gap-2">
+                  <span className="font-display text-6xl font-extrabold tracking-tight">{plan.fee}</span>
+                  <span className="text-sm text-mist">{plan.feeUnit}</span>
+                </div>
+              )}
+
+              {plan.customPricing ? (
+                <div className="mt-7 flex flex-1 flex-col gap-6 border-t border-white/10 pt-7">
+                  <ServiceGroup title="Core Services" items={plan.coreServices} />
+                  <ServiceGroup title="Add-On Services" items={plan.addOnServices} />
+                </div>
+              ) : (
+                <ul className="mt-7 flex flex-1 flex-col gap-3 border-t border-white/10 pt-7">
+                  {plan.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2.5 text-[15px]">
+                      <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-gold" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <div className="mt-8 flex flex-col gap-3">
+                <Button
+                  render={<Link href={plan.cta.href} />}
+                  size="xl"
+                  className={cn("w-full", plan.highlighted ? "bg-gold text-navy hover:bg-gold-300" : "")}
+                >
+                  {plan.cta.label}
+                  <ArrowRight />
+                </Button>
+                <Button
+                  render={<Link href={plan.calculator.href} />}
+                  size="xl"
+                  variant="outline"
+                  className="w-full border-white/25 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                >
+                  <Calculator />
+                  {plan.calculator.label}
+                </Button>
               </div>
-
-              <ul
-                className={cn(
-                  "mt-7 flex flex-1 flex-col gap-3 border-t pt-7",
-                  plan.highlighted ? "border-navy/15" : "border-white/10",
-                )}
-              >
-                {plan.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 text-[15px]">
-                    <CheckCircle2
-                      className={cn("mt-0.5 size-5 shrink-0", plan.highlighted ? "text-navy" : "text-gold")}
-                    />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-
-              <Button
-                render={<Link href={plan.cta.href} />}
-                size="xl"
-                className={cn(
-                  "mt-8 w-full",
-                  plan.highlighted ? "bg-navy text-white hover:bg-navy-600" : "",
-                )}
-              >
-                {plan.cta.label}
-                <ArrowRight />
-              </Button>
             </Reveal>
           ))}
         </div>
@@ -100,31 +134,24 @@ export function PricingCards({
           <GuaranteeBanner tone="dark" />
         </Reveal>
 
-        <Reveal className="mt-12 flex flex-col items-center gap-5 text-center">
-          <p className="max-w-2xl text-[15px] leading-relaxed text-mist">{pricing.example}</p>
-          <div className="flex flex-col gap-3 sm:flex-row">
+        {compareLink ? (
+          <Reveal className="mt-12 flex flex-col items-center gap-5 text-center">
+            <p className="max-w-2xl text-[15px] leading-relaxed text-mist">{pricing.example}</p>
             <Button
-              render={<Link href={nav.quote.href} />}
+              render={<Link href="/pricing" />}
               size="xl"
               variant="outline"
-              className="border-white/25 bg-transparent px-7 text-white hover:bg-white/10 hover:text-white"
+              className="border-white/25 bg-transparent text-white hover:bg-white/10 hover:text-white"
             >
-              <Calculator />
-              Estimate my monthly cost
+              Compare plans in detail
+              <ArrowRight />
             </Button>
-            {compareLink ? (
-              <Button
-                render={<Link href="/pricing" />}
-                size="xl"
-                variant="outline"
-                className="border-white/25 bg-transparent text-white hover:bg-white/10 hover:text-white"
-              >
-                Compare plans in detail
-                <ArrowRight />
-              </Button>
-            ) : null}
-          </div>
-        </Reveal>
+          </Reveal>
+        ) : (
+          <Reveal className="mt-12 flex flex-col items-center gap-3 text-center">
+            <p className="max-w-2xl text-[15px] leading-relaxed text-mist">{pricing.example}</p>
+          </Reveal>
+        )}
       </div>
     </section>
   );

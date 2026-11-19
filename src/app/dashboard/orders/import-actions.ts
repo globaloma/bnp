@@ -67,7 +67,15 @@ export async function importOrders(rows: ImportRow[], options: { create: boolean
     for (const list of goodGroups) {
       const first = list[0];
       const rider = first.rider;
-      const deliveryFee = rider === "Own Rider" ? first.fee : 0;
+      // Pickup is free; BNP Fleet and Own Rider carry the fee from the CSV.
+      const deliveryFee = rider === "Pickup" ? 0 : first.fee;
+      // Map the rider to a delivery method and decide who BNP bills. A BNP
+      // Fleet delivery with a fee is fronted by BNP and billed to the merchant
+      // (shows on their invoice); Own Rider / Pickup are the merchant's own.
+      const deliveryMethod =
+        rider === "Own Rider" ? "own_rider" : rider === "Pickup" ? "walk_in" : "bnp_dispatch";
+      const deliveryBilledTo =
+        rider === "BNP Fleet" && deliveryFee > 0 ? ("merchant" as const) : ("none" as const);
       // The same product twice in one order becomes one line.
       const qtyByProduct = new Map<string, { product: P; quantity: number }>();
       for (const c of list) {
@@ -122,6 +130,8 @@ export async function importOrders(rows: ImportRow[], options: { create: boolean
             total: t.total,
             location: product.location as WarehouseLocation,
             rider,
+            delivery_method: deliveryMethod,
+            delivery_billed_to: deliveryBilledTo,
             status: "Reserved" as const,
             channel: "dashboard" as const,
             payment_status: "paid" as const,

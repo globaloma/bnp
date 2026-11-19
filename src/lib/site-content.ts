@@ -478,8 +478,10 @@ export const pricing = {
       name: "Standard",
       tagline: "For growing Nigerian brands",
       audience: "SME sellers with under 5,000 products.",
+      customPricing: false,
       fee: "7%",
       feeUnit: "of monthly sales, all-inclusive",
+      pricingLine: "",
       features: [
         "Storage at ₦10,000 per m² per month",
         "No separate insurance charge",
@@ -488,45 +490,61 @@ export const pricing = {
         "BNP riders, your own riders or customer pickup",
         "Your own online store",
       ],
+      coreServices: [],
+      addOnServices: [],
+      calculator: { label: "Try the Standard calculator", href: "/get-a-quote" },
       cta: { label: "Get started on Standard", href: "/signup?plan=standard" },
       highlighted: false,
     },
     {
       id: "enterprise",
       name: "Enterprise",
-      tagline: "For high-volume and international brands",
-      audience: "Brands with 5,000+ products or selling outside Nigeria.",
-      fee: "9%",
-      feeUnit: "of monthly sales",
-      features: [
-        "Storage at ₦10,000 per m², negotiable at volume",
-        "Goods insured at 0.25% of month-end stock value",
-        "Pre-funded wallet, charges deducted automatically",
-        "A dedicated account manager",
-        "BNP riders, your own riders or customer pickup",
-        "Add-on services, tailored to your brand",
+      tagline: "Built for high-volume sellers, fast-growing Nigerian brands, and international businesses entering the Nigerian market.",
+      audience: "Brands with 5,000+ products or selling into Nigeria from abroad.",
+      customPricing: true,
+      fee: "Custom",
+      feeUnit: "",
+      pricingLine:
+        "Custom pricing tailored to your product profile, volume, and storage needs. Rates confirmed at consultation.",
+      features: [],
+      coreServices: [
+        { name: "Annual Subscription", desc: "Platform access, WMS onboarding, a dedicated account manager, and Enterprise support." },
+        { name: "Intake Fee", desc: "Receiving, barcoding, WMS logging, and putaway of your first stock delivery." },
+        { name: "Restock Fee", desc: "Each time a new shipment arrives to replenish inventory — same process as intake." },
+        { name: "Storage", desc: "Monthly billing by pallet or cubic metre, auto-calculated from your live inventory. The bill falls as stock is fulfilled." },
+        { name: "Pick & Pack", desc: "Per-order fulfillment — first item picked and packed, plus each additional item in the same order." },
+        { name: "Insurance", desc: "Monthly cover based on the declared production cost of inventory in storage." },
+        { name: "Delivery", desc: "Carrier cost at dispatch via GIG, BNP Custom Dispatch or UPS — passed through at cost, no markup." },
       ],
-      cta: { label: "Get started on Enterprise", href: "/signup?plan=enterprise" },
+      addOnServices: [
+        { name: "Kitting & Assembly", desc: "Assembling multi-item bundles from separate SKUs into one ready-to-ship kit before packing." },
+        { name: "Returns Processing", desc: "Receipt, inspection, and restock or disposal of returned customer orders." },
+        { name: "Cash on Delivery (COD)", desc: "Collection of payment on delivery and remittance to you. COD orders only." },
+        { name: "Special Projects", desc: "Relabelling, barcoding, cycle counts, custom packaging runs — pre-quoted per project." },
+      ],
+      calculator: { label: "Try the Enterprise calculator", href: "/enterprise-calculator" },
+      cta: { label: "Book a Free Consultation", href: "/get-a-quote" },
       highlighted: true,
     },
   ],
   example:
     "On Standard, if your brand sells ₦500,000 in a month, the fulfillment fee is ₦35,000. No rent, no salaries, no overhead.",
-  note: "Standard merchants pay one invoice at the end of each month. Enterprise merchants keep a funded wallet and every charge is deducted and listed on the dashboard. Delivery fees are charged per order and shown at checkout.",
+  note: "Standard merchants pay one invoice at the end of each month. Enterprise pricing is custom: after a short consultation we build your rate card, and each month we send an itemised invoice — reviewed by our team before it reaches you. Delivery fees are passed through at carrier cost.",
 } as const;
 
 /** Side-by-side comparison on the pricing page (Technical Specification v2, section 2.1). */
 export const planComparison = [
   { feature: "Best for", standard: "SME sellers, under 5,000 products", enterprise: "High-volume and international brands, 5,000+ products" },
-  { feature: "Fulfillment fee", standard: "7% of monthly sales, all-inclusive", enterprise: "9% of monthly sales" },
-  { feature: "Storage", standard: "₦10,000 per m² per month", enterprise: "₦10,000 per m² per month, negotiable at volume" },
-  { feature: "Insurance", standard: "No separate charge", enterprise: "0.25% of month-end stock value" },
-  { feature: "How you pay", standard: "One invoice at the end of each month", enterprise: "Pre-funded wallet, charges deducted automatically" },
-  { feature: "Time to pay", standard: "3 business days after the invoice", enterprise: "Keep your wallet above an agreed minimum" },
+  { feature: "Pricing", standard: "7% of monthly sales, all-inclusive", enterprise: "Custom rate card, quoted at consultation" },
+  { feature: "Fulfillment", standard: "Included in the 7%", enterprise: "Per-service: intake, pick & pack, storage, add-ons" },
+  { feature: "Storage", standard: "₦10,000 per m² per month", enterprise: "By pallet or cubic metre, auto-calculated from live stock" },
+  { feature: "Insurance", standard: "No separate charge", enterprise: "0.25% of declared stock value at month end" },
+  { feature: "How you pay", standard: "One invoice at the end of each month", enterprise: "Itemised monthly invoice, reviewed by our team before sending" },
+  { feature: "Time to pay", standard: "3 business days after the invoice", enterprise: "3 business days after the invoice" },
   { feature: "Support", standard: "Self-serve dashboard and email support", enterprise: "A dedicated account manager" },
-  { feature: "Delivery options", standard: "BNP riders, your own riders or customer pickup", enterprise: "BNP riders, your own riders or customer pickup" },
-  { feature: "Add-on services", standard: "Core services included", enterprise: "Tailored add-ons for your brand" },
-  { feature: "Registration fee", standard: "₦50,000 a year, refundable after month one", enterprise: "₦50,000 a year, refundable after month one" },
+  { feature: "Delivery options", standard: "BNP riders, your own riders or customer pickup", enterprise: "GIG, BNP Custom Dispatch or UPS — at carrier cost" },
+  { feature: "Add-on services", standard: "Core services included", enterprise: "Kitting, returns, COD, special projects — switched on as you need" },
+  { feature: "Registration fee", standard: "₦50,000 a year, refundable after month one", enterprise: "Quoted at consultation" },
 ] as const;
 
 /** The money-back promise on the registration fee, shown across the site. */
@@ -537,15 +555,11 @@ export const guarantee = {
   badge: "First-month money-back guarantee",
 } as const;
 
-/** Numbers the quote calculator uses. Keep in line with `pricing` above. */
+/** Numbers the Standard quote calculator uses. Keep in line with `pricing` above. */
 export const quote = {
   subscriptionPerYear: 50_000,
   storagePerSqmPerMonth: 10_000,
   fulfillmentRate: 0.07,
-  enterpriseFulfillmentRate: 0.09,
-  /** Enterprise insurance: share of month-end stock value, charged monthly. */
-  enterpriseInsuranceRate: 0.0025,
-  maxStockValue: 5_000_000_000,
   // A medium carton is about 60 x 40 x 40 cm. Stacked two high on a shelf,
   // roughly eight of them fit on one square metre of floor space.
   cartonsPerSqm: 8,

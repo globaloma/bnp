@@ -67,6 +67,13 @@ export async function addProduct(
     variant: formData.get("variant") || undefined,
     retailBarcode: formData.get("retailBarcode") ?? "",
     published: formData.get("published") === "on",
+    unitsPerCarton: formData.get("unitsPerCarton") ?? "",
+    cartonsPerPallet: formData.get("cartonsPerPallet") ?? "",
+    cartonLcm: formData.get("cartonLcm") ?? "",
+    cartonWcm: formData.get("cartonWcm") ?? "",
+    cartonHcm: formData.get("cartonHcm") ?? "",
+    cartonWeightKg: formData.get("cartonWeightKg") ?? "",
+    storageConditions: formData.get("storageConditions") ?? "",
   });
 
   if (!parsed.success) {
@@ -119,6 +126,13 @@ export async function addProduct(
     image_url: d.imageUrl || null,
     description: d.description || null,
     published: d.published,
+    units_per_carton: d.unitsPerCarton,
+    cartons_per_pallet: d.cartonsPerPallet,
+    carton_l_cm: d.cartonLcm,
+    carton_w_cm: d.cartonWcm,
+    carton_h_cm: d.cartonHcm,
+    carton_weight_kg: d.cartonWeightKg,
+    storage_conditions: d.storageConditions || null,
   }).select("id").single();
 
   if (error) {
@@ -185,6 +199,13 @@ export async function editProduct(
     variant: formData.get("variant") || undefined,
     retailBarcode: formData.get("retailBarcode") ?? "",
     published: formData.get("published") === "on",
+    unitsPerCarton: formData.get("unitsPerCarton") ?? "",
+    cartonsPerPallet: formData.get("cartonsPerPallet") ?? "",
+    cartonLcm: formData.get("cartonLcm") ?? "",
+    cartonWcm: formData.get("cartonWcm") ?? "",
+    cartonHcm: formData.get("cartonHcm") ?? "",
+    cartonWeightKg: formData.get("cartonWeightKg") ?? "",
+    storageConditions: formData.get("storageConditions") ?? "",
   });
 
   if (!parsed.success) {
@@ -219,6 +240,13 @@ export async function editProduct(
       pickup_enabled: d.pickupEnabled,
       image_url: d.imageUrl || null,
       description: d.description || null,
+      units_per_carton: d.unitsPerCarton,
+      cartons_per_pallet: d.cartonsPerPallet,
+      carton_l_cm: d.cartonLcm,
+      carton_w_cm: d.cartonWcm,
+      carton_h_cm: d.cartonHcm,
+      carton_weight_kg: d.cartonWeightKg,
+      storage_conditions: d.storageConditions || null,
     })
     .eq("id", productId);
 

@@ -69,3 +69,34 @@ export async function setDeliveryProgressAsFc(
   revalidatePath("/fc/orders");
   return { ok: true };
 }
+
+/**
+ * Records who covers this order's delivery fee: 'merchant' = BNP fronted it and
+ * bills the merchant (shows on their invoice / Enterprise wallet), 'customer' =
+ * the customer paid, 'none' = the merchant handled it themselves. FC/admin are
+ * exempt from orders_delivery_freeze (migration 0029), so this update applies.
+ */
+export async function setDeliveryBillingAsFc(
+  orderId: string,
+  billedTo: "merchant" | "customer" | "none",
+): Promise<ActionResult> {
+  if (!["merchant", "customer", "none"].includes(billedTo)) return { ok: false, error: "Invalid option." };
+  const supabase = await createClient();
+  const { data: order } = await supabase
+    .from("orders")
+    .select("partner_id, order_ref, status")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (!order) return { ok: false, error: "Order not found." };
+  if (order.status === "Delivered" || order.status === "Cancelled") {
+    return { ok: false, error: `Delivery billing is locked once an order is ${order.status}.` };
+  }
+  const { error } = await supabase
+    .from("orders")
+    .update({ delivery_billed_to: billedTo })
+    .eq("partner_id", order.partner_id)
+    .eq("order_ref", order.order_ref);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/fc/orders");
+  return { ok: true };
+}

@@ -1166,6 +1166,80 @@ function ProductForm({
         )}
       </div>
 
+      <details className="rounded-md border border-stone bg-stone/20 px-3 py-2">
+        <summary className="cursor-pointer text-sm font-semibold text-navy">
+          Carton &amp; pallet details
+          <span className="ml-1 font-normal text-mist">(optional — for Enterprise storage billing)</span>
+        </summary>
+        <div className="mt-3 flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>Units per carton</label>
+              <input
+                name="unitsPerCarton"
+                type="number"
+                min="1"
+                step="1"
+                defaultValue={base?.units_per_carton ?? ""}
+                placeholder="e.g. 24"
+                className={fieldClass}
+              />
+              {errors?.unitsPerCarton ? (
+                <p className="mt-1 text-xs text-destructive">{errors.unitsPerCarton[0]}</p>
+              ) : null}
+            </div>
+            <div>
+              <label className={labelClass}>Cartons per pallet</label>
+              <input
+                name="cartonsPerPallet"
+                type="number"
+                min="1"
+                step="1"
+                defaultValue={base?.cartons_per_pallet ?? ""}
+                placeholder="e.g. 40"
+                className={fieldClass}
+              />
+              {errors?.cartonsPerPallet ? (
+                <p className="mt-1 text-xs text-destructive">{errors.cartonsPerPallet[0]}</p>
+              ) : null}
+            </div>
+          </div>
+          <div>
+            <label className={labelClass}>Carton size (cm)</label>
+            <div className="grid grid-cols-3 gap-3">
+              <input name="cartonLcm" type="number" min="0" step="0.1" defaultValue={base?.carton_l_cm ?? ""} placeholder="L" className={fieldClass} />
+              <input name="cartonWcm" type="number" min="0" step="0.1" defaultValue={base?.carton_w_cm ?? ""} placeholder="W" className={fieldClass} />
+              <input name="cartonHcm" type="number" min="0" step="0.1" defaultValue={base?.carton_h_cm ?? ""} placeholder="H" className={fieldClass} />
+            </div>
+            <p className="mt-1 text-[11px] text-mist">Length × width × height of one carton, for cubic-metre storage.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>Carton weight (kg)</label>
+              <input
+                name="cartonWeightKg"
+                type="number"
+                min="0"
+                step="0.001"
+                defaultValue={base?.carton_weight_kg ?? ""}
+                placeholder="e.g. 12"
+                className={fieldClass}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Storage conditions</label>
+              <input
+                name="storageConditions"
+                defaultValue={base?.storage_conditions ?? ""}
+                placeholder="e.g. Ambient, keep dry"
+                maxLength={120}
+                className={fieldClass}
+              />
+            </div>
+          </div>
+        </div>
+      </details>
+
       <div>
         <label className={labelClass}>Declared value per unit (₦)</label>
         {product?.declared_value !== null && product?.declared_value !== undefined ? (

@@ -14,7 +14,7 @@ import { FaqList, pickFaqs } from "@/components/marketing/faq-list";
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: `${company.name} plans: Standard at 7% of sales or Enterprise at 9% with insurance and an account manager, plus ₦10,000 per square metre of storage. Registration fee refunded if you're not happy after month one.`,
+  description: `${company.name} plans: Standard at 7% of sales, all-inclusive, or Enterprise — custom per-service pricing quoted at consultation, with a dedicated account manager. Registration fee refunded if you're not happy after month one.`,
 };
 
 export default function PricingPage() {
@@ -78,7 +78,7 @@ export default function PricingPage() {
             align="center"
             label="Worked examples"
             title="What merchants like you might pay."
-            description="Three typical brands on the Standard plan. Your own numbers will differ, so try the calculator for yours, on either plan."
+            description="Three typical brands on the Standard plan. Your own numbers will differ, so try the Standard calculator for yours — or the Enterprise calculator if you sell at high volume or from abroad."
           />
           <div className="mt-14 grid gap-6 lg:grid-cols-3">
             {exampleMerchants.map((m, i) => {

@@ -364,14 +364,36 @@ export async function confirmWalletTopup(
     return { ok: false, error: "Paid amount did not match the top-up amount." };
   }
 
-  await admin.rpc("wallet_credit", {
+  // Claim the top-up before crediting. The webhook and the customer's return
+  // to /confirm usually fire at the same time, and both can pass the "still
+  // pending" check above; only the one whose conditional update actually
+  // flips the row goes on to credit, so the balance moves exactly once.
+  // (confirmPayment above claims orders the same way.)
+  const { data: claimed, error: claimError } = await admin
+    .from("wallet_topups")
+    .update({ status: "paid" })
+    .eq("reference", reference)
+    .eq("status", "pending")
+    .select("id");
+
+  if (claimError) return { ok: false, error: claimError.message };
+  if (!claimed || claimed.length === 0) {
+    return { ok: true, alreadyProcessed: true };
+  }
+
+  const { error: creditError } = await admin.rpc("wallet_credit", {
     p_partner_id: topup.partner_id,
     p_amount: topup.amount,
     p_type: "Top-up",
     p_note: "Wallet top-up via Paystack",
   });
+  if (creditError) {
+    // Couldn't credit after claiming the row - put it back to pending so a
+    // later call can retry, rather than leave it "paid" with no money added.
+    await admin.from("wallet_topups").update({ status: "pending" }).eq("reference", reference);
+    return { ok: false, error: creditError.message };
+  }
 
-  await admin.from("wallet_topups").update({ status: "paid" }).eq("reference", reference);
   // A top-up can lift an Enterprise wallet back above its minimum.
   await sendQueuedBillingNotices();
 

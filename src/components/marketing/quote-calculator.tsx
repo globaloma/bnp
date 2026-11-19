@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Boxes, Info, Ruler, Send } from "lucide-react";
 import { quote } from "@/lib/site-content";
 import { naira } from "@/lib/format";
-import { estimateQuote, sqmForCartons, type Plan } from "@/lib/quote";
+import { estimateQuote, sqmForCartons } from "@/lib/quote";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ContactForm } from "./contact-form";
@@ -35,28 +35,24 @@ function clampInt(raw: string, min: number, max: number): number {
 const sliderClass =
   "h-2 w-full cursor-pointer appearance-none rounded-full bg-stone accent-[#e8a020]";
 
+/** The Standard-plan quote calculator. Enterprise is custom-quoted and has its own tool. */
 export function QuoteCalculator() {
   const [mode, setMode] = useState<"cartons" | "sqm">("cartons");
   const [cartons, setCartons] = useState(40);
   const [sqmInput, setSqmInput] = useState(5);
   const [sales, setSales] = useState(1_000_000);
-  const [plan, setPlan] = useState<Plan>("standard");
-  const [stockValue, setStockValue] = useState(5_000_000);
 
   const sqm = mode === "cartons" ? sqmForCartons(cartons) : sqmInput;
-  const est = estimateQuote({ sqm, monthlySales: sales, plan, stockValue });
+  const est = estimateQuote({ sqm, monthlySales: sales });
   const ratePct = `${Math.round(est.fulfillmentRate * 100)}%`;
   const share = (n: number) => (est.monthly > 0 ? (n / est.monthly) * 100 : 0);
 
   const summary = [
+    `Plan: Standard`,
     `Stock: ${mode === "cartons" ? `about ${cartons} medium cartons (${est.sqm} m²)` : `${est.sqm} m² of shelf space`}`,
-    `Plan: ${plan === "enterprise" ? "Enterprise" : "Standard"}`,
     `Monthly sales: ${naira(sales)}`,
     `Storage: ${naira(est.storagePerMonth)} a month`,
     `Fulfillment (${ratePct}): ${naira(est.fulfillmentPerMonth)} a month`,
-    ...(plan === "enterprise"
-      ? [`Stock value: ${naira(stockValue)}`, `Insurance (0.25%): ${naira(est.insurancePerMonth)} a month`]
-      : []),
     `Estimated monthly cost: ${naira(est.monthly)}`,
     `Yearly registration fee: ${naira(est.subscriptionPerYear)}`,
     `Estimated first year: ${naira(est.firstYear)}`,
@@ -67,28 +63,6 @@ export function QuoteCalculator() {
       <div className="grid gap-8 lg:grid-cols-[1.25fr_1fr] lg:items-start">
         {/* Inputs */}
         <div className="flex flex-col gap-6">
-          <div className="grid grid-cols-2 gap-2 rounded-2xl border border-stone bg-white p-2" role="group" aria-label="Plan">
-            {(
-              [
-                ["standard", "Standard", "7% of sales"],
-                ["enterprise", "Enterprise", "9% of sales, insured"],
-              ] as const
-            ).map(([value, label, sub]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setPlan(value)}
-                aria-pressed={plan === value}
-                className={cn(
-                  "rounded-xl px-4 py-3 text-left transition-colors",
-                  plan === value ? "bg-navy text-white" : "text-graphite hover:bg-cream",
-                )}
-              >
-                <span className="block font-display text-base font-bold">{label}</span>
-                <span className={cn("block text-xs", plan === value ? "text-white/70" : "text-mist")}>{sub}</span>
-              </button>
-            ))}
-          </div>
           <fieldset className="rounded-2xl border border-stone bg-white p-6 sm:p-8">
             <legend className="sr-only">How much stock</legend>
             <div className="flex items-center gap-3">
@@ -225,36 +199,11 @@ export function QuoteCalculator() {
               ))}
             </div>
           </fieldset>
-
-          {plan === "enterprise" ? (
-            <fieldset className="rounded-2xl border border-stone bg-white p-6 sm:p-8">
-              <legend className="sr-only">Stock value</legend>
-              <div className="flex items-center gap-3">
-                <span className="flex size-9 items-center justify-center rounded-full bg-navy font-display text-sm font-extrabold text-gold">
-                  3
-                </span>
-                <h2 className="font-display text-xl font-bold text-navy">What is your stock worth?</h2>
-              </div>
-              <p className="mt-2 text-sm text-graphite">
-                The value of the goods you keep with us at a time. Enterprise stock is insured at 0.25% of this a month.
-              </p>
-              <div className="mt-5 flex items-center gap-3">
-                <span className="font-display text-lg font-bold text-graphite">₦</span>
-                <input
-                  aria-label="Value of stock kept with us, in naira"
-                  inputMode="numeric"
-                  value={stockValue.toLocaleString("en-NG")}
-                  onChange={(e) => setStockValue(clampInt(e.target.value, 0, quote.maxStockValue))}
-                  className="h-12 w-full rounded-lg border border-stone bg-cream/50 px-4 font-display text-xl font-bold text-navy outline-none focus-visible:border-teal"
-                />
-              </div>
-            </fieldset>
-          ) : null}
         </div>
 
         {/* Result */}
         <aside className="rounded-2xl bg-navy p-6 text-white shadow-[0_30px_80px_-30px_rgba(15,42,68,0.6)] sm:p-8 lg:sticky lg:top-28">
-          <span className="text-xs font-bold uppercase tracking-[0.16em] text-gold-300">Your estimate</span>
+          <span className="text-xs font-bold uppercase tracking-[0.16em] text-gold-300">Your Standard estimate</span>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="font-display text-5xl font-extrabold tracking-tight tabular-nums" aria-live="polite">
               {naira(est.monthly)}
@@ -265,7 +214,6 @@ export function QuoteCalculator() {
           <div className="mt-6 flex h-3 overflow-hidden rounded-full bg-white/10" aria-hidden>
             <span className="bg-gold transition-all duration-300" style={{ width: `${share(est.storagePerMonth)}%` }} />
             <span className="bg-teal-300 transition-all duration-300" style={{ width: `${share(est.fulfillmentPerMonth)}%` }} />
-            <span className="bg-white/60 transition-all duration-300" style={{ width: `${share(est.insurancePerMonth)}%` }} />
           </div>
           <dl className="mt-5 flex flex-col gap-3 text-[15px]">
             <div className="flex items-center justify-between gap-4">
@@ -282,15 +230,6 @@ export function QuoteCalculator() {
               </dt>
               <dd className="font-semibold tabular-nums">{naira(est.fulfillmentPerMonth)}</dd>
             </div>
-            {plan === "enterprise" ? (
-              <div className="flex items-center justify-between gap-4">
-                <dt className="flex items-center gap-2 text-white/80">
-                  <span className="size-2.5 rounded-full bg-white/60" />
-                  Insurance, 0.25% of stock value
-                </dt>
-                <dd className="font-semibold tabular-nums">{naira(est.insurancePerMonth)}</dd>
-              </div>
-            ) : null}
           </dl>
 
           <div className="mt-6 grid grid-cols-2 gap-3 border-t border-white/10 pt-6">
@@ -310,7 +249,7 @@ export function QuoteCalculator() {
               Send me this quote
             </Button>
             <Button
-              render={<Link href={`/signup?plan=${plan}`} />}
+              render={<Link href={`/signup?plan=standard`} />}
               size="xl"
               variant="outline"
               className="w-full border-white/25 bg-transparent text-white hover:bg-white/10 hover:text-white"
@@ -326,7 +265,11 @@ export function QuoteCalculator() {
           <p className="mt-3 flex gap-2 text-xs leading-relaxed text-mist">
             <Info className="mt-0.5 size-3.5 shrink-0" />
             An estimate at our standard Abuja prices. Final storage depends on the space your stock actually uses.
-            Delivery fees are separate and charged per order.
+            Delivery fees are separate and charged per order. Selling at high volume or from abroad?{" "}
+            <Link href="/enterprise-calculator" className="font-semibold text-gold-300 underline">
+              Try the Enterprise calculator
+            </Link>
+            .
           </p>
         </aside>
       </div>

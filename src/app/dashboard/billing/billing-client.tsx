@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CreditCard, Lock, Wallet } from "lucide-react";
+import { CreditCard, FileText, Lock, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import type { BillingCharge, Invoice } from "@/types/db";
 import { naira } from "@/lib/format";
@@ -114,7 +115,7 @@ export function InvoiceList({ invoices, walletBalance }: { invoices: Invoice[]; 
 function InvoiceRow({ invoice: inv, walletBalance }: { invoice: Invoice; walletBalance: number }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const overdue = isOverdue(inv);
+  const overdue = inv.status === "unpaid" && isOverdue(inv);
   const canUseWallet = walletBalance >= Number(inv.total);
 
   function payWallet() {
@@ -141,7 +142,13 @@ function InvoiceRow({ invoice: inv, walletBalance }: { invoice: Invoice; walletB
     <div
       className={cn(
         "rounded-lg border border-l-4 border-stone bg-card p-4 shadow-sm",
-        inv.status === "paid" ? "border-l-success" : overdue ? "border-l-destructive" : "border-l-gold",
+        inv.status === "paid"
+          ? "border-l-success"
+          : inv.status === "pending"
+            ? "border-l-teal"
+            : overdue
+              ? "border-l-destructive"
+              : "border-l-gold",
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -155,12 +162,22 @@ function InvoiceRow({ invoice: inv, walletBalance }: { invoice: Invoice; walletB
                   ? "bg-success/10 text-success"
                   : inv.status === "void"
                     ? "bg-stone text-graphite"
-                    : overdue
-                      ? "bg-destructive/10 text-destructive"
-                      : "bg-gold/15 text-gold-300",
+                    : inv.status === "pending"
+                      ? "bg-teal/10 text-teal-700"
+                      : overdue
+                        ? "bg-destructive/10 text-destructive"
+                        : "bg-gold/15 text-gold-300",
               )}
             >
-              {inv.status === "paid" ? "Paid" : inv.status === "void" ? "Cancelled" : overdue ? "Overdue" : "Due"}
+              {inv.status === "paid"
+                ? "Paid"
+                : inv.status === "void"
+                  ? "Cancelled"
+                  : inv.status === "pending"
+                    ? "Being prepared"
+                    : overdue
+                      ? "Overdue"
+                      : "Due"}
             </span>
           </div>
           <div className="mt-0.5 text-sm text-graphite">{monthName(inv.period)}</div>
@@ -176,18 +193,43 @@ function InvoiceRow({ invoice: inv, walletBalance }: { invoice: Invoice; walletB
           </div>
         </div>
       </div>
-      <dl className="mt-3 grid gap-1 border-t border-stone pt-3 text-xs text-graphite sm:grid-cols-2">
-        <div className="flex justify-between gap-3 sm:block">
-          <dt className="inline">Storage, {Number(inv.storage_sqm)} m²: </dt>
-          <dd className="inline font-semibold text-navy">{naira(Number(inv.storage_amount))}</dd>
+      {inv.itemized ? (
+        <p className="mt-3 border-t border-stone pt-3 text-xs text-graphite">
+          {inv.status === "pending"
+            ? "We're preparing this month's itemised invoice from your rate card. You'll be notified when it's ready to pay."
+            : "An itemised invoice built from your agreed rate card — open it for the full breakdown."}
+        </p>
+      ) : (
+        <dl className="mt-3 grid gap-1 border-t border-stone pt-3 text-xs text-graphite sm:grid-cols-2">
+          <div className="flex justify-between gap-3 sm:block">
+            <dt className="inline">Storage, {Number(inv.storage_sqm)} m²: </dt>
+            <dd className="inline font-semibold text-navy">{naira(Number(inv.storage_amount))}</dd>
+          </div>
+          <div className="flex justify-between gap-3 sm:block">
+            <dt className="inline">
+              Fulfillment, {Math.round(Number(inv.fulfillment_rate) * 100)}% of {naira(Number(inv.sales_value))} delivered:{" "}
+            </dt>
+            <dd className="inline font-semibold text-navy">{naira(Number(inv.fulfillment_amount))}</dd>
+          </div>
+          {Number(inv.delivery_amount) > 0 ? (
+            <div className="flex justify-between gap-3 sm:block">
+              <dt className="inline">Delivery fees BNP handled for you: </dt>
+              <dd className="inline font-semibold text-navy">{naira(Number(inv.delivery_amount))}</dd>
+            </div>
+          ) : null}
+        </dl>
+      )}
+      {inv.status !== "pending" ? (
+        <div className="mt-3 border-t border-stone pt-3">
+          <Link
+            href={`/dashboard/billing/invoices/${inv.id}`}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 hover:underline"
+          >
+            <FileText className="size-3.5" />
+            View / download full invoice
+          </Link>
         </div>
-        <div className="flex justify-between gap-3 sm:block">
-          <dt className="inline">
-            Fulfillment, {Math.round(Number(inv.fulfillment_rate) * 100)}% of {naira(Number(inv.sales_value))} delivered:{" "}
-          </dt>
-          <dd className="inline font-semibold text-navy">{naira(Number(inv.fulfillment_amount))}</dd>
-        </div>
-      </dl>
+      ) : null}
       {inv.status === "unpaid" ? (
         <div className="mt-3 flex flex-wrap gap-2 border-t border-stone pt-3">
           <Button size="sm" onClick={payOnline} disabled={pending}>
@@ -206,6 +248,43 @@ function InvoiceRow({ invoice: inv, walletBalance }: { invoice: Invoice; walletB
           </Button>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+export type RateCardLine = { label: string; value: string; muted?: boolean };
+
+/** Read-only view of a merchant's agreed Enterprise rate card. */
+export function RateCardView({ core, addOns }: { core: RateCardLine[]; addOns: RateCardLine[] }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-stone bg-card">
+      <table className="w-full text-sm">
+        <tbody className="divide-y divide-stone">
+          {core.map((l) => (
+            <tr key={l.label}>
+              <td className="px-4 py-2.5 text-graphite">{l.label}</td>
+              <td className={cn("px-4 py-2.5 text-right font-semibold tabular-nums", l.muted ? "text-mist" : "text-navy")}>
+                {l.value}
+              </td>
+            </tr>
+          ))}
+          {addOns.length ? (
+            <tr>
+              <td colSpan={2} className="bg-cream px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-mist">
+                Add-ons switched on for you
+              </td>
+            </tr>
+          ) : null}
+          {addOns.map((l) => (
+            <tr key={l.label}>
+              <td className="px-4 py-2.5 text-graphite">{l.label}</td>
+              <td className={cn("px-4 py-2.5 text-right font-semibold tabular-nums", l.muted ? "text-mist" : "text-navy")}>
+                {l.value}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
