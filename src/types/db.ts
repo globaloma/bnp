@@ -180,6 +180,7 @@ export type EnterpriseRates = {
   pickpack_additional: number | null;
   intake_tier_override: boolean;
   intake_flat: number | null;
+  handling_container: number | null;
   kitting_enabled: boolean;
   kitting_simple: number | null;
   kitting_standard: number | null;
@@ -211,9 +212,19 @@ export type EnterpriseDefaults = {
   ent_special_projects_hr: number | null;
   ent_insurance_rate: number;
   ent_intake_free_max: number;
-  ent_intake_tier2: number | null;
-  ent_intake_tier3: number | null;
-  ent_intake_tier4: number | null;
+  /** Intake (first shipment): fee bands for (free_max+1)–300, 301–500, 501–1,000, 1,001+. */
+  ent_intake_b1: number | null;
+  ent_intake_b2: number | null;
+  ent_intake_b3: number | null;
+  ent_intake_b4: number | null;
+  /** Restock (subsequent shipments): fee bands for 1–200, 201–300, 301–500, 501–1,000, 1,001+. */
+  ent_restock_b0: number | null;
+  ent_restock_b1: number | null;
+  ent_restock_b2: number | null;
+  ent_restock_b3: number | null;
+  ent_restock_b4: number | null;
+  /** Container unload & floor setup, flat per qualifying shipment. */
+  ent_handling_container: number | null;
 };
 
 export type BillingCharge = {

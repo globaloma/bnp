@@ -26,12 +26,13 @@ create table if not exists enterprise_rates (
   annual_subscription     numeric(14,2),
   storage_basis           text not null default 'pallet' check (storage_basis in ('pallet', 'm3')),
   storage_rate            numeric(14,2),
-  month1_discount_pct     numeric(5,2) not null default 50 check (month1_discount_pct between 0 and 100),
+  month1_discount_pct     numeric(5,2) not null default 20 check (month1_discount_pct between 0 and 100),
   month1_done             boolean not null default false,
   pickpack_first          numeric(14,2),
   pickpack_additional     numeric(14,2),
   intake_tier_override    boolean not null default false,
   intake_flat             numeric(14,2),
+  handling_container      numeric(14,2),
   kitting_enabled         boolean not null default false,
   kitting_simple          numeric(14,2),
   kitting_standard        numeric(14,2),
@@ -68,11 +69,41 @@ alter table billing_settings add column if not exists ent_returns_disposal    nu
 alter table billing_settings add column if not exists ent_cod_rate            numeric(14,2);
 alter table billing_settings add column if not exists ent_special_projects_hr numeric(14,2);
 alter table billing_settings add column if not exists ent_insurance_rate      numeric(6,4) not null default 0.0025;
--- Intake / restock tiers: 1..free_max free, then three configurable bands.
-alter table billing_settings add column if not exists ent_intake_free_max     integer not null default 300;
-alter table billing_settings add column if not exists ent_intake_tier2        numeric(14,2); -- (free_max+1) .. 500
-alter table billing_settings add column if not exists ent_intake_tier3        numeric(14,2); -- 501 .. 1000
-alter table billing_settings add column if not exists ent_intake_tier4        numeric(14,2); -- 1001+
+-- Intake (first shipment): 1..free_max units free, then four fixed unit bands.
+alter table billing_settings add column if not exists ent_intake_free_max     integer not null default 200;
+alter table billing_settings add column if not exists ent_intake_b1           numeric(14,2); -- (free_max+1) .. 300
+alter table billing_settings add column if not exists ent_intake_b2           numeric(14,2); -- 301 .. 500
+alter table billing_settings add column if not exists ent_intake_b3           numeric(14,2); -- 501 .. 1000
+alter table billing_settings add column if not exists ent_intake_b4           numeric(14,2); -- 1001+
+-- Restock (every subsequent inbound shipment): its own cheaper schedule, no free band.
+alter table billing_settings add column if not exists ent_restock_b0          numeric(14,2); -- 1 .. 200
+alter table billing_settings add column if not exists ent_restock_b1          numeric(14,2); -- 201 .. 300
+alter table billing_settings add column if not exists ent_restock_b2          numeric(14,2); -- 301 .. 500
+alter table billing_settings add column if not exists ent_restock_b3          numeric(14,2); -- 501 .. 1000
+alter table billing_settings add column if not exists ent_restock_b4          numeric(14,2); -- 1001+
+-- Container unload & floor setup, charged on top of intake/restock when a shipment
+-- arrives in a container requiring unloading (added by admin at review time).
+alter table billing_settings add column if not exists ent_handling_container  numeric(14,2);
+
+-- Seed the global Enterprise defaults from the published fee schedule. coalesce
+-- keeps any amount an admin has already set, so this stays safe to re-run.
+update billing_settings set
+  ent_annual_subscription = coalesce(ent_annual_subscription, 105000),
+  ent_storage_pallet_rate = coalesce(ent_storage_pallet_rate, 65000),
+  ent_pickpack_first      = coalesce(ent_pickpack_first, 5600),
+  ent_pickpack_additional = coalesce(ent_pickpack_additional, 800),
+  ent_insurance_rate      = coalesce(ent_insurance_rate, 0.0025),
+  ent_intake_b1           = coalesce(ent_intake_b1, 60000),
+  ent_intake_b2           = coalesce(ent_intake_b2, 85000),
+  ent_intake_b3           = coalesce(ent_intake_b3, 105000),
+  ent_intake_b4           = coalesce(ent_intake_b4, 130000),
+  ent_restock_b0          = coalesce(ent_restock_b0, 10000),
+  ent_restock_b1          = coalesce(ent_restock_b1, 15000),
+  ent_restock_b2          = coalesce(ent_restock_b2, 21250),
+  ent_restock_b3          = coalesce(ent_restock_b3, 26250),
+  ent_restock_b4          = coalesce(ent_restock_b4, 32500),
+  ent_handling_container  = coalesce(ent_handling_container, 98500)
+where id;
 
 -- ---------------------------------------------------------------------------
 -- 3. SKU configuration for storage billing (spec Part 3.3)
@@ -166,17 +197,34 @@ begin
 end $$;
 revoke all on function enterprise_storage_snapshot(uuid) from public, anon, authenticated;
 
--- Tier fee for a shipment of p_units (spec Part 2.1 sub-table).
+-- Intake fee for the FIRST shipment of p_units: free up to free_max, then four
+-- fixed unit bands (fee schedule §3a).
 create or replace function enterprise_intake_fee(p_units integer)
 returns numeric language sql stable security definer set search_path = public as $$
   select case
     when p_units <= (select ent_intake_free_max from billing_settings) then 0
-    when p_units <= 500  then coalesce((select ent_intake_tier2 from billing_settings), 0)
-    when p_units <= 1000 then coalesce((select ent_intake_tier3 from billing_settings), 0)
-    else coalesce((select ent_intake_tier4 from billing_settings), 0)
+    when p_units <= 300  then coalesce((select ent_intake_b1 from billing_settings), 0)
+    when p_units <= 500  then coalesce((select ent_intake_b2 from billing_settings), 0)
+    when p_units <= 1000 then coalesce((select ent_intake_b3 from billing_settings), 0)
+    else coalesce((select ent_intake_b4 from billing_settings), 0)
   end;
 $$;
 revoke all on function enterprise_intake_fee(integer) from public, anon, authenticated;
+
+-- Restock fee for every SUBSEQUENT shipment of p_units: a separate, cheaper
+-- schedule with no free band (fee schedule §3b).
+create or replace function enterprise_restock_fee(p_units integer)
+returns numeric language sql stable security definer set search_path = public as $$
+  select case
+    when p_units <= 0    then 0
+    when p_units <= 200  then coalesce((select ent_restock_b0 from billing_settings), 0)
+    when p_units <= 300  then coalesce((select ent_restock_b1 from billing_settings), 0)
+    when p_units <= 500  then coalesce((select ent_restock_b2 from billing_settings), 0)
+    when p_units <= 1000 then coalesce((select ent_restock_b3 from billing_settings), 0)
+    else coalesce((select ent_restock_b4 from billing_settings), 0)
+  end;
+$$;
+revoke all on function enterprise_restock_fee(integer) from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- 6. Build one PENDING, itemised invoice for an Enterprise merchant
@@ -287,7 +335,11 @@ begin
     values (inv.id, 'intake',
             case when d.is_first then 'Intake' else 'Restock' end || ' (' || d.units || ' units)',
             d.units, null,
-            case when r.intake_tier_override then coalesce(r.intake_flat, 0) else enterprise_intake_fee(d.units) end,
+            case
+              when r.intake_tier_override then coalesce(r.intake_flat, 0)
+              when d.is_first then enterprise_intake_fee(d.units)
+              else enterprise_restock_fee(d.units)
+            end,
             'auto', sort_n);
   end loop;
 
@@ -432,6 +484,7 @@ begin
     pickpack_additional      = (p->>'pickpack_additional')::numeric,
     intake_tier_override     = coalesce((p->>'intake_tier_override')::boolean, false),
     intake_flat              = (p->>'intake_flat')::numeric,
+    handling_container       = (p->>'handling_container')::numeric,
     kitting_enabled          = coalesce((p->>'kitting_enabled')::boolean, false),
     kitting_simple           = (p->>'kitting_simple')::numeric,
     kitting_standard         = (p->>'kitting_standard')::numeric,
@@ -468,9 +521,16 @@ begin
     ent_special_projects_hr = (p->>'ent_special_projects_hr')::numeric,
     ent_insurance_rate      = coalesce((p->>'ent_insurance_rate')::numeric, ent_insurance_rate),
     ent_intake_free_max     = coalesce((p->>'ent_intake_free_max')::integer, ent_intake_free_max),
-    ent_intake_tier2        = (p->>'ent_intake_tier2')::numeric,
-    ent_intake_tier3        = (p->>'ent_intake_tier3')::numeric,
-    ent_intake_tier4        = (p->>'ent_intake_tier4')::numeric
+    ent_intake_b1           = (p->>'ent_intake_b1')::numeric,
+    ent_intake_b2           = (p->>'ent_intake_b2')::numeric,
+    ent_intake_b3           = (p->>'ent_intake_b3')::numeric,
+    ent_intake_b4           = (p->>'ent_intake_b4')::numeric,
+    ent_restock_b0          = (p->>'ent_restock_b0')::numeric,
+    ent_restock_b1          = (p->>'ent_restock_b1')::numeric,
+    ent_restock_b2          = (p->>'ent_restock_b2')::numeric,
+    ent_restock_b3          = (p->>'ent_restock_b3')::numeric,
+    ent_restock_b4          = (p->>'ent_restock_b4')::numeric,
+    ent_handling_container  = (p->>'ent_handling_container')::numeric
   where id;
 end $$;
 grant execute on function admin_set_enterprise_defaults(jsonb) to authenticated;

@@ -158,10 +158,17 @@ export default async function AdminBillingPage() {
     ent_cod_rate: settings?.ent_cod_rate ?? null,
     ent_special_projects_hr: settings?.ent_special_projects_hr ?? null,
     ent_insurance_rate: Number(settings?.ent_insurance_rate ?? 0.0025),
-    ent_intake_free_max: Number(settings?.ent_intake_free_max ?? 300),
-    ent_intake_tier2: settings?.ent_intake_tier2 ?? null,
-    ent_intake_tier3: settings?.ent_intake_tier3 ?? null,
-    ent_intake_tier4: settings?.ent_intake_tier4 ?? null,
+    ent_intake_free_max: Number(settings?.ent_intake_free_max ?? 200),
+    ent_intake_b1: settings?.ent_intake_b1 ?? null,
+    ent_intake_b2: settings?.ent_intake_b2 ?? null,
+    ent_intake_b3: settings?.ent_intake_b3 ?? null,
+    ent_intake_b4: settings?.ent_intake_b4 ?? null,
+    ent_restock_b0: settings?.ent_restock_b0 ?? null,
+    ent_restock_b1: settings?.ent_restock_b1 ?? null,
+    ent_restock_b2: settings?.ent_restock_b2 ?? null,
+    ent_restock_b3: settings?.ent_restock_b3 ?? null,
+    ent_restock_b4: settings?.ent_restock_b4 ?? null,
+    ent_handling_container: settings?.ent_handling_container ?? null,
   };
 
   return (

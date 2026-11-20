@@ -111,6 +111,14 @@ export default async function BillingPage() {
         rcLine("Pick & pack — first item", rc.pickpack_first, " / order"),
         rcLine("Pick & pack — additional item", rc.pickpack_additional, " / item"),
         {
+          label: "Intake / restock",
+          value: rc.intake_tier_override
+            ? rc.intake_flat === null || rc.intake_flat === undefined
+              ? "To be confirmed"
+              : `${naira(Number(rc.intake_flat))} / shipment`
+            : "By shipment size (see fee schedule)",
+        },
+        {
           label: "Insurance",
           value: `${(Number(rc.insurance_rate ?? 0.0025) * 100).toFixed(2)}% of stock value / month`,
         },
@@ -118,6 +126,7 @@ export default async function BillingPage() {
     : [];
   const addOnRates: RateCardLine[] = rc
     ? [
+        ...(rc.handling_container != null ? [rcLine("Container unload & setup", rc.handling_container, " / container")] : []),
         ...(rc.kitting_enabled ? [rcLine("Kitting", rc.kitting_standard, " / kit")] : []),
         ...(rc.returns_enabled ? [rcLine("Returns processing", rc.returns_processing, " / return")] : []),
         ...(rc.cod_enabled ? [rcLine("Cash on delivery", rc.cod_rate, " / order")] : []),

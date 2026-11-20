@@ -21,6 +21,18 @@ function num(s: string): number {
 }
 const str = (v: number | null, fallback = ""): string => (v === null || v === undefined ? fallback : String(v));
 
+/** Restock fee for a subsequent inbound shipment of `units` (fee schedule §3b).
+ *  The calculator estimates a typical ongoing month, so inbound is charged on the
+ *  restock schedule; the very first shipment is free up to the intake threshold. */
+function restockFee(units: number, d: EnterpriseDefaults): number {
+  if (units <= 0) return 0;
+  if (units <= 200) return d.ent_restock_b0 ?? 0;
+  if (units <= 300) return d.ent_restock_b1 ?? 0;
+  if (units <= 500) return d.ent_restock_b2 ?? 0;
+  if (units <= 1000) return d.ent_restock_b3 ?? 0;
+  return d.ent_restock_b4 ?? 0;
+}
+
 const inputClass =
   "h-11 w-full rounded-lg border border-stone bg-white px-3 font-display text-base font-semibold text-navy outline-none focus-visible:border-teal";
 
@@ -92,12 +104,12 @@ export function EnterpriseCostCalculator({ defaults }: { defaults: EnterpriseDef
   const [basis, setBasis] = useState<Basis>("pallet");
   const [pallets, setPallets] = useState("4");
   const [cbm, setCbm] = useState("6");
-  const [palletsReceived, setPalletsReceived] = useState("1");
+  const [unitsReceived, setUnitsReceived] = useState("250");
+  const [containerUnload, setContainerUnload] = useState(false);
   const [returnRate, setReturnRate] = useState("2");
   const [declaredValue, setDeclaredValue] = useState("");
 
   // Section B — rate card (prefilled from admin defaults, all overridable)
-  const [intake, setIntake] = useState(str(defaults.ent_intake_tier2));
   const [storagePallet, setStoragePallet] = useState(str(defaults.ent_storage_pallet_rate));
   const [storageM3, setStorageM3] = useState(str(defaults.ent_storage_m3_rate));
   const [ppFirst, setPpFirst] = useState(str(defaults.ent_pickpack_first));
@@ -121,7 +133,9 @@ export function EnterpriseCostCalculator({ defaults }: { defaults: EnterpriseDef
     const storageQty = basis === "pallet" ? num(pallets) : num(cbm);
     const storageRate = basis === "pallet" ? num(storagePallet) : num(storageM3);
 
-    const intakeLine = num(palletsReceived) * num(intake);
+    const unitsIn = num(unitsReceived);
+    const handling = containerUnload ? defaults.ent_handling_container ?? 0 : 0;
+    const intakeLine = restockFee(unitsIn, defaults) + handling;
     const storageLine = storageQty * storageRate;
     const pickFirstLine = o * num(ppFirst);
     const pickAddlLine = o * Math.max(0, upo - 1) * num(ppAdditional);
@@ -138,7 +152,11 @@ export function EnterpriseCostCalculator({ defaults }: { defaults: EnterpriseDef
     const perOrderInc = o > 0 ? monthly / o : 0;
 
     const lines = [
-      { label: "Intake / receiving", detail: `${num(palletsReceived)} pallet(s) received`, amount: intakeLine },
+      {
+        label: "Intake / restock",
+        detail: `${unitsIn} units in${handling > 0 ? " + container unload" : ""}`,
+        amount: intakeLine,
+      },
       {
         label: `Storage (${basis === "pallet" ? "pallet" : "m³"})`,
         detail: `${storageQty} ${basis === "pallet" ? "pallet(s)" : "m³"} × ${naira(storageRate)}`,
@@ -163,14 +181,15 @@ export function EnterpriseCostCalculator({ defaults }: { defaults: EnterpriseDef
 
     return { monthly, perOrderEx, perOrderInc, lines };
   }, [
-    orders, unitsPerOrder, returnRate, basis, pallets, cbm, storagePallet, storageM3, palletsReceived, intake,
+    orders, unitsPerOrder, returnRate, basis, pallets, cbm, storagePallet, storageM3, unitsReceived, containerUnload,
     ppFirst, ppAdditional, kitting, returnsRate, declaredValue, insurancePct, annualSub, includeDelivery, deliveryPerOrder,
+    defaults,
   ]);
 
   function reset() {
     setOrders("100"); setUnitsPerOrder("1.5"); setBasis("pallet"); setPallets("4"); setCbm("6");
-    setPalletsReceived("1"); setReturnRate("2"); setDeclaredValue("");
-    setIntake(str(defaults.ent_intake_tier2)); setStoragePallet(str(defaults.ent_storage_pallet_rate));
+    setUnitsReceived("250"); setContainerUnload(false); setReturnRate("2"); setDeclaredValue("");
+    setStoragePallet(str(defaults.ent_storage_pallet_rate));
     setStorageM3(str(defaults.ent_storage_m3_rate)); setPpFirst(str(defaults.ent_pickpack_first));
     setPpAdditional(str(defaults.ent_pickpack_additional)); setKitting(str(defaults.ent_kitting_standard));
     setReturnsRate(str(defaults.ent_returns_processing)); setInsurancePct(str(defaults.ent_insurance_rate * 100, "0.25"));
@@ -245,10 +264,31 @@ export function EnterpriseCostCalculator({ defaults }: { defaults: EnterpriseDef
             ) : (
               <NumberField label="Cubic metres in storage (m³)" help="Total m³ of stock held on average" value={cbm} onChange={setCbm} />
             )}
-            <NumberField label="Pallets received per month" help="Inbound pallets you ship to BNP" value={palletsReceived} onChange={setPalletsReceived} />
+            <NumberField label="Units received per month" help="Units in a typical inbound shipment" value={unitsReceived} onChange={setUnitsReceived} />
             <NumberField label="Return rate (%)" help="Share of orders returned (0 if none)" value={returnRate} onChange={(v) => setReturnRate(v)} suffix="%" />
             <NumberField label="Declared value in storage (₦)" help="For insurance (0.25% of this)" value={declaredValue} onChange={setDeclaredValue} prefix="₦" />
           </div>
+
+          <label className="mt-4 flex items-start gap-3 rounded-xl border border-stone bg-cream/60 p-3">
+            <input
+              type="checkbox"
+              checked={containerUnload}
+              onChange={(e) => setContainerUnload(e.target.checked)}
+              className="mt-0.5 size-4 accent-navy"
+            />
+            <span className="text-[13px] text-navy">
+              <span className="font-semibold">Shipment arrives in a container</span>
+              <span className="block text-xs text-graphite">
+                Adds a one-off unload &amp; floor-setup fee
+                {defaults.ent_handling_container ? ` (${naira(defaults.ent_handling_container)})` : ""}.
+              </span>
+            </span>
+          </label>
+          <p className="mt-3 flex gap-2 text-xs text-graphite">
+            <Info className="mt-0.5 size-3.5 shrink-0 text-teal" />
+            Inbound is estimated on the restock schedule for an ongoing month. Your very first shipment is free up to{" "}
+            {defaults.ent_intake_free_max} units.
+          </p>
         </SectionCard>
 
         {/* Section B */}
@@ -258,7 +298,6 @@ export function EnterpriseCostCalculator({ defaults }: { defaults: EnterpriseDef
           description="Prefilled with BNP's standard ranges. Already have a quote? Overwrite any field."
         >
           <div className="grid gap-4 sm:grid-cols-2">
-            <NumberField label="Intake / receiving" value={intake} onChange={setIntake} prefix="₦" suffix="per pallet in" />
             {basis === "pallet" ? (
               <NumberField label="Storage" value={storagePallet} onChange={setStoragePallet} prefix="₦" suffix="per pallet / mo" />
             ) : (

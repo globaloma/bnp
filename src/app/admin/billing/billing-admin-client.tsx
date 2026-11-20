@@ -608,11 +608,12 @@ function EnterpriseRateCard({ merchant, defaults }: { merchant: EnterpriseRateCa
   const [annualSub, setAnnualSub] = useState(money(r?.annual_subscription));
   const [storageBasis, setStorageBasis] = useState<"pallet" | "m3">(r?.storage_basis ?? "pallet");
   const [storageRate, setStorageRate] = useState(money(r?.storage_rate));
-  const [month1Pct, setMonth1Pct] = useState(r?.month1_discount_pct != null ? String(r.month1_discount_pct) : "50");
+  const [month1Pct, setMonth1Pct] = useState(r?.month1_discount_pct != null ? String(r.month1_discount_pct) : "20");
   const [ppFirst, setPpFirst] = useState(money(r?.pickpack_first));
   const [ppAdditional, setPpAdditional] = useState(money(r?.pickpack_additional));
   const [intakeOverride, setIntakeOverride] = useState(r?.intake_tier_override ?? false);
   const [intakeFlat, setIntakeFlat] = useState(money(r?.intake_flat));
+  const [handlingContainer, setHandlingContainer] = useState(money(r?.handling_container));
   const [kittingEnabled, setKittingEnabled] = useState(r?.kitting_enabled ?? false);
   const [kittingSimple, setKittingSimple] = useState(money(r?.kitting_simple));
   const [kittingStandard, setKittingStandard] = useState(money(r?.kitting_standard));
@@ -636,6 +637,7 @@ function EnterpriseRateCard({ merchant, defaults }: { merchant: EnterpriseRateCa
       pickpack_additional: toNull(ppAdditional),
       intake_tier_override: intakeOverride,
       intake_flat: toNull(intakeFlat),
+      handling_container: toNull(handlingContainer),
       kitting_enabled: kittingEnabled,
       kitting_simple: toNull(kittingSimple),
       kitting_standard: toNull(kittingStandard),
@@ -691,8 +693,15 @@ function EnterpriseRateCard({ merchant, defaults }: { merchant: EnterpriseRateCa
             {intakeOverride ? (
               <RateField label="Flat intake / restock fee" value={intakeFlat} onChange={setIntakeFlat} suffix="/ shipment" />
             ) : (
-              <p className="text-xs text-graphite">Using the standard tiers (set in Enterprise defaults).</p>
+              <p className="text-xs text-graphite">
+                Using the standard unit bands (set in Enterprise defaults): first shipment on the intake schedule, every
+                later shipment on the cheaper restock schedule.
+              </p>
             )}
+            <div className="mt-3">
+              <RateField label="Container unload & setup" value={handlingContainer} onChange={setHandlingContainer} suffix="/ container" />
+              <p className="mt-1 text-xs text-graphite">Blank uses the default. Added at review when a shipment arrives in a container.</p>
+            </div>
           </div>
 
           <div>
@@ -750,10 +759,17 @@ export function EnterpriseDefaultsPanel({ defaults }: { defaults: EnterpriseDefa
     ent_cod_rate: money(defaults.ent_cod_rate),
     ent_special_projects_hr: money(defaults.ent_special_projects_hr),
     ent_insurance_rate: String((defaults.ent_insurance_rate || 0.0025) * 100),
-    ent_intake_free_max: String(defaults.ent_intake_free_max ?? 300),
-    ent_intake_tier2: money(defaults.ent_intake_tier2),
-    ent_intake_tier3: money(defaults.ent_intake_tier3),
-    ent_intake_tier4: money(defaults.ent_intake_tier4),
+    ent_intake_free_max: String(defaults.ent_intake_free_max ?? 200),
+    ent_intake_b1: money(defaults.ent_intake_b1),
+    ent_intake_b2: money(defaults.ent_intake_b2),
+    ent_intake_b3: money(defaults.ent_intake_b3),
+    ent_intake_b4: money(defaults.ent_intake_b4),
+    ent_restock_b0: money(defaults.ent_restock_b0),
+    ent_restock_b1: money(defaults.ent_restock_b1),
+    ent_restock_b2: money(defaults.ent_restock_b2),
+    ent_restock_b3: money(defaults.ent_restock_b3),
+    ent_restock_b4: money(defaults.ent_restock_b4),
+    ent_handling_container: money(defaults.ent_handling_container),
   });
   const set = (k: keyof typeof v) => (val: string) => setV((p) => ({ ...p, [k]: val }));
 
@@ -774,9 +790,16 @@ export function EnterpriseDefaultsPanel({ defaults }: { defaults: EnterpriseDefa
         ent_special_projects_hr: toNull(v.ent_special_projects_hr),
         ent_insurance_rate: v.ent_insurance_rate.trim() === "" ? null : (Number(v.ent_insurance_rate) || 0) / 100,
         ent_intake_free_max: Number(v.ent_intake_free_max) || 0,
-        ent_intake_tier2: toNull(v.ent_intake_tier2),
-        ent_intake_tier3: toNull(v.ent_intake_tier3),
-        ent_intake_tier4: toNull(v.ent_intake_tier4),
+        ent_intake_b1: toNull(v.ent_intake_b1),
+        ent_intake_b2: toNull(v.ent_intake_b2),
+        ent_intake_b3: toNull(v.ent_intake_b3),
+        ent_intake_b4: toNull(v.ent_intake_b4),
+        ent_restock_b0: toNull(v.ent_restock_b0),
+        ent_restock_b1: toNull(v.ent_restock_b1),
+        ent_restock_b2: toNull(v.ent_restock_b2),
+        ent_restock_b3: toNull(v.ent_restock_b3),
+        ent_restock_b4: toNull(v.ent_restock_b4),
+        ent_handling_container: toNull(v.ent_handling_container),
       }),
     );
   }
@@ -812,11 +835,31 @@ export function EnterpriseDefaultsPanel({ defaults }: { defaults: EnterpriseDefa
             <RateField label="COD handling" value={v.ent_cod_rate} onChange={set("ent_cod_rate")} suffix="/ order" />
             <RateField label="Special projects" value={v.ent_special_projects_hr} onChange={set("ent_special_projects_hr")} suffix="/ hr" />
           </div>
-          <div className="flex flex-wrap gap-3">
-            <RateField label="Intake free up to" value={v.ent_intake_free_max} onChange={set("ent_intake_free_max")} prefix="" suffix="units" />
-            <RateField label="Intake tier (–500)" value={v.ent_intake_tier2} onChange={set("ent_intake_tier2")} suffix="/ shipment" />
-            <RateField label="Intake tier (501–1,000)" value={v.ent_intake_tier3} onChange={set("ent_intake_tier3")} suffix="/ shipment" />
-            <RateField label="Intake tier (1,001+)" value={v.ent_intake_tier4} onChange={set("ent_intake_tier4")} suffix="/ shipment" />
+          <div>
+            <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-mist">Intake — first shipment</h3>
+            <div className="flex flex-wrap gap-3">
+              <RateField label="Free up to" value={v.ent_intake_free_max} onChange={set("ent_intake_free_max")} prefix="" suffix="units" />
+              <RateField label="Next–300" value={v.ent_intake_b1} onChange={set("ent_intake_b1")} suffix="/ shipment" />
+              <RateField label="301–500" value={v.ent_intake_b2} onChange={set("ent_intake_b2")} suffix="/ shipment" />
+              <RateField label="501–1,000" value={v.ent_intake_b3} onChange={set("ent_intake_b3")} suffix="/ shipment" />
+              <RateField label="1,001+" value={v.ent_intake_b4} onChange={set("ent_intake_b4")} suffix="/ shipment" />
+            </div>
+          </div>
+          <div>
+            <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-mist">Restock — subsequent shipments</h3>
+            <div className="flex flex-wrap gap-3">
+              <RateField label="1–200" value={v.ent_restock_b0} onChange={set("ent_restock_b0")} suffix="/ shipment" />
+              <RateField label="201–300" value={v.ent_restock_b1} onChange={set("ent_restock_b1")} suffix="/ shipment" />
+              <RateField label="301–500" value={v.ent_restock_b2} onChange={set("ent_restock_b2")} suffix="/ shipment" />
+              <RateField label="501–1,000" value={v.ent_restock_b3} onChange={set("ent_restock_b3")} suffix="/ shipment" />
+              <RateField label="1,001+" value={v.ent_restock_b4} onChange={set("ent_restock_b4")} suffix="/ shipment" />
+            </div>
+          </div>
+          <div>
+            <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-mist">Handling</h3>
+            <div className="flex flex-wrap gap-3">
+              <RateField label="Container unload & setup" value={v.ent_handling_container} onChange={set("ent_handling_container")} suffix="/ container" />
+            </div>
           </div>
           <div>
             <Button size="sm" disabled={pending} onClick={save}>
