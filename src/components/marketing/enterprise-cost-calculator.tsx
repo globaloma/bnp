@@ -21,9 +21,21 @@ function num(s: string): number {
 }
 const str = (v: number | null, fallback = ""): string => (v === null || v === undefined ? fallback : String(v));
 
-/** Restock fee for a subsequent inbound shipment of `units` (fee schedule §3b).
- *  The calculator estimates a typical ongoing month, so inbound is charged on the
- *  restock schedule; the very first shipment is free up to the intake threshold. */
+/** Introductory discount on the first month's storage (fee schedule §4). */
+const FIRST_MONTH_STORAGE_DISCOUNT = 0.2;
+
+/** Intake fee for the FIRST shipment of `units` (fee schedule §3a): free up to the
+ *  intake threshold, then four fixed unit bands. Used in "first month" mode. */
+function intakeFee(units: number, d: EnterpriseDefaults): number {
+  if (units <= (d.ent_intake_free_max ?? 0)) return 0;
+  if (units <= 300) return d.ent_intake_b1 ?? 0;
+  if (units <= 500) return d.ent_intake_b2 ?? 0;
+  if (units <= 1000) return d.ent_intake_b3 ?? 0;
+  return d.ent_intake_b4 ?? 0;
+}
+
+/** Restock fee for a subsequent inbound shipment of `units` (fee schedule §3b):
+ *  a separate, cheaper schedule with no free band. Used in "ongoing month" mode. */
 function restockFee(units: number, d: EnterpriseDefaults): number {
   if (units <= 0) return 0;
   if (units <= 200) return d.ent_restock_b0 ?? 0;
@@ -98,6 +110,9 @@ function SectionCard({
 }
 
 export function EnterpriseCostCalculator({ defaults }: { defaults: EnterpriseDefaults }) {
+  // First month (intake + month-1 storage discount) vs a typical ongoing month (restock).
+  const [period, setPeriod] = useState<"first" | "ongoing">("ongoing");
+
   // Section A — volume
   const [orders, setOrders] = useState("100");
   const [unitsPerOrder, setUnitsPerOrder] = useState("1.5");
@@ -133,10 +148,13 @@ export function EnterpriseCostCalculator({ defaults }: { defaults: EnterpriseDef
     const storageQty = basis === "pallet" ? num(pallets) : num(cbm);
     const storageRate = basis === "pallet" ? num(storagePallet) : num(storageM3);
 
+    const firstMonth = period === "first";
     const unitsIn = num(unitsReceived);
     const handling = containerUnload ? defaults.ent_handling_container ?? 0 : 0;
-    const intakeLine = restockFee(unitsIn, defaults) + handling;
-    const storageLine = storageQty * storageRate;
+    const inboundFee = firstMonth ? intakeFee(unitsIn, defaults) : restockFee(unitsIn, defaults);
+    const intakeLine = inboundFee + handling;
+    const storageGross = storageQty * storageRate;
+    const storageLine = firstMonth ? storageGross * (1 - FIRST_MONTH_STORAGE_DISCOUNT) : storageGross;
     const pickFirstLine = o * num(ppFirst);
     const pickAddlLine = o * Math.max(0, upo - 1) * num(ppAdditional);
     const pickpackLine = pickFirstLine + pickAddlLine;
@@ -153,13 +171,13 @@ export function EnterpriseCostCalculator({ defaults }: { defaults: EnterpriseDef
 
     const lines = [
       {
-        label: "Intake / restock",
-        detail: `${unitsIn} units in${handling > 0 ? " + container unload" : ""}`,
+        label: firstMonth ? "Intake (first shipment)" : "Restock",
+        detail: `${unitsIn} units in${firstMonth ? ` · free ≤ ${defaults.ent_intake_free_max}` : ""}${handling > 0 ? " + container unload" : ""}`,
         amount: intakeLine,
       },
       {
         label: `Storage (${basis === "pallet" ? "pallet" : "m³"})`,
-        detail: `${storageQty} ${basis === "pallet" ? "pallet(s)" : "m³"} × ${naira(storageRate)}`,
+        detail: `${storageQty} ${basis === "pallet" ? "pallet(s)" : "m³"} × ${naira(storageRate)}${firstMonth ? " − 20% month-1" : ""}`,
         amount: storageLine,
       },
       { label: "Pick & pack — first item", detail: `${o} orders`, amount: pickFirstLine },
@@ -181,12 +199,13 @@ export function EnterpriseCostCalculator({ defaults }: { defaults: EnterpriseDef
 
     return { monthly, perOrderEx, perOrderInc, lines };
   }, [
-    orders, unitsPerOrder, returnRate, basis, pallets, cbm, storagePallet, storageM3, unitsReceived, containerUnload,
+    period, orders, unitsPerOrder, returnRate, basis, pallets, cbm, storagePallet, storageM3, unitsReceived, containerUnload,
     ppFirst, ppAdditional, kitting, returnsRate, declaredValue, insurancePct, annualSub, includeDelivery, deliveryPerOrder,
     defaults,
   ]);
 
   function reset() {
+    setPeriod("ongoing");
     setOrders("100"); setUnitsPerOrder("1.5"); setBasis("pallet"); setPallets("4"); setCbm("6");
     setUnitsReceived("250"); setContainerUnload(false); setReturnRate("2"); setDeclaredValue("");
     setStoragePallet(str(defaults.ent_storage_pallet_rate));
@@ -199,7 +218,7 @@ export function EnterpriseCostCalculator({ defaults }: { defaults: EnterpriseDef
 
   async function copyResults() {
     const text = [
-      "BNP Enterprise — estimated monthly cost",
+      `BNP Enterprise — estimated monthly cost (${period === "first" ? "first month" : "ongoing month"})`,
       `Monthly total: ${naira(result.monthly)}`,
       `Cost per order (ex delivery): ${naira(result.perOrderEx)}`,
       `Cost per order (inc delivery): ${naira(result.perOrderInc)}`,
@@ -221,6 +240,38 @@ export function EnterpriseCostCalculator({ defaults }: { defaults: EnterpriseDef
     <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr] lg:items-start">
       {/* Inputs */}
       <div className="flex flex-col gap-6">
+        {/* Period toggle */}
+        <div className="rounded-2xl border border-stone bg-white p-5 sm:p-6">
+          <span className="text-[13px] font-semibold text-navy">Which month are you estimating?</span>
+          <div className="mt-2 grid grid-cols-2 gap-1.5 rounded-xl bg-cream p-1.5">
+            {(
+              [
+                ["ongoing", "Ongoing month"],
+                ["first", "First month"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setPeriod(value)}
+                aria-pressed={period === value}
+                className={cn(
+                  "rounded-lg py-2.5 text-sm font-semibold transition-colors",
+                  period === value ? "bg-navy text-white shadow" : "text-graphite hover:text-navy",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 flex gap-2 text-xs text-graphite">
+            <Info className="mt-0.5 size-3.5 shrink-0 text-teal" />
+            {period === "first"
+              ? `First month: inbound is charged on the intake schedule (free up to ${defaults.ent_intake_free_max} units), and storage gets the 20% first-month discount.`
+              : "A typical ongoing month: inbound is charged on the cheaper restock schedule, and storage bills in full."}
+          </p>
+        </div>
+
         {/* Section A */}
         <SectionCard step="A" title="Your volume" description="What you ship and store in a typical month.">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -286,8 +337,9 @@ export function EnterpriseCostCalculator({ defaults }: { defaults: EnterpriseDef
           </label>
           <p className="mt-3 flex gap-2 text-xs text-graphite">
             <Info className="mt-0.5 size-3.5 shrink-0 text-teal" />
-            Inbound is estimated on the restock schedule for an ongoing month. Your very first shipment is free up to{" "}
-            {defaults.ent_intake_free_max} units.
+            {period === "first"
+              ? `Priced on the intake schedule — free up to ${defaults.ent_intake_free_max} units, then tiered by shipment size.`
+              : "Priced on the restock schedule, tiered by shipment size. Switch to First month for the intake schedule."}
           </p>
         </SectionCard>
 
@@ -358,7 +410,9 @@ export function EnterpriseCostCalculator({ defaults }: { defaults: EnterpriseDef
 
       {/* Results */}
       <aside className="rounded-2xl bg-navy p-6 text-white shadow-[0_30px_80px_-30px_rgba(15,42,68,0.6)] sm:p-8 lg:sticky lg:top-28">
-        <span className="text-xs font-bold uppercase tracking-[0.16em] text-gold-300">Estimated monthly cost</span>
+        <span className="text-xs font-bold uppercase tracking-[0.16em] text-gold-300">
+          Estimated monthly cost · {period === "first" ? "First month" : "Ongoing month"}
+        </span>
         {calculated ? (
           <>
             <div className="mt-3 flex items-baseline gap-2">
