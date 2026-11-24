@@ -107,8 +107,10 @@ export function ScanStation({
     beep(result.tone);
     setLast(result);
     setHistory((h) => [{ id: ++counter.current, code: value, qty, result }, ...h].slice(0, 12));
-    // A larger quantity is for one bulk scan; go back to 1 afterwards.
-    if (result.ok) setQtyText("1");
+    // A larger quantity is for one bulk scan; go back to 1 afterwards. Scans
+    // that aren't a placement (e.g. switching the bin in putaway) ask to keep
+    // it, so a quantity typed before the item survives.
+    if (result.ok && !result.retainQty) setQtyText("1");
     setBusy(false);
     refocus();
   }

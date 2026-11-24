@@ -42,6 +42,9 @@ export function PutawayStation() {
       return {
         ok: true,
         tone: "success",
+        // Switching bins isn't a placement — keep any quantity already typed
+        // so it still applies to the next item scan.
+        retainQty: true,
         message: found.bin.holds
           ? `Bin ${found.bin.code}: holds ${found.bin.holds.quantity} × ${found.bin.holds.label}. Scan items.`
           : `Bin ${found.bin.code} is empty. Scan items to put in it.`,

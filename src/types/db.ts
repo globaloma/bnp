@@ -297,6 +297,12 @@ export type ScanResult = {
   order_id?: string;
   returned?: number;
   damaged?: number;
+  /**
+   * Keep the quantity the operator typed instead of resetting it to 1 after
+   * this scan. Used for scans that aren't a placement (e.g. switching the
+   * current bin during putaway), so a pre-entered quantity survives.
+   */
+  retainQty?: boolean;
 };
 
 export type Order = {
