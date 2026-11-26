@@ -177,12 +177,12 @@ export function EnterpriseCostCalculator({ defaults }: { defaults: EnterpriseDef
       },
       {
         label: `Storage (${basis === "pallet" ? "pallet" : "m³"})`,
-        detail: `${storageQty} ${basis === "pallet" ? "pallet(s)" : "m³"} × ${naira(storageRate)}${firstMonth ? " − 20% month-1" : ""}`,
+        detail: `${storageQty} ${basis === "pallet" ? "pallet(s)" : "m³"} × ${naira(storageRate)}${firstMonth ? " (20% month 1 discount)" : ""}`,
         amount: storageLine,
       },
-      { label: "Pick & pack — first item", detail: `${o} orders`, amount: pickFirstLine },
+      { label: "Pick & pack, first item", detail: `${o} orders`, amount: pickFirstLine },
       {
-        label: "Pick & pack — additional items",
+        label: "Pick & pack, additional items",
         detail: `${o} × ${Math.max(0, upo - 1).toFixed(1)} items`,
         amount: pickAddlLine,
       },
@@ -218,7 +218,7 @@ export function EnterpriseCostCalculator({ defaults }: { defaults: EnterpriseDef
 
   async function copyResults() {
     const text = [
-      `BNP Enterprise — estimated monthly cost (${period === "first" ? "first month" : "ongoing month"})`,
+      `BNP Enterprise estimated monthly cost (${period === "first" ? "first month" : "ongoing month"})`,
       `Monthly total: ${naira(result.monthly)}`,
       `Cost per order (ex delivery): ${naira(result.perOrderEx)}`,
       `Cost per order (inc delivery): ${naira(result.perOrderInc)}`,
@@ -338,7 +338,7 @@ export function EnterpriseCostCalculator({ defaults }: { defaults: EnterpriseDef
           <p className="mt-3 flex gap-2 text-xs text-graphite">
             <Info className="mt-0.5 size-3.5 shrink-0 text-teal" />
             {period === "first"
-              ? `Priced on the intake schedule — free up to ${defaults.ent_intake_free_max} units, then tiered by shipment size.`
+              ? `Priced on the intake schedule: free up to ${defaults.ent_intake_free_max} units, then tiered by shipment size.`
               : "Priced on the restock schedule, tiered by shipment size. Switch to First month for the intake schedule."}
           </p>
         </SectionCard>
@@ -355,8 +355,8 @@ export function EnterpriseCostCalculator({ defaults }: { defaults: EnterpriseDef
             ) : (
               <NumberField label="Storage" value={storageM3} onChange={setStorageM3} prefix="₦" suffix="per m³ / mo" />
             )}
-            <NumberField label="Pick & pack — first item" value={ppFirst} onChange={setPpFirst} prefix="₦" suffix="per order" />
-            <NumberField label="Pick & pack — additional item" value={ppAdditional} onChange={setPpAdditional} prefix="₦" suffix="per item" />
+            <NumberField label="Pick & pack, first item" value={ppFirst} onChange={setPpFirst} prefix="₦" suffix="per order" />
+            <NumberField label="Pick & pack, additional item" value={ppAdditional} onChange={setPpAdditional} prefix="₦" suffix="per item" />
             <NumberField label="Kitting (optional)" value={kitting} onChange={setKitting} prefix="₦" suffix="per kit" />
             <NumberField label="Returns processing (optional)" value={returnsRate} onChange={setReturnsRate} prefix="₦" suffix="per return" />
             <NumberField label="Insurance" value={insurancePct} onChange={setInsurancePct} suffix="% of declared value" />
@@ -445,7 +445,7 @@ export function EnterpriseCostCalculator({ defaults }: { defaults: EnterpriseDef
             </dl>
 
             <div className="mt-6 flex flex-col gap-3">
-              <Button render={<Link href="/get-a-quote" />} size="xl" className="w-full bg-gold text-navy hover:bg-gold-300">
+              <Button render={<Link href="/book-a-consultation" />} size="xl" className="w-full bg-gold text-navy hover:bg-gold-300">
                 Ready for your exact rate? Book a consultation
                 <ArrowRight />
               </Button>

@@ -7,7 +7,7 @@ import { QuoteCalculator } from "@/components/marketing/quote-calculator";
 import { GuaranteeBanner } from "@/components/marketing/guarantee";
 
 export const metadata: Metadata = {
-  title: "Get a quote — Standard plan",
+  title: "Get a quote, Standard plan",
   description: `Estimate what storing your goods and fulfilling your orders with ${company.name} would cost each month on the Standard plan, in under a minute. High-volume or international? Try the Enterprise calculator.`,
 };
 
@@ -26,11 +26,11 @@ export default function GetAQuotePage() {
           <ul className="mb-6 flex flex-wrap gap-x-8 gap-y-3 text-[15px] font-semibold text-navy">
             <li className="flex items-center gap-2">
               <CheckCircle2 className="size-5 text-teal" />
-              Standard: 7% of monthly sales, all-inclusive
+              Standard: 7% of monthly sales, all inclusive
             </li>
             <li className="flex items-center gap-2">
               <CheckCircle2 className="size-5 text-teal" />
-              Storage: ₦10,000 per m² per month
+              Storage: ₦10,000 per 2 boxes (530 × 290 × 370mm) per month
             </li>
           </ul>
           <div className="mb-8 flex flex-wrap items-center gap-2 rounded-xl border border-stone bg-white px-5 py-4 text-sm text-graphite">

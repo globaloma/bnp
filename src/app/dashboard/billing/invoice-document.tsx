@@ -152,14 +152,21 @@ export function InvoiceDocument({ statement }: { statement: InvoiceStatement }) 
               Storage space
               <span className="text-graphite">
                 {" "}
-                · {s.storage.sqm} m²
-                {s.storage.crates || s.storage.pallets
-                  ? ` (${[s.storage.crates ? `${s.storage.crates} crates` : null, s.storage.pallets ? `${s.storage.pallets} pallets` : null].filter(Boolean).join(", ")})`
-                  : ""}
+                ·{" "}
+                {[
+                  s.storage.crates ? `${s.storage.crates} crate${s.storage.crates === 1 ? "" : "s"}` : null,
+                  s.storage.pallets ? `${s.storage.pallets} pallet${s.storage.pallets === 1 ? "" : "s"}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(", ") || `${s.storage.sqm} m²`}
               </span>
             </>
           }
-          sub={`${naira(s.storage.rate)} per m² / month`}
+          sub={
+            s.storage.pallets
+              ? `${naira(s.storage.crateRate)} per crate + ${naira(s.storage.rate)} per m² for pallets / month`
+              : `${naira(s.storage.crateRate)} per crate / month`
+          }
           amount={s.storage.amount}
         />
       </Section>
@@ -194,6 +201,27 @@ export function InvoiceDocument({ statement }: { statement: InvoiceStatement }) 
         )}
         <Subtotal label={`${Math.round(s.fulfillment.rate * 100)}% of ${naira(s.fulfillment.salesValue)}`} amount={s.fulfillment.amount} />
       </Section>
+
+      {/* Restock (Standard add-on, only when it applied this period) */}
+      {s.restock.amount > 0 ? (
+        <Section title="Restock fee">
+          <Row
+            left={
+              <>
+                Restock shipments
+                {s.restock.shipments ? (
+                  <span className="text-graphite">
+                    {" "}
+                    · {s.restock.shipments} shipment{s.restock.shipments === 1 ? "" : "s"} over {s.restock.threshold} units
+                  </span>
+                ) : null}
+              </>
+            }
+            sub={`${naira(s.restock.fee)} per restock shipment over ${s.restock.threshold} units`}
+            amount={s.restock.amount}
+          />
+        </Section>
+      ) : null}
 
       {/* Delivery */}
       <Section title="Delivery fees BNP handled for you">

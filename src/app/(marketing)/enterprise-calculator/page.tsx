@@ -6,7 +6,7 @@ import { getEnterpriseDefaults } from "@/lib/enterprise-rates";
 
 export const metadata: Metadata = {
   title: "Enterprise cost calculator",
-  description: `Estimate your monthly ${company.name} Enterprise fulfillment cost — storage, pick & pack, intake, insurance and more — before booking a consultation. Prefilled with our standard ranges; override any field with your quoted rate.`,
+  description: `Estimate your monthly ${company.name} Enterprise fulfillment cost (storage, pick & pack, intake, insurance and more) before booking a consultation. Prefilled with our standard ranges; override any field with your quoted rate.`,
 };
 
 // Public, no login. Rate-card defaults are set by admin and read server-side.

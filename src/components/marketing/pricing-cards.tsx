@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Calculator, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Calculator, CheckCircle2, ChevronDown } from "lucide-react";
 import { pricing } from "@/lib/site-content";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -9,23 +9,54 @@ import { SectionHeading } from "./section-heading";
 
 type ServiceItem = { name: string; desc: string };
 
-/** Core / Add-On service group on the Enterprise card — names and descriptions, no amounts. */
+function ServiceList({ items }: { items: readonly ServiceItem[] }) {
+  return (
+    <ul className="mt-3 flex flex-col gap-3">
+      {items.map((s) => (
+        <li key={s.name} className="flex items-start gap-2.5">
+          <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-gold" />
+          <span className="text-[15px]">
+            <span className="font-semibold text-white">{s.name}</span>
+            <span className="block text-sm text-mist">{s.desc}</span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Core / Add-On service group on the Enterprise card: names and descriptions, no amounts. */
 function ServiceGroup({ title, items }: { title: string; items: readonly ServiceItem[] }) {
   return (
     <div>
       <h4 className="text-xs font-bold uppercase tracking-[0.12em] text-gold-300">{title}</h4>
-      <ul className="mt-3 flex flex-col gap-3">
-        {items.map((s) => (
-          <li key={s.name} className="flex items-start gap-2.5">
-            <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-gold" />
-            <span className="text-[15px]">
-              <span className="font-semibold text-white">{s.name}</span>
-              <span className="block text-sm text-mist">{s.desc}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
+      <ServiceList items={items} />
     </div>
+  );
+}
+
+/**
+ * Collapsible service group, so the long add-on list does not stretch the
+ * Enterprise card far past the Standard one. Pure HTML details, no client JS.
+ */
+function CollapsibleServiceGroup({ title, items }: { title: string; items: readonly ServiceItem[] }) {
+  return (
+    <details className="group/svc">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-bold uppercase tracking-[0.12em] text-gold-300 [&::-webkit-details-marker]:hidden">
+        <span>
+          {title}
+          <span className="ml-2 font-normal normal-case tracking-normal text-mist">
+            ({items.length})
+          </span>
+        </span>
+        <span className="flex items-center gap-1 text-[11px] font-semibold normal-case tracking-normal text-mist">
+          <span className="group-open/svc:hidden">See more</span>
+          <span className="hidden group-open/svc:inline">See less</span>
+          <ChevronDown className="size-4 transition-transform group-open/svc:rotate-180" />
+        </span>
+      </summary>
+      <ServiceList items={items} />
+    </details>
   );
 }
 
@@ -86,17 +117,26 @@ export function PricingCards({
               {plan.customPricing ? (
                 <div className="mt-7 flex flex-1 flex-col gap-6 border-t border-white/10 pt-7">
                   <ServiceGroup title="Core Services" items={plan.coreServices} />
-                  <ServiceGroup title="Add-On Services" items={plan.addOnServices} />
+                  {plan.addOnServices.length ? (
+                    <CollapsibleServiceGroup title="Add-On Services" items={plan.addOnServices} />
+                  ) : null}
                 </div>
               ) : (
-                <ul className="mt-7 flex flex-1 flex-col gap-3 border-t border-white/10 pt-7">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2.5 text-[15px]">
-                      <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-gold" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
+                <div className="mt-7 flex flex-1 flex-col border-t border-white/10 pt-7">
+                  <ul className="flex flex-col gap-3">
+                    {plan.features.map((f) => (
+                      <li key={f} className="flex items-start gap-2.5 text-[15px]">
+                        <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-gold" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  {plan.addOnServices.length ? (
+                    <div className="mt-6">
+                      <CollapsibleServiceGroup title="Optional add-ons" items={plan.addOnServices} />
+                    </div>
+                  ) : null}
+                </div>
               )}
 
               <div className="mt-8 flex flex-col gap-3">
@@ -124,8 +164,10 @@ export function PricingCards({
 
         <Reveal className="mx-auto mt-8 flex max-w-5xl flex-col items-start justify-between gap-3 rounded-2xl border border-white/12 bg-white/[0.04] px-6 py-5 text-white sm:flex-row sm:items-center sm:px-8">
           <div>
-            <span className="font-display text-2xl font-extrabold">{pricing.registration.amount}</span>{" "}
-            <span className="text-mist">{pricing.registration.label}</span>
+            <span className="font-display text-2xl font-extrabold">{pricing.registration.standardAmount}</span>{" "}
+            <span className="text-mist">on Standard,</span>{" "}
+            <span className="font-display text-2xl font-extrabold">{pricing.registration.enterpriseAmount}</span>{" "}
+            <span className="text-mist">on Enterprise {pricing.registration.label}</span>
             <p className="mt-1 text-sm text-white/70">{pricing.registration.detail}</p>
           </div>
         </Reveal>

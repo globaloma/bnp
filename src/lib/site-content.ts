@@ -25,6 +25,17 @@ export const company = {
   bankAccount: null as { bankName: string; accountNumber: string; accountName: string } | null,
 } as const;
 
+/** Build a WhatsApp click-to-chat link with a prefilled message. */
+export function whatsappLink(message: string): string {
+  return `${company.whatsapp}?text=${encodeURIComponent(message)}`;
+}
+
+/** Prefilled WhatsApp messages used by the "message us" buttons. */
+export const whatsappMessages = {
+  quote: "Hi, I'm interested in BNP Fulfillment. I'd like to get a quote for storing and fulfilling my orders.",
+  consultation: "Hi, I'm interested in BNP Fulfillment. I'd like to book a free consultation to talk through my business.",
+} as const;
+
 export const nav = {
   links: [
     { label: "Home", href: "/" },
@@ -48,9 +59,9 @@ export const nav = {
 export const hero = {
   title: "Your stock on our shelves. Your orders at their door.",
   subtitle:
-    "BNP stores your inventory in Abuja, packs every order the day it comes in and delivers it to your customer. You keep selling. We handle everything after the sale.",
+    "BNP stores your inventory in Nigeria, packs every order the day it comes in and delivers it to your customer. You keep selling. We handle everything after the sale.",
   primaryCta: { label: "Get a free quote", href: "/get-a-quote" },
-  secondaryCta: { label: "See how it works", href: "/how-it-works" },
+  secondaryCta: { label: "See how it works", href: "/how-it-works#see-it-work" },
   stats: [
     { value: 2400, suffix: "+", label: "Orders fulfilled" },
     { value: 80, suffix: "+", label: "Brands on board" },
@@ -62,12 +73,12 @@ export const highlights = [
   {
     icon: "Warehouse",
     title: "Secure, insured storage",
-    body: "CCTV monitored shelves in Jabi. Every unit is counted, labelled and insured.",
+    body: "CCTV monitored shelves in our warehouses. Every unit is counted, labelled and insured.",
   },
   {
     icon: "Zap",
     title: "Same day dispatch",
-    body: "Orders in before noon leave the same day to customers across the FCT.",
+    body: "Orders in before noon leave the same day to customers across Nigeria.",
   },
   {
     icon: "MonitorSmartphone",
@@ -78,7 +89,7 @@ export const highlights = [
 
 export const aboutTeaser = {
   label: "About BNP",
-  title: "Your operations team in Abuja, without hiring one.",
+  title: "Your operations team in Nigeria, without hiring one.",
   body: [
     "Most growing brands hit the same wall: more orders than they can pack, customers in cities they can't reach quickly, and no time left to actually sell.",
     "BNP Fulfillment is the team that takes that work off your hands. Send us your stock once. From then on we receive it, store it, pick and pack every order, and get it to your customer, while you watch it all from your dashboard.",
@@ -113,7 +124,7 @@ export const whyUs = {
     },
     {
       title: "Costs that follow your sales",
-      body: "A yearly registration fee, refunded if you're not happy after your first month, storage by the space you use and a share of sales. No sales, no fulfillment fee.",
+      body: "A yearly registration fee, refunded if you're not satisfied after your first month, storage by the space you use and a share of sales. No sales, no fulfillment fee.",
     },
   ],
 } as const;
@@ -166,7 +177,7 @@ export const services = {
       icon: "Warehouse",
       image: "/images/marketing/warehouse-floor.jpg",
       title: "Warehousing and storage",
-      body: "Your products are received, counted, labelled and stored on secure shelves in our Abuja facility. Every unit is tracked by SKU and insured while in our care.",
+      body: "Your products are received, counted, labelled and stored on secure shelves in our facilities. Every unit is tracked by SKU and insured while in our care.",
       bullets: [
         "Counted and checked on arrival",
         "Barcode label on every product",
@@ -190,7 +201,7 @@ export const services = {
       icon: "Bike",
       image: "/images/marketing/parcel-handover.jpg",
       title: "Last mile delivery",
-      body: "BNP riders cover Abuja and its surroundings. Prefer your own riders? Add them to your account with their own delivery fees.",
+      body: "BNP riders cover Abuja, Lagos and their surroundings. Prefer your own riders? Add them to your account with their own delivery fees.",
       bullets: [
         "BNP riders on the ground daily",
         "Use your own riders if you like",
@@ -325,7 +336,7 @@ export const steps = {
     "Your business name and contact details",
     "A list of the products you want to store",
     "Your stock, delivered to our Jabi hub",
-    "Your registration fee, refunded if you're not happy after the first month",
+    "Your registration fee, refunded if you're not satisfied after the first month",
   ],
 } as const;
 
@@ -454,7 +465,7 @@ export const training = {
     title: "Ready to get your team trained?",
     description:
       "Book a free consultation and we will put together a training plan that fits your business and your team.",
-    primary: { label: "Book a consultation", href: "/contact" },
+    primary: { label: "Book a consultation", href: "/book-a-consultation" },
   },
 } as const;
 
@@ -468,22 +479,23 @@ export const pricing = {
   description:
     "Start on Standard and move up when you grow. No long term lock in, and if you don't sell, your fulfillment fee is zero.",
   registration: {
-    amount: "₦50,000",
+    standardAmount: "₦50,000",
+    enterpriseAmount: "₦105,000",
     label: "registration fee, per year",
-    detail: "Covers your account setup, inventory onboarding, dashboard, online store and training. On both plans.",
+    detail: "₦50,000 a year on Standard, ₦105,000 a year on Enterprise. Covers your account setup, inventory onboarding, dashboard, online store and training. Refunded in full if you're not satisfied after your first month.",
   },
   plans: [
     {
       id: "standard",
       name: "Standard",
       tagline: "For growing Nigerian brands",
-      audience: "SME sellers with under 5,000 products.",
+      audience: "SME sellers with under 2,000 products.",
       customPricing: false,
       fee: "7%",
-      feeUnit: "of monthly sales, all-inclusive",
+      feeUnit: "of monthly sales, all inclusive",
       pricingLine: "",
       features: [
-        "Storage at ₦10,000 per m² per month",
+        "Storage at ₦10,000 per 2 boxes (530 × 290 × 370mm) per month",
         "No separate insurance charge",
         "One monthly invoice, with 3 business days to pay",
         "Self-serve dashboard and email support",
@@ -491,7 +503,9 @@ export const pricing = {
         "Your own online store",
       ],
       coreServices: [],
-      addOnServices: [],
+      addOnServices: [
+        { name: "Restock Fee", desc: "An optional fee each time a new shipment arrives to top up your stock. Switched on only if you want it." },
+      ],
       calculator: { label: "Try the Standard calculator", href: "/get-a-quote" },
       cta: { label: "Get started on Standard", href: "/signup?plan=standard" },
       highlighted: false,
@@ -500,7 +514,7 @@ export const pricing = {
       id: "enterprise",
       name: "Enterprise",
       tagline: "Built for high-volume sellers, fast-growing Nigerian brands, and international businesses entering the Nigerian market.",
-      audience: "Brands with 5,000+ products or selling into Nigeria from abroad.",
+      audience: "Brands with 2,000+ products or selling into Nigeria from abroad.",
       customPricing: true,
       fee: "Custom",
       feeUnit: "",
@@ -510,63 +524,88 @@ export const pricing = {
       coreServices: [
         { name: "Annual Subscription", desc: "Platform access, WMS onboarding, a dedicated account manager, and Enterprise support." },
         { name: "Intake Fee", desc: "Receiving, barcoding, WMS logging, and putaway of your first stock delivery." },
-        { name: "Restock Fee", desc: "Each time a new shipment arrives to replenish inventory — same process as intake." },
+        { name: "Restock Fee", desc: "Each time a new shipment arrives to replenish inventory, the same process as intake." },
         { name: "Storage", desc: "Monthly billing by pallet or cubic metre, auto-calculated from your live inventory. The bill falls as stock is fulfilled." },
-        { name: "Pick & Pack", desc: "Per-order fulfillment — first item picked and packed, plus each additional item in the same order." },
+        { name: "Pick & Pack", desc: "Per-order fulfillment: first item picked and packed, plus each additional item in the same order." },
         { name: "Insurance", desc: "Monthly cover based on the declared production cost of inventory in storage." },
-        { name: "Delivery", desc: "Carrier cost at dispatch via GIG, BNP Custom Dispatch or UPS — passed through at cost, no markup." },
+        { name: "Delivery", desc: "Carrier cost at dispatch via GIG, BNP Custom Dispatch or UPS, passed through at cost with no markup." },
       ],
       addOnServices: [
         { name: "Kitting & Assembly", desc: "Assembling multi-item bundles from separate SKUs into one ready-to-ship kit before packing." },
         { name: "Returns Processing", desc: "Receipt, inspection, and restock or disposal of returned customer orders." },
         { name: "Cash on Delivery (COD)", desc: "Collection of payment on delivery and remittance to you. COD orders only." },
-        { name: "Special Projects", desc: "Relabelling, barcoding, cycle counts, custom packaging runs — pre-quoted per project." },
+        { name: "Special Projects", desc: "Relabelling, barcoding, cycle counts and custom packaging runs, pre-quoted per project." },
       ],
       calculator: { label: "Try the Enterprise calculator", href: "/enterprise-calculator" },
-      cta: { label: "Book a Free Consultation", href: "/get-a-quote" },
+      cta: { label: "Book a Free Consultation", href: "/book-a-consultation" },
       highlighted: true,
     },
   ],
   example:
     "On Standard, if your brand sells ₦500,000 in a month, the fulfillment fee is ₦35,000. No rent, no salaries, no overhead.",
-  note: "Standard merchants pay one invoice at the end of each month. Enterprise pricing is custom: after a short consultation we build your rate card, and each month we send an itemised invoice — reviewed by our team before it reaches you. Delivery fees are passed through at carrier cost.",
+  note: "Standard merchants pay one invoice at the end of each month. Enterprise pricing is custom: after a short consultation we build your rate card, and each month we send an itemised invoice, reviewed by our team before it reaches you. Delivery fees are passed through at carrier cost.",
 } as const;
 
 /** Side-by-side comparison on the pricing page (Technical Specification v2, section 2.1). */
 export const planComparison = [
-  { feature: "Best for", standard: "SME sellers, under 5,000 products", enterprise: "High-volume and international brands, 5,000+ products" },
-  { feature: "Pricing", standard: "7% of monthly sales, all-inclusive", enterprise: "Custom rate card, quoted at consultation" },
-  { feature: "Fulfillment", standard: "Included in the 7%", enterprise: "Per-service: intake, pick & pack, storage, add-ons" },
-  { feature: "Storage", standard: "₦10,000 per m² per month", enterprise: "By pallet or cubic metre, auto-calculated from live stock" },
+  { feature: "Best for", standard: "SME sellers, under 2,000 products", enterprise: "High-volume and international brands, 2,000+ products" },
+  { feature: "Pricing", standard: "7% of monthly sales, all inclusive", enterprise: "Custom rate card, quoted at consultation" },
+  { feature: "Fulfillment", standard: "Included in the 7%", enterprise: "Per service: intake, pick & pack, storage, add-ons" },
+  { feature: "Storage", standard: "₦10,000 per 2 boxes (530 × 290 × 370mm) per month", enterprise: "By pallet or cubic metre, auto-calculated from live stock" },
   { feature: "Insurance", standard: "No separate charge", enterprise: "0.25% of declared stock value at month end" },
   { feature: "How you pay", standard: "One invoice at the end of each month", enterprise: "Itemised monthly invoice, reviewed by our team before sending" },
   { feature: "Time to pay", standard: "3 business days after the invoice", enterprise: "3 business days after the invoice" },
   { feature: "Support", standard: "Self-serve dashboard and email support", enterprise: "A dedicated account manager" },
-  { feature: "Delivery options", standard: "BNP riders, your own riders or customer pickup", enterprise: "GIG, BNP Custom Dispatch or UPS — at carrier cost" },
-  { feature: "Add-on services", standard: "Core services included", enterprise: "Kitting, returns, COD, special projects — switched on as you need" },
-  { feature: "Registration fee", standard: "₦50,000 a year, refundable after month one", enterprise: "Quoted at consultation" },
+  { feature: "Delivery options", standard: "BNP riders, your own riders or customer pickup", enterprise: "GIG, BNP Custom Dispatch or UPS, at carrier cost" },
+  { feature: "Add-on services", standard: "Optional restock fee, switched on as you need", enterprise: "Kitting, returns, COD, special projects, switched on as you need" },
+  { feature: "Registration fee", standard: "₦50,000 a year, refundable after month one", enterprise: "₦105,000 a year, refundable after month one" },
 ] as const;
 
 /** The money-back promise on the registration fee, shown across the site. */
 export const guarantee = {
   title: "Try us for a month, risk-free.",
-  body: "If after your first month you feel a fulfillment partner isn't right for you, or you didn't get value for your money, we'll refund your ₦50,000 registration fee in full. Just tell us.",
-  short: "Full refund of your ₦50,000 registration fee if you're not happy after your first month.",
+  body: "If after your first month you are not satisfied, whether a fulfillment partner is not right for you or you did not get value for your money, we will refund your registration fee in full: ₦50,000 on Standard or ₦105,000 on Enterprise. Just tell us.",
+  short: "Full refund of your registration fee (₦50,000 on Standard, ₦105,000 on Enterprise) if you are not satisfied after your first month.",
   badge: "First-month money-back guarantee",
 } as const;
 
 /** Numbers the Standard quote calculator uses. Keep in line with `pricing` above. */
 export const quote = {
   subscriptionPerYear: 50_000,
-  storagePerSqmPerMonth: 10_000,
+  // Standard storage is priced per standard box of 530 x 290 x 370mm.
+  // The rate card is ₦10,000 for every 2 boxes, i.e. ₦5,000 per box per month.
+  // So 2 boxes = ₦10,000, 3 = ₦15,000, 4 = ₦20,000, and so on.
+  storagePerBoxPerMonth: 5_000,
+  boxDimensions: "530 × 290 × 370mm",
   fulfillmentRate: 0.07,
-  // A medium carton is about 60 x 40 x 40 cm. Stacked two high on a shelf,
-  // roughly eight of them fit on one square metre of floor space.
-  cartonsPerSqm: 8,
-  minSqm: 1,
-  maxSqm: 100,
-  maxCartons: 800,
+  minBoxes: 1,
+  maxBoxes: 1_000,
   maxMonthlySales: 50_000_000,
+  // Optional restock add-on: a flat fee on each restock shipment over the
+  // threshold. Off by default; admin switches it on per merchant.
+  restockFee: 100_000,
+  restockThreshold: 200,
+} as const;
+
+// ---------------------------------------------------------------------------
+// Book a consultation
+// ---------------------------------------------------------------------------
+
+export const consultation = {
+  label: "Book a consultation",
+  title: "Book your free consultation.",
+  description:
+    "Tell us about your brand and we'll put together a plan that fits, whether you're sizing up Standard, moving to Enterprise or training your team. No payment, no obligation.",
+  whatsappTitle: "Rather just talk to us?",
+  whatsappBody: "Skip the form and message our team on WhatsApp. We reply within business hours.",
+  whatsappCta: "Message us on WhatsApp",
+  formTitle: "Tell us about your business",
+  formSubtitle: "Takes three minutes. We respond within 48 hours.",
+  points: [
+    "A real person, not a sales script",
+    "A clear plan and pricing for your products",
+    "Answers on storage, delivery and your online store",
+  ],
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -682,19 +721,19 @@ export const faq = {
       items: [
         {
           q: "Which plan is right for me, Standard or Enterprise?",
-          a: "Standard suits most growing Nigerian brands: under 5,000 products, selling within Nigeria, paying one invoice a month. Enterprise is for high-volume and international brands that want a dedicated account manager, insured stock and a pre-funded wallet. You can start on Standard and move up later.",
+          a: "Standard suits most growing Nigerian brands: under 2,000 products, selling within Nigeria, paying one invoice a month. Enterprise is for high-volume and international brands that want a dedicated account manager, insured stock and a custom rate card. You can start on Standard and move up later.",
         },
         {
           q: "Can I get my registration fee back?",
-          a: "Yes. If after your first month you feel a fulfillment partner isn't right for you, or you didn't get value for your money, tell us and we'll refund your ₦50,000 registration fee in full.",
+          a: "Yes. If after your first month you are not satisfied, tell us and we will refund your registration fee in full: ₦50,000 on Standard or ₦105,000 on Enterprise.",
         },
         {
           q: "How does the fulfillment fee work?",
-          a: "It's a share of the total value of goods you sell in a month: 7% on Standard and 9% on Enterprise. On Standard, if you sell ₦200,000 worth of goods, the fee is ₦14,000. If you sell nothing, the fulfillment fee is zero and only storage applies.",
+          a: "On Standard it is a flat 7% share of the total value of goods you sell in a month. If you sell ₦200,000 worth of goods, the fee is ₦14,000, and if you sell nothing, the fulfillment fee is zero and only storage applies. Enterprise is priced per service on a custom rate card instead, set at your consultation.",
         },
         {
           q: "How is storage measured?",
-          a: "By the space your stock takes up with us. Smaller items are kept in crates and bulkier items are stacked on pallets, where a taller stack counts for more. That adds up to a floor space in square metres, billed at ₦10,000 per square metre a month. As a rough guide, about eight medium cartons fit in one square metre, and our quote calculator can estimate it for you.",
+          a: "On Standard, storage is counted by the box. A standard box is 530 × 290 × 370mm, and the rate card is ₦10,000 for every 2 boxes a month, so 2 boxes cost ₦10,000, 4 boxes ₦20,000, and so on. Tell our quote calculator how many boxes you expect to store and it works out the cost for you. Enterprise storage is billed by pallet or cubic metre instead.",
         },
         {
           q: "How accurate is the online quote?",
@@ -702,7 +741,7 @@ export const faq = {
         },
         {
           q: "How do I pay the fees?",
-          a: "On Standard, you get one invoice at the start of each month for the month before, and have 3 business days to pay it online. On Enterprise, you keep a funded wallet and charges are deducted automatically. Either way, every charge is listed on your dashboard.",
+          a: "On Standard, you get one invoice at the start of each month for the month before, and have 3 business days to pay it online. On Enterprise, we send an itemised monthly invoice, reviewed by our team before it reaches you. Either way, every charge is listed on your dashboard.",
         },
       ],
     },
@@ -711,7 +750,7 @@ export const faq = {
       items: [
         {
           q: "How fast do orders go out?",
-          a: "Orders received before noon are dispatched the same day to customers in the FCT. Later orders go out the next day.",
+          a: "Orders received before noon are dispatched the same day to nearby customers. Later orders go out the next day.",
         },
         {
           q: "Can I use my own delivery riders?",
@@ -761,7 +800,7 @@ export const contact = {
 
 export const ctaBand = {
   title: "Ready to stop packing orders yourself?",
-  body: "See what BNP would cost for your brand in under a minute, or create your account and start sending stock this week. Not happy after your first month? We refund your registration fee.",
+  body: "See what BNP would cost for your brand in under a minute, or create your account and start sending stock this week. Not satisfied after your first month? We refund your registration fee.",
 } as const;
 
 export const footer = {

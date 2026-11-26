@@ -9,6 +9,7 @@ import { PageHeader, Panel, StatCard } from "@/components/dashboard/ui";
 import { Button } from "@/components/ui/button";
 import type { EnterpriseRates, Invoice } from "@/types/db";
 import { buildInvoiceStatement, currentPeriod } from "@/lib/invoice-statement";
+import { STANDARD_CRATE_RATE, standardStorageAmount } from "@/lib/storage";
 import { DeclaredValues, InvoiceList, RateCardView, type DeclaredRow, type RateCardLine } from "./billing-client";
 
 export const metadata: Metadata = { title: "Billing" };
@@ -79,7 +80,13 @@ export default async function BillingPage() {
   }));
   const stockValue = declared.reduce((s, d) => s + d.onHand * (d.value ?? 0), 0);
   const missing = declared.filter((d) => d.value === null && d.onHand > 0).length;
-  const storageMonthly = Number(partner.storage_sqm) * Number(settings?.storage_rate ?? 10000);
+  const storageMonthly = standardStorageAmount({
+    crates: Number(partner.storage_crates ?? 0),
+    sqm: Number(partner.storage_sqm),
+    crateRate: Number(settings?.std_crate_rate ?? STANDARD_CRATE_RATE),
+    crateM2: Number(settings?.crate_m2 ?? 0.25),
+    storageRate: Number(settings?.storage_rate ?? 10000),
+  });
   const storageBreakdown = [
     partner.storage_crates > 0 ? `${partner.storage_crates} crate${partner.storage_crates === 1 ? "" : "s"}` : null,
     partner.storage_pallets > 0
@@ -218,8 +225,8 @@ export default async function BillingPage() {
             />
             <StatCard
               label="Storage"
-              value={`${partner.storage_sqm} m²`}
-              sub={`${naira(storageMonthly)} a month${storageBreakdown ? ` · ${storageBreakdown}` : ""}`}
+              value={storageBreakdown || "No storage yet"}
+              sub={`${naira(storageMonthly)} a month`}
               accent="teal"
             />
             <StatCard label="Wallet balance" value={naira(partner.wallet_balance)} sub="Can pay invoices" accent="gold" />

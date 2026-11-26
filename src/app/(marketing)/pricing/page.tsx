@@ -14,7 +14,7 @@ import { FaqList, pickFaqs } from "@/components/marketing/faq-list";
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: `${company.name} plans: Standard at 7% of sales, all-inclusive, or Enterprise — custom per-service pricing quoted at consultation, with a dedicated account manager. Registration fee refunded if you're not happy after month one.`,
+  description: `${company.name} plans: Standard at 7% of sales, all inclusive, or Enterprise with custom per-service pricing quoted at consultation and a dedicated account manager. Registration fee refunded if you're not satisfied after month one.`,
 };
 
 export default function PricingPage() {
@@ -78,7 +78,7 @@ export default function PricingPage() {
             align="center"
             label="Worked examples"
             title="What merchants like you might pay."
-            description="Three typical brands on the Standard plan. Your own numbers will differ, so try the Standard calculator for yours — or the Enterprise calculator if you sell at high volume or from abroad."
+            description="Three typical brands on the Standard plan. Your own numbers will differ, so try the Standard calculator for yours, or the Enterprise calculator if you sell at high volume or from abroad."
           />
           <div className="mt-14 grid gap-6 lg:grid-cols-3">
             {exampleMerchants.map((m, i) => {
@@ -96,7 +96,7 @@ export default function PricingPage() {
                   <p className="mt-1 text-sm text-graphite">{m.detail}</p>
                   <dl className="mt-6 flex flex-col gap-3 border-t border-stone pt-5 text-[15px]">
                     <div className="flex justify-between gap-4">
-                      <dt className="text-graphite">Storage ({est.sqm} m²)</dt>
+                      <dt className="text-graphite">Storage ({est.boxes} boxes)</dt>
                       <dd className="font-semibold text-navy">{naira(est.storagePerMonth)}</dd>
                     </div>
                     <div className="flex justify-between gap-4">

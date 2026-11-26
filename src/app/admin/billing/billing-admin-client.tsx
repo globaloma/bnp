@@ -19,6 +19,7 @@ import {
   setEnterpriseDefaults,
   setEnterpriseRates,
   setEnterpriseTerms,
+  setStandardRestock,
   setWalletLock,
   upsertInvoiceLine,
 } from "./actions";
@@ -101,6 +102,7 @@ export type MerchantRow = {
   locked: boolean;
   paused: boolean;
   walletLocked: boolean;
+  restockEnabled: boolean;
   active: boolean;
 };
 
@@ -125,6 +127,7 @@ function MerchantCard({ row }: { row: MerchantRow }) {
   const { pending, run } = useAction();
   const [minimum, setMinimum] = useState(String(row.minimum));
   const [manager, setManager] = useState(row.manager ?? "");
+  const [restock, setRestock] = useState(row.restockEnabled);
 
   return (
     <div className={cn("rounded-lg border border-stone bg-card p-4", !row.active && "opacity-60")}>
@@ -193,6 +196,22 @@ function MerchantCard({ row }: { row: MerchantRow }) {
           >
             Save
           </Button>
+        </div>
+      ) : null}
+      {row.plan === "standard" ? (
+        <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-stone pt-3">
+          <AddOnToggle
+            on={restock}
+            onToggle={() => {
+              const next = !restock;
+              setRestock(next);
+              run(() => setStandardRestock(row.id, next));
+            }}
+            label="Restock fee"
+          />
+          <span className="text-xs text-graphite">
+            Billed on each restock shipment over the threshold (default ₦100,000 over 200 units).
+          </span>
         </div>
       ) : null}
     </div>
@@ -810,8 +829,7 @@ export function EnterpriseDefaultsPanel({ defaults }: { defaults: EnterpriseDefa
         <span>
           <h2 className="text-base font-semibold text-navy">Enterprise default rates</h2>
           <p className="mt-1 text-sm text-graphite">
-            Seed new rate cards and prefill the public Enterprise calculator. One place — no code change when the CEO
-            confirms amounts.
+            Seed new rate cards and prefill the public Enterprise calculator.     
           </p>
         </span>
         <span className="text-xs font-semibold text-teal-700">{open ? "Hide" : "Edit"}</span>

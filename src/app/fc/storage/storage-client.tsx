@@ -22,6 +22,7 @@ export type StorageRow = {
 
 export type StorageRates = {
   storageRate: number;
+  stdCrateRate: number;
   crateM2: number;
   palletM2: number;
   palletRefHeightM: number;
@@ -33,20 +34,28 @@ function deriveSqm(crates: number, pallets: number, height: number, r: StorageRa
   return Math.round((crates * r.crateM2 + pallets * r.palletM2 * mult) * 100) / 100;
 }
 
+/** Monthly storage charge: crates at the flat per-crate rate, pallets on m². */
+function storageCost(crates: number, sqm: number, r: StorageRates): number {
+  const palletSqm = Math.max(0, sqm - crates * r.crateM2);
+  return Math.round((crates * r.stdCrateRate + palletSqm * r.storageRate) * 100) / 100;
+}
+
 const numClass =
   "h-9 w-16 rounded-md border border-stone bg-white px-2 text-right text-sm font-semibold text-navy outline-none focus-visible:border-teal";
 
 export function StorageClient({ rows, rates }: { rows: StorageRow[]; rates: StorageRates }) {
   const totalSqm = rows.reduce((s, r) => s + r.sqm, 0);
+  const totalMoney = rows.reduce((s, r) => s + storageCost(r.crates, r.sqm, rates), 0);
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-graphite">
         <span className="font-semibold text-navy">{Math.round(totalSqm * 100) / 100} m²</span> in use across{" "}
-        {rows.length} merchant{rows.length === 1 ? "" : "s"}, {naira(totalSqm * rates.storageRate)} a month in storage.
+        {rows.length} merchant{rows.length === 1 ? "" : "s"}, {naira(totalMoney)} a month in storage.
       </p>
       <p className="text-xs text-mist">
-        A crate counts as {rates.crateM2} m². A pallet counts as {rates.palletM2} m² per {rates.palletRefHeightM} m of
-        stack height (taller stacks count for more).
+        A crate is billed at {naira(rates.stdCrateRate)} a month (a 530 × 290 × 370mm box). A pallet counts as{" "}
+        {rates.palletM2} m² per {rates.palletRefHeightM} m of stack height (taller stacks count for more), billed at{" "}
+        {naira(rates.storageRate)} per m².
       </p>
       <div className="overflow-x-auto rounded-lg border border-stone bg-card">
         <table className="w-full text-sm">
@@ -142,7 +151,7 @@ function Row({ row, rates }: { row: StorageRow; rates: StorageRates }) {
       <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-navy">{sqm}</td>
       <td className="px-4 py-2.5 text-right">
         <div className="flex items-center justify-end gap-2">
-          <span className="font-semibold tabular-nums text-navy">{naira(sqm * rates.storageRate)}</span>
+          <span className="font-semibold tabular-nums text-navy">{naira(storageCost(c, sqm, rates))}</span>
           {dirty ? (
             <Button size="sm" onClick={save} disabled={pending}>
               {pending ? "Saving" : "Save"}

@@ -64,7 +64,7 @@ export default async function MarketProductPage({ params }: Props) {
       ? { text: "Sold out", tone: "text-destructive" }
       : product.stock <= LOW_STOCK_THRESHOLD
         ? { text: `Only ${product.stock} left`, tone: "text-gold" }
-        : { text: "In stock", tone: "text-success" };
+        : { text: `${product.stock} in stock`, tone: "text-success" };
 
   const structuredData = {
     "@context": "https://schema.org",

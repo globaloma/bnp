@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { displayName } from "@/lib/variants";
 import { cartItem, discountPercent } from "@/lib/marketplace/pricing";
 import { useCart } from "@/components/store/cart-context";
+import { LOW_STOCK_THRESHOLD } from "@/types/db";
 import { Stars } from "./stars";
 import { useShopHref } from "./shop-base";
 import type { MarketProduct } from "@/lib/marketplace/data";
@@ -55,6 +56,11 @@ export function ProductTile({ product, className }: { product: MarketProduct; cl
         </div>
         {product.rating_count > 0 ? <Stars rating={product.rating_avg} count={product.rating_count} className="mt-1" /> : null}
         <span className="mt-1 truncate text-[11px] text-mist">{product.merchant_name}</span>
+        {!soldOut ? (
+          <span className="mt-0.5 text-[11px] font-semibold text-graphite">
+            {product.stock <= LOW_STOCK_THRESHOLD ? `Only ${product.stock} left` : `${product.stock} in stock`}
+          </span>
+        ) : null}
         <button
           type="button"
           disabled={soldOut}

@@ -3,16 +3,20 @@ import { quote } from "@/lib/site-content";
 // Storage and fulfillment cost estimate for the STANDARD plan — shared by the
 // Standard quote calculator and the worked examples on the pricing page.
 // Enterprise is custom-quoted and has its own calculator (enterprise-cost-calculator).
+//
+// Standard storage is priced per standard box (530 x 290 x 370mm). The rate
+// card is ₦10,000 for every 2 boxes a month, i.e. ₦5,000 per box, so the cost
+// is simply the number of boxes times the per-box rate.
 
 export type QuoteInput = {
-  /** Shelf floor space in square metres. */
-  sqm: number;
+  /** Number of standard boxes (530 x 290 x 370mm) stored with us. */
+  boxes: number;
   /** Value of goods sold through BNP in a month, in naira. */
   monthlySales: number;
 };
 
 export type QuoteEstimate = {
-  sqm: number;
+  boxes: number;
   storagePerMonth: number;
   fulfillmentRate: number;
   fulfillmentPerMonth: number;
@@ -23,25 +27,21 @@ export type QuoteEstimate = {
   averagePerMonth: number;
 };
 
-/** Storage is charged per whole square metre, with a minimum of one. */
-export function billableSqm(sqm: number): number {
-  return Math.min(quote.maxSqm, Math.max(quote.minSqm, Math.ceil(sqm)));
+/** Clamp the box count to the supported range, whole boxes only. */
+export function billableBoxes(boxes: number): number {
+  return Math.min(quote.maxBoxes, Math.max(quote.minBoxes, Math.round(boxes)));
 }
 
-export function sqmForCartons(cartons: number): number {
-  return billableSqm(cartons / quote.cartonsPerSqm);
-}
-
-export function estimateQuote({ sqm, monthlySales }: QuoteInput): QuoteEstimate {
-  const space = billableSqm(sqm);
+export function estimateQuote({ boxes, monthlySales }: QuoteInput): QuoteEstimate {
+  const count = billableBoxes(boxes);
   const sales = Math.max(0, Math.min(quote.maxMonthlySales, monthlySales));
   const rate = quote.fulfillmentRate;
-  const storagePerMonth = space * quote.storagePerSqmPerMonth;
+  const storagePerMonth = count * quote.storagePerBoxPerMonth;
   const fulfillmentPerMonth = Math.round(sales * rate);
   const monthly = storagePerMonth + fulfillmentPerMonth;
   const firstYear = quote.subscriptionPerYear + monthly * 12;
   return {
-    sqm: space,
+    boxes: count,
     storagePerMonth,
     fulfillmentRate: rate,
     fulfillmentPerMonth,
@@ -53,7 +53,7 @@ export function estimateQuote({ sqm, monthlySales }: QuoteInput): QuoteEstimate 
 }
 
 export const exampleMerchants = [
-  { name: "Just starting", detail: "About 15 cartons, ₦300,000 sales a month", sqm: 2, monthlySales: 300_000 },
-  { name: "Growing brand", detail: "About 40 cartons, ₦1.5m sales a month", sqm: 5, monthlySales: 1_500_000 },
-  { name: "Established", detail: "About 120 cartons, ₦5m sales a month", sqm: 15, monthlySales: 5_000_000 },
+  { name: "Just starting", detail: "About 6 boxes, ₦300,000 sales a month", boxes: 6, monthlySales: 300_000 },
+  { name: "Growing brand", detail: "About 20 boxes, ₦1.5m sales a month", boxes: 20, monthlySales: 1_500_000 },
+  { name: "Established", detail: "About 60 boxes, ₦5m sales a month", boxes: 60, monthlySales: 5_000_000 },
 ] as const;

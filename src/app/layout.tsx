@@ -19,7 +19,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bnpfulfillment.com"
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: `${company.name}, your Abuja operations partner`,
+    default: `${company.name}, your operations partner in Nigeria`,
     template: `%s | ${company.name}`,
   },
   description:
@@ -37,13 +37,13 @@ export const metadata: Metadata = {
     locale: "en_NG",
     url: siteUrl,
     siteName: company.name,
-    title: `${company.name}, your Abuja operations partner`,
+    title: `${company.name}, your operations partner in Nigeria`,
     description:
       "Store your inventory, fulfil your orders and deliver to your customers across Abuja, Lagos and the USA.",
   },
   twitter: {
     card: "summary_large_image",
-    title: `${company.name}, your Abuja operations partner`,
+    title: `${company.name}, your operations partner in Nigeria`,
     description:
       "Store your inventory, fulfil your orders and deliver to your customers across Abuja, Lagos and the USA.",
   },

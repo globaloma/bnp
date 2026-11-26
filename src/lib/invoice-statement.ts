@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Invoice } from "@/types/db";
+import { STANDARD_CRATE_RATE, standardStorageAmount } from "@/lib/storage";
 
 // Builds the detailed, itemized statement behind a Standard merchant's
 // invoice — both finalized invoices (past months) and the live running draft
@@ -44,8 +45,10 @@ export type InvoiceStatement = {
     email: string | null;
     phone: string | null;
   };
-  storage: { sqm: number; crates: number; pallets: number; rate: number; amount: number };
+  storage: { sqm: number; crates: number; pallets: number; rate: number; crateRate: number; amount: number };
   fulfillment: { rate: number; salesValue: number; amount: number; lines: StatementFulfillmentLine[] };
+  /** Standard restock add-on: a flat fee per restock shipment over the threshold (0041). */
+  restock: { amount: number; shipments: number; fee: number; threshold: number };
   delivery: { amount: number; bnpFronted: number; lines: StatementDeliveryLine[] };
   total: number;
   walletBalance: number;
@@ -150,8 +153,9 @@ export async function buildInvoiceStatement(
         email: partner.email ?? null,
         phone: partner.phone ?? null,
       },
-      storage: { sqm: 0, crates: 0, pallets: 0, rate: 0, amount: 0 },
+      storage: { sqm: 0, crates: 0, pallets: 0, rate: 0, crateRate: 0, amount: 0 },
       fulfillment: { rate: 0, salesValue: 0, amount: 0, lines: [] },
+      restock: { amount: 0, shipments: 0, fee: 0, threshold: 0 },
       delivery: { amount: 0, bnpFronted: 0, lines: [] },
       total: Number(inv.total),
       walletBalance: Number(partner.wallet_balance ?? 0),
@@ -162,13 +166,18 @@ export async function buildInvoiceStatement(
 
   const { start, end } = periodBounds(period);
 
-  const [{ data: partner }, { data: settings }, { data: orders }] = await Promise.all([
+  const [{ data: partner }, { data: settings }, { data: orders }, { data: deliveries }] = await Promise.all([
     supabase
       .from("partners")
-      .select("id, business_name, email, phone, storage_sqm, storage_crates, storage_pallets, wallet_balance")
+      .select(
+        "id, business_name, email, phone, storage_sqm, storage_crates, storage_pallets, standard_restock_enabled, wallet_balance",
+      )
       .eq("id", opts.partnerId)
       .maybeSingle(),
-    supabase.from("billing_settings").select("storage_rate, standard_rate").maybeSingle(),
+    supabase
+      .from("billing_settings")
+      .select("storage_rate, crate_m2, std_crate_rate, standard_rate, std_restock_fee, std_restock_threshold")
+      .maybeSingle(),
     supabase
       .from("orders")
       .select(
@@ -176,6 +185,15 @@ export async function buildInvoiceStatement(
       )
       .eq("partner_id", opts.partnerId)
       .or(`and(delivered_at.gte.${start},delivered_at.lt.${end}),and(dispatched_at.gte.${start},dispatched_at.lt.${end})`),
+    // Received shipments up to the period end, oldest first, with unit totals,
+    // so we can tell the first-ever intake from later restocks (matches 0041).
+    supabase
+      .from("inbound_deliveries")
+      .select("id, received_at, inbound_delivery_lines(received_qty)")
+      .eq("partner_id", opts.partnerId)
+      .eq("status", "received")
+      .lt("received_at", end)
+      .order("received_at", { ascending: true }),
   ]);
 
   if (!partner) return null;
@@ -229,12 +247,43 @@ export async function buildInvoiceStatement(
     : deliveryLines.reduce((s, l) => s + l.fee, 0);
   const bnpFronted = deliveryLines.reduce((s, l) => s + l.fee, 0);
 
+  const crateRate = Number(settings?.std_crate_rate ?? STANDARD_CRATE_RATE);
+  const crateM2 = Number(settings?.crate_m2 ?? 0.25);
   const storageAmount = opts.invoice
     ? Number(opts.invoice.storage_amount)
-    : Math.round(Number(partner.storage_sqm) * storageRate * 100) / 100;
+    : standardStorageAmount({
+        crates: Number(partner.storage_crates ?? 0),
+        sqm: Number(partner.storage_sqm),
+        crateRate,
+        crateM2,
+        storageRate,
+      });
+
+  // Restock add-on: a flat fee on each received shipment over the threshold that
+  // is not the merchant's first-ever intake, counted in this period.
+  const restockFee = Number(settings?.std_restock_fee ?? 100000);
+  const restockThreshold = Number(settings?.std_restock_threshold ?? 200);
+  let restockShipments = 0;
+  if (partner.standard_restock_enabled) {
+    const received = (deliveries ?? []).map((d) => ({
+      receivedAt: d.received_at as string | null,
+      units: ((d.inbound_delivery_lines as { received_qty: number }[] | null) ?? []).reduce(
+        (sum, l) => sum + Number(l.received_qty ?? 0),
+        0,
+      ),
+    }));
+    // Index 0 is the first-ever intake; index > 0 are restocks.
+    restockShipments = received.filter(
+      (d, i) => i > 0 && d.receivedAt && d.receivedAt >= start && d.receivedAt < end && d.units > restockThreshold,
+    ).length;
+  }
+  const restockAmount = opts.invoice
+    ? Number(opts.invoice.restock_amount ?? 0)
+    : restockShipments * restockFee;
+
   const total = opts.invoice
     ? Number(opts.invoice.total)
-    : Math.round((storageAmount + fulfillmentAmount + deliveryAmount) * 100) / 100;
+    : Math.round((storageAmount + fulfillmentAmount + restockAmount + deliveryAmount) * 100) / 100;
 
   return {
     draft,
@@ -256,9 +305,11 @@ export async function buildInvoiceStatement(
       crates: Number(partner.storage_crates ?? 0),
       pallets: Number(partner.storage_pallets ?? 0),
       rate: storageRate,
+      crateRate,
       amount: storageAmount,
     },
     fulfillment: { rate: standardRate, salesValue, amount: fulfillmentAmount, lines: fulfillmentLines },
+    restock: { amount: restockAmount, shipments: restockShipments, fee: restockFee, threshold: restockThreshold },
     delivery: { amount: deliveryAmount, bnpFronted, lines: deliveryLines },
     total,
     walletBalance: Number(partner.wallet_balance ?? 0),

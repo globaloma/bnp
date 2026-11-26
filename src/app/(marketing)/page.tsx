@@ -13,12 +13,28 @@ import { Testimonials } from "@/components/marketing/testimonials";
 import { FaqList, pickFaqs } from "@/components/marketing/faq-list";
 import { SectionHeading } from "@/components/marketing/section-heading";
 import { Reveal } from "@/components/marketing/reveal";
+import { OperationDemo } from "@/components/marketing/operation-demo";
 
 export default function HomePage() {
   return (
     <>
       <HomeHero />
       <AboutTeaser />
+
+      <section id="see-it-work" className="scroll-mt-24 bg-white py-20 sm:py-28">
+        <div className="container-page">
+          <SectionHeading
+            align="center"
+            label="See it in action"
+            title="Watch the whole operation, live."
+            description="From the moment your stock lands to the moment your customer confirms delivery, you see every step from your dashboard."
+          />
+          <Reveal className="mt-14">
+            <OperationDemo />
+          </Reveal>
+        </div>
+      </section>
+
       <ServicesGrid limit={6} />
       <WhyUs />
       <Steps />

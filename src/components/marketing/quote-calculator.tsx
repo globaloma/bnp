@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Boxes, Info, Ruler, Send } from "lucide-react";
-import { quote } from "@/lib/site-content";
+import { ArrowRight, Boxes, Info, MessageCircle } from "lucide-react";
+import { quote, whatsappLink, whatsappMessages } from "@/lib/site-content";
 import { naira } from "@/lib/format";
-import { estimateQuote, sqmForCartons } from "@/lib/quote";
+import { estimateQuote } from "@/lib/quote";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ContactForm } from "./contact-form";
@@ -18,6 +18,7 @@ const SALES_STOPS = [
   5_000_000, 7_500_000, 10_000_000, 15_000_000, 20_000_000, 30_000_000, 50_000_000,
 ];
 const SALES_PRESETS = [250_000, 500_000, 1_000_000, 3_000_000];
+const BOX_PRESETS = [2, 4, 10, 20];
 
 function nearestStop(value: number): number {
   let best = 0;
@@ -37,26 +38,29 @@ const sliderClass =
 
 /** The Standard-plan quote calculator. Enterprise is custom-quoted and has its own tool. */
 export function QuoteCalculator() {
-  const [mode, setMode] = useState<"cartons" | "sqm">("cartons");
-  const [cartons, setCartons] = useState(40);
-  const [sqmInput, setSqmInput] = useState(5);
+  const [boxes, setBoxes] = useState(4);
   const [sales, setSales] = useState(1_000_000);
+  const [restockOn, setRestockOn] = useState(false);
 
-  const sqm = mode === "cartons" ? sqmForCartons(cartons) : sqmInput;
-  const est = estimateQuote({ sqm, monthlySales: sales });
+  const est = estimateQuote({ boxes, monthlySales: sales });
+  const restock = restockOn ? quote.restockFee : 0;
+  const monthly = est.monthly + restock;
+  const firstYear = est.subscriptionPerYear + monthly * 12;
   const ratePct = `${Math.round(est.fulfillmentRate * 100)}%`;
-  const share = (n: number) => (est.monthly > 0 ? (n / est.monthly) * 100 : 0);
+  const share = (n: number) => (monthly > 0 ? (n / monthly) * 100 : 0);
 
   const summary = [
     `Plan: Standard`,
-    `Stock: ${mode === "cartons" ? `about ${cartons} medium cartons (${est.sqm} m²)` : `${est.sqm} m² of shelf space`}`,
+    `Storage: ${est.boxes} box${est.boxes === 1 ? "" : "es"} (${quote.boxDimensions}) = ${naira(est.storagePerMonth)} a month`,
     `Monthly sales: ${naira(sales)}`,
-    `Storage: ${naira(est.storagePerMonth)} a month`,
     `Fulfillment (${ratePct}): ${naira(est.fulfillmentPerMonth)} a month`,
-    `Estimated monthly cost: ${naira(est.monthly)}`,
+    ...(restockOn ? [`Restock fee (shipments over ${quote.restockThreshold} units): ${naira(restock)}`] : []),
+    `Estimated monthly cost: ${naira(monthly)}`,
     `Yearly registration fee: ${naira(est.subscriptionPerYear)}`,
-    `Estimated first year: ${naira(est.firstYear)}`,
+    `Estimated first year: ${naira(firstYear)}`,
   ].join("\n");
+
+  const whatsappHref = whatsappLink(`${whatsappMessages.quote}\n\nMy estimate:\n${summary}`);
 
   return (
     <div className="flex flex-col gap-16">
@@ -69,88 +73,60 @@ export function QuoteCalculator() {
               <span className="flex size-9 items-center justify-center rounded-full bg-navy font-display text-sm font-extrabold text-gold">
                 1
               </span>
-              <h2 className="font-display text-xl font-bold text-navy">How much stock will you store?</h2>
+              <h2 className="font-display text-xl font-bold text-navy">How many boxes will you store?</h2>
             </div>
 
-            <div className="mt-6 grid grid-cols-2 gap-1.5 rounded-xl bg-cream p-1.5">
-              {(
-                [
-                  ["cartons", "Number of cartons", Boxes],
-                  ["sqm", "Floor space (m²)", Ruler],
-                ] as const
-              ).map(([value, label, IconCmp]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setMode(value)}
-                  aria-pressed={mode === value}
-                  className={cn(
-                    "flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors",
-                    mode === value ? "bg-navy text-white shadow" : "text-graphite hover:text-navy",
-                  )}
-                >
-                  <IconCmp className="size-4" />
-                  {label}
-                </button>
-              ))}
+            <div className="mt-6 flex items-center gap-2.5 rounded-xl bg-cream px-4 py-3 text-sm text-graphite">
+              <Boxes className="size-5 shrink-0 text-teal" />
+              <span>
+                Storage is counted by the box. A standard box is{" "}
+                <span className="font-semibold text-navy">{quote.boxDimensions}</span>, billed at{" "}
+                <span className="font-semibold text-navy">₦10,000 per 2 boxes</span> a month.
+              </span>
             </div>
 
-            {mode === "cartons" ? (
-              <div className="mt-7">
-                <div className="flex items-end justify-between gap-4">
-                  <label htmlFor="q-cartons" className="text-[15px] font-semibold text-navy">
-                    Medium cartons (about 60 × 40 × 40 cm)
-                  </label>
-                  <input
-                    aria-label="Number of cartons"
-                    inputMode="numeric"
-                    value={cartons}
-                    onChange={(e) => setCartons(clampInt(e.target.value, 1, quote.maxCartons))}
-                    className="h-11 w-24 rounded-lg border border-stone bg-cream/50 text-center font-display text-lg font-bold text-navy outline-none focus-visible:border-teal"
-                  />
-                </div>
+            <div className="mt-7">
+              <div className="flex items-end justify-between gap-4">
+                <label htmlFor="q-boxes" className="text-[15px] font-semibold text-navy">
+                  Number of boxes
+                </label>
                 <input
-                  id="q-cartons"
-                  type="range"
-                  min={1}
-                  max={300}
-                  value={Math.min(cartons, 300)}
-                  onChange={(e) => setCartons(Number(e.target.value))}
-                  className={cn(sliderClass, "mt-5")}
+                  aria-label="Number of boxes"
+                  inputMode="numeric"
+                  value={boxes}
+                  onChange={(e) => setBoxes(clampInt(e.target.value, quote.minBoxes, quote.maxBoxes))}
+                  className="h-11 w-24 rounded-lg border border-stone bg-cream/50 text-center font-display text-lg font-bold text-navy outline-none focus-visible:border-teal"
                 />
-                <p className="mt-3 text-sm text-graphite">
-                  About <span className="font-semibold text-navy">{est.sqm} m²</span> of shelf space.
-                  Roughly {quote.cartonsPerSqm} medium cartons fit in one square metre.
-                </p>
               </div>
-            ) : (
-              <div className="mt-7">
-                <div className="flex items-end justify-between gap-4">
-                  <label htmlFor="q-sqm" className="text-[15px] font-semibold text-navy">
-                    Square metres of shelf space
-                  </label>
-                  <input
-                    aria-label="Square metres"
-                    inputMode="numeric"
-                    value={sqmInput}
-                    onChange={(e) => setSqmInput(clampInt(e.target.value, quote.minSqm, quote.maxSqm))}
-                    className="h-11 w-24 rounded-lg border border-stone bg-cream/50 text-center font-display text-lg font-bold text-navy outline-none focus-visible:border-teal"
-                  />
-                </div>
-                <input
-                  id="q-sqm"
-                  type="range"
-                  min={quote.minSqm}
-                  max={50}
-                  value={Math.min(sqmInput, 50)}
-                  onChange={(e) => setSqmInput(Number(e.target.value))}
-                  className={cn(sliderClass, "mt-5")}
-                />
-                <p className="mt-3 text-sm text-graphite">
-                  One square metre holds about {quote.cartonsPerSqm} medium cartons.
-                </p>
+              <input
+                id="q-boxes"
+                type="range"
+                min={quote.minBoxes}
+                max={100}
+                value={Math.min(boxes, 100)}
+                onChange={(e) => setBoxes(Number(e.target.value))}
+                className={cn(sliderClass, "mt-5")}
+              />
+              <p className="mt-3 text-sm text-graphite">
+                {est.boxes} box{est.boxes === 1 ? "" : "es"} works out to{" "}
+                <span className="font-semibold text-navy">{naira(est.storagePerMonth)}</span> a month in storage.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {BOX_PRESETS.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setBoxes(p)}
+                    className={cn(
+                      "rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-colors",
+                      boxes === p ? "border-navy bg-navy text-white" : "border-stone text-graphite hover:border-gold",
+                    )}
+                  >
+                    {p} boxes
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
           </fieldset>
 
           <fieldset className="rounded-2xl border border-stone bg-white p-6 sm:p-8">
@@ -199,6 +175,31 @@ export function QuoteCalculator() {
               ))}
             </div>
           </fieldset>
+
+          <fieldset className="rounded-2xl border border-stone bg-white p-6 sm:p-8">
+            <legend className="sr-only">Add-ons</legend>
+            <div className="flex items-center gap-3">
+              <span className="flex size-9 items-center justify-center rounded-full bg-navy font-display text-sm font-extrabold text-gold">
+                3
+              </span>
+              <h2 className="font-display text-xl font-bold text-navy">Any add-ons?</h2>
+            </div>
+            <label className="mt-6 flex cursor-pointer items-start justify-between gap-4 rounded-xl border border-stone p-4 transition-colors hover:border-gold">
+              <span>
+                <span className="text-[15px] font-semibold text-navy">Restock fee</span>
+                <span className="mt-0.5 block text-sm text-graphite">
+                  A flat {naira(quote.restockFee)} on each restock shipment over {quote.restockThreshold} units. Optional,
+                  switched on only if you want it.
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                checked={restockOn}
+                onChange={(e) => setRestockOn(e.target.checked)}
+                className="mt-1 size-5 shrink-0 cursor-pointer accent-[#e8a020]"
+              />
+            </label>
+          </fieldset>
         </div>
 
         {/* Result */}
@@ -206,7 +207,7 @@ export function QuoteCalculator() {
           <span className="text-xs font-bold uppercase tracking-[0.16em] text-gold-300">Your Standard estimate</span>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="font-display text-5xl font-extrabold tracking-tight tabular-nums" aria-live="polite">
-              {naira(est.monthly)}
+              {naira(monthly)}
             </span>
             <span className="text-mist">/ month</span>
           </div>
@@ -219,7 +220,7 @@ export function QuoteCalculator() {
             <div className="flex items-center justify-between gap-4">
               <dt className="flex items-center gap-2 text-white/80">
                 <span className="size-2.5 rounded-full bg-gold" />
-                Storage, {est.sqm} m²
+                Storage, {est.boxes} box{est.boxes === 1 ? "" : "es"}
               </dt>
               <dd className="font-semibold tabular-nums">{naira(est.storagePerMonth)}</dd>
             </div>
@@ -230,6 +231,15 @@ export function QuoteCalculator() {
               </dt>
               <dd className="font-semibold tabular-nums">{naira(est.fulfillmentPerMonth)}</dd>
             </div>
+            {restockOn ? (
+              <div className="flex items-center justify-between gap-4">
+                <dt className="flex items-center gap-2 text-white/80">
+                  <span className="size-2.5 rounded-full bg-white/40" />
+                  Restock fee
+                </dt>
+                <dd className="font-semibold tabular-nums">{naira(restock)}</dd>
+              </div>
+            ) : null}
           </dl>
 
           <div className="mt-6 grid grid-cols-2 gap-3 border-t border-white/10 pt-6">
@@ -239,15 +249,25 @@ export function QuoteCalculator() {
             </div>
             <div className="rounded-xl bg-white/5 p-4">
               <div className="text-xs text-mist">First year total</div>
-              <div className="mt-1 font-display text-lg font-bold tabular-nums">{naira(est.firstYear)}</div>
+              <div className="mt-1 font-display text-lg font-bold tabular-nums">{naira(firstYear)}</div>
             </div>
           </div>
 
           <div className="mt-6 flex flex-col gap-3">
-            <Button render={<a href="#quote-request" />} size="xl" className="w-full">
-              <Send />
-              Send me this quote
+            <Button
+              render={<a href={whatsappHref} target="_blank" rel="noopener noreferrer" />}
+              size="xl"
+              className="w-full"
+            >
+              <MessageCircle />
+              Get my real quote on WhatsApp
             </Button>
+            <a
+              href="#quote-request"
+              className="text-center text-sm font-semibold text-gold-300 hover:underline"
+            >
+              Or send it through the form instead
+            </a>
             <Button
               render={<Link href={`/signup?plan=standard`} />}
               size="xl"
@@ -264,7 +284,7 @@ export function QuoteCalculator() {
           </p>
           <p className="mt-3 flex gap-2 text-xs leading-relaxed text-mist">
             <Info className="mt-0.5 size-3.5 shrink-0" />
-            An estimate at our standard Abuja prices. Final storage depends on the space your stock actually uses.
+            An estimate at our standard prices. Final storage depends on the number of boxes your stock actually uses.
             Delivery fees are separate and charged per order. Selling at high volume or from abroad?{" "}
             <Link href="/enterprise-calculator" className="font-semibold text-gold-300 underline">
               Try the Enterprise calculator

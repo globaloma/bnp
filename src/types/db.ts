@@ -140,6 +140,8 @@ export type Invoice = {
   sales_value: number;
   fulfillment_rate: number;
   fulfillment_amount: number;
+  /** Standard restock fee billed for the period, 0 when the add-on is off (0041). */
+  restock_amount: number;
   /** BNP-handled delivery fees billed to the merchant for the period (0029). */
   delivery_amount: number;
   total: number;

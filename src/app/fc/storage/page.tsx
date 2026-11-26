@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getAuthedFulfillmentCenter } from "@/lib/data/fulfillment-center";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/dashboard/ui";
+import { STANDARD_CRATE_RATE } from "@/lib/storage";
 import { StorageClient, type StorageRow } from "./storage-client";
 
 export const metadata: Metadata = { title: "Storage space" };
@@ -22,7 +23,10 @@ export default async function StoragePage() {
       .order("business_name"),
     supabase.from("products").select("partner_id, on_hand"),
     supabase.from("bin_stock").select("quantity, product:products(partner_id)").gt("quantity", 0),
-    supabase.from("billing_settings").select("storage_rate, crate_m2, pallet_m2, pallet_ref_height_m").single(),
+    supabase
+      .from("billing_settings")
+      .select("storage_rate, std_crate_rate, crate_m2, pallet_m2, pallet_ref_height_m")
+      .single(),
   ]);
 
   const units = new Map<string, number>();
@@ -47,6 +51,7 @@ export default async function StoragePage() {
 
   const rates = {
     storageRate: Number(settings?.storage_rate ?? 10000),
+    stdCrateRate: Number(settings?.std_crate_rate ?? STANDARD_CRATE_RATE),
     crateM2: Number(settings?.crate_m2 ?? 0.25),
     palletM2: Number(settings?.pallet_m2 ?? 1.2),
     palletRefHeightM: Number(settings?.pallet_ref_height_m ?? 1),

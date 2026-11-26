@@ -8,6 +8,7 @@ import { PageHero } from "@/components/marketing/page-hero";
 import { SectionHeading } from "@/components/marketing/section-heading";
 import { Reveal } from "@/components/marketing/reveal";
 import { Steps } from "@/components/marketing/steps";
+import { OperationDemo } from "@/components/marketing/operation-demo";
 
 export const metadata: Metadata = {
   title: "How it works",
@@ -23,6 +24,20 @@ export default function HowItWorksPage() {
         description={steps.description}
         image="/images/marketing/delivery-van.jpg"
       />
+
+      <section id="see-it-work" className="scroll-mt-24 bg-white py-20 sm:py-28">
+        <div className="container-page">
+          <SectionHeading
+            align="center"
+            label="See it in action"
+            title="Watch the whole operation, live."
+            description="This is what you see from your dashboard, from the moment stock lands to the moment your customer confirms delivery."
+          />
+          <Reveal className="mt-14">
+            <OperationDemo />
+          </Reveal>
+        </div>
+      </section>
 
       <section className="bg-cream bg-dots py-20 sm:py-28">
         <div className="container-page">

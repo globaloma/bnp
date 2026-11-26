@@ -202,7 +202,7 @@ function InvoiceRow({ invoice: inv, walletBalance }: { invoice: Invoice; walletB
       ) : (
         <dl className="mt-3 grid gap-1 border-t border-stone pt-3 text-xs text-graphite sm:grid-cols-2">
           <div className="flex justify-between gap-3 sm:block">
-            <dt className="inline">Storage, {Number(inv.storage_sqm)} m²: </dt>
+            <dt className="inline">Storage: </dt>
             <dd className="inline font-semibold text-navy">{naira(Number(inv.storage_amount))}</dd>
           </div>
           <div className="flex justify-between gap-3 sm:block">

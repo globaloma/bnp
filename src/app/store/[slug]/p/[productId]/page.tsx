@@ -121,7 +121,7 @@ export default async function ProductPage({
       ? { text: "Out of stock", tone: "text-destructive" }
       : product.stock <= LOW_STOCK_THRESHOLD
         ? { text: `Only ${product.stock} left`, tone: "text-gold" }
-        : { text: "In stock", tone: "text-success" };
+        : { text: `${product.stock} in stock`, tone: "text-success" };
 
   const productUrl = `${SITE_URL}/store/${partner.slug}/p/${product.id}`;
 

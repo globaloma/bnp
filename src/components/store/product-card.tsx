@@ -7,6 +7,7 @@ import { Boxes } from "lucide-react";
 import { naira } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { AddToCart } from "./add-to-cart";
+import { LOW_STOCK_THRESHOLD } from "@/types/db";
 import type { StorefrontProduct } from "@/types/db";
 
 /**
@@ -84,7 +85,11 @@ export function ProductCard({
           </span>
           {outOfStock ? (
             <span className="text-xs font-semibold text-destructive">Out of stock</span>
-          ) : null}
+          ) : (
+            <span className="text-xs font-semibold text-graphite">
+              {product.stock <= LOW_STOCK_THRESHOLD ? `Only ${product.stock} left` : `${product.stock} in stock`}
+            </span>
+          )}
         </div>
 
         <AddToCart product={product} className="mt-3" />

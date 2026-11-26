@@ -50,6 +50,17 @@ export async function setEnterpriseTerms(partnerId: string, minimum: number, man
   return done();
 }
 
+export async function setStandardRestock(partnerId: string, enabled: boolean): Promise<Result> {
+  if (!uuid.safeParse(partnerId).success) return { ok: false, error: "Merchant not found." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_set_standard_restock", {
+    p_partner: partnerId,
+    p_enabled: enabled,
+  });
+  if (error) return { ok: false, error: friendly(error.message) };
+  return done(enabled ? "Restock fee switched on" : "Restock fee switched off");
+}
+
 export async function invoiceAction(invoiceId: string, action: "paid" | "void", note: string): Promise<Result> {
   if (!uuid.safeParse(invoiceId).success) return { ok: false, error: "Invoice not found." };
   const supabase = await createClient();
